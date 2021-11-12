@@ -1,6 +1,6 @@
 {
   "icon": "/icons/128.png",
-  "title": "Spencer's OneDrive Index",
+  "title": "一个假的网盘",
   "maxItems": 100,
   "googleFont": "Rubik",
   "googleFontWeights": [
@@ -9,12 +9,10 @@
   ],
   "footer": "Powered by <a class=\"hover:underline\" href=\"https://github.com/spencerwooo/onedrive-vercel-index\" target=\"_blank\" rel=\"noopener noreferrer\">onedrive-vercel-index</a>. Made with ❤ by SpencerWoo.",
   "protectedRoutes": [
-    "/🌞 Private folder/u-need-a-password",
-    "/🥟 Some test files/Protected route"
+    "/Public/虾子"
   ],
   "contact": {
-    "email": "mailto:spencer.wushangbo@gmail.com",
-    "telegram": "https://t.me/realSpencerWoo",
-    "github": "https://github.com/spencerwooo/onedrive-vercel-index"
+    "email": "mailto:i@isteed.cc",
+    "telegram": "https://channel.isteed.cc"
   }
 }
