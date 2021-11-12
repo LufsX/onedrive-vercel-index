@@ -54,14 +54,6 @@ const Navbar = () => {
 
         <div className="flex items-center">
           <a
-            href={siteConfig.contact.github}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded"
-          >
-            <FontAwesomeIcon icon={['fab', 'github']} size="lg" />
-          </a>
-          <a
             href={siteConfig.contact.telegram}
             target="_blank"
             rel="noopener noreferrer"
