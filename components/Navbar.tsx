@@ -1,5 +1,4 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { IconName } from '@fortawesome/fontawesome-svg-core'
 import { Dialog, Transition } from '@headlessui/react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -41,7 +40,7 @@ const Navbar = () => {
   }
 
   return (
-    <div className="text-left p-1 bg-white dark:bg-gray-900 sticky top-0 bg-opacity-80 backdrop-blur-md shadow-sm z-[100]">
+    <div className="text-left p-1 bg-white dark:bg-gray-900 sticky top-0 bg-opacity-80 border-b border-gray-900/10 backdrop-blur-md z-[100]">
       <div className="flex items-center justify-between w-full max-w-5xl mx-auto">
         <Toaster />
 
@@ -108,7 +107,7 @@ const Navbar = () => {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <div className="dark:bg-gray-900 inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded shadow-lg">
+              <div className="dark:bg-gray-900 inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg">
                 <Dialog.Title className="dark:text-gray-100 text-lg font-bold text-gray-900">
                   Clear all tokens?
                 </Dialog.Title>
@@ -130,7 +129,7 @@ const Navbar = () => {
 
                 <div className="flex items-center justify-end mt-8">
                   <button
-                    className="focus:outline-none focus:ring focus:ring-blue-300 hover:bg-blue-600 inline-flex items-center justify-center px-4 py-2 mr-3 space-x-2 text-white bg-blue-500 rounded"
+                    className="focus:outline-none focus:ring focus:ring-blue-300 hover:bg-blue-400 inline-flex items-center justify-center px-4 py-2 mr-3 space-x-2 text-white bg-blue-500 rounded"
                     onClick={() => setIsOpen(false)}
                   >
                     Cancel
