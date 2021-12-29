@@ -1,4 +1,5 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { IconName } from '@fortawesome/fontawesome-svg-core'
 import { Dialog, Transition } from '@headlessui/react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -40,39 +41,44 @@ const Navbar = () => {
   }
 
   return (
-    <div className="text-left p-1 bg-white dark:bg-gray-900 sticky top-0 bg-opacity-80 border-b border-gray-900/10 backdrop-blur-md z-[100]">
-      <div className="flex items-center justify-between w-full max-w-5xl mx-auto">
-        <Toaster />
+    <div className="bg-white dark:bg-gray-900 sticky top-0 bg-opacity-80 border-b border-gray-900/10 backdrop-blur-md z-[100]">
+      <Toaster />
 
+      <div className="flex items-center justify-between w-full max-w-5xl mx-auto pr-4 py-1">
         <Link href="/">
-          <a className="dark:text-white hover:opacity-80 flex items-center p-2 space-x-2 text-xl font-bold">
-            <Image src={siteConfig.icon} alt="icon" width="32" height="32" />
-            <span className="sm:block hidden">{siteConfig.title}</span>
+          <a className="dark:text-white hover:opacity-80 flex items-center p-2 space-x-2">
+            <Image src={siteConfig.icon} alt="icon" width="28" height="28" priority />
+            <span className="sm:block hidden text-lg font-bold">{siteConfig.title}</span>
           </a>
         </Link>
 
-        <div className="flex items-center">
-          <a
-            href={siteConfig.contact.telegram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded"
-          >
-            <FontAwesomeIcon icon={['fab', 'telegram-plane']} size="lg" />
-          </a>
-          <a
-            href={siteConfig.contact.email}
-            className="hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded"
-          >
-            <FontAwesomeIcon icon={['far', 'envelope']} size="lg" />
-          </a>
+        <div className="flex items-center space-x-4 text-gray-700">
+          {siteConfig.links.map(l => (
+            <a
+              key={l.name}
+              href={l.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-2 dark:text-white hover:opacity-80"
+            >
+              <FontAwesomeIcon icon={['fab', l.name.toLowerCase() as IconName]} />
+              <span className="text-sm font-medium hidden md:inline-block">{l.name}</span>
+            </a>
+          ))}
+
+          {siteConfig.email && (
+            <a href={siteConfig.email} className="flex items-center space-x-2 dark:text-white hover:opacity-80">
+              <FontAwesomeIcon icon={['far', 'envelope']} />
+              <span className="text-sm font-medium hidden md:inline-block">Email</span>
+            </a>
+          )}
 
           {tokenPresent && (
             <button
               className="hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 flex items-center p-2 space-x-2 rounded"
               onClick={() => setIsOpen(true)}
             >
-              <span>Logout</span>
+              <span className="text-sm font-medium">Logout</span>
               <FontAwesomeIcon icon="sign-out-alt" />
             </button>
           )}
@@ -135,7 +141,7 @@ const Navbar = () => {
                     Cancel
                   </button>
                   <button
-                    className="focus:outline-none focus:ring focus:ring-red-300 hover:bg-red-600 inline-flex items-center justify-center px-4 py-2 space-x-2 text-white bg-red-500 rounded"
+                    className="focus:outline-none focus:ring focus:ring-red-300 hover:bg-red-400 inline-flex items-center justify-center px-4 py-2 space-x-2 text-white bg-red-500 rounded"
                     onClick={() => clearTokens()}
                   >
                     <FontAwesomeIcon icon={['far', 'trash-alt']} />

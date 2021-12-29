@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 import Image from 'next/image'
 import { useRouter } from 'next/router'
-import { FunctionComponent } from 'react'
+import { FunctionComponent, useState } from 'react'
 
 import { matchProtectedRoute } from '../utils/protectedRouteHandler'
 import useLocalStorage from '../utils/useLocalStorage'
@@ -11,7 +11,8 @@ const Auth: FunctionComponent<{ redirect: string }> = ({ redirect }) => {
   const authTokenPath = matchProtectedRoute(redirect)
 
   const router = useRouter()
-  const [token, setToken] = useLocalStorage(authTokenPath, '')
+  const [token, setToken] = useState('')
+  const [persistedToken, setPersistedToken] = useLocalStorage(authTokenPath, '')
 
   return (
     <div className="md:my-10 flex flex-col max-w-sm mx-auto space-y-4">
@@ -20,7 +21,7 @@ const Auth: FunctionComponent<{ redirect: string }> = ({ redirect }) => {
       </div>
       <div className="dark:text-gray-100 text-lg font-bold text-gray-900">Enter Password</div>
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 font-medium">
         This route (the folder itself and the files inside) is password protected. If you know the password, please
         enter it below.
       </p>
@@ -37,13 +38,15 @@ const Auth: FunctionComponent<{ redirect: string }> = ({ redirect }) => {
           }}
           onKeyPress={e => {
             if (e.key === 'Enter' || e.key === 'NumpadEnter') {
+              setPersistedToken(token)
               router.reload()
             }
           }}
         />
         <button
-          className="focus:outline-none focus:ring focus:ring-blue-300 hover:bg-blue-400 px-4 py-2 text-white bg-blue-500 rounded"
+          className="focus:outline-none focus:ring focus:ring-blue-400 hover:bg-blue-500 px-4 py-2 text-white bg-blue-600 rounded"
           onClick={() => {
+            setPersistedToken(token)
             router.reload()
           }}
         >
