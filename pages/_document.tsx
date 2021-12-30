@@ -13,6 +13,7 @@ class MyDocument extends Document {
           {siteConfig.googleFontLinks.map(link => (
             <link key={link} rel="stylesheet" href={link} />
           ))}
+          <script async src="https://cdn.isteed.cc/file/cfga-drive.min.js"></script>
         </Head>
         <body>
           <Main />
