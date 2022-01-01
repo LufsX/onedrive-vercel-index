@@ -1,6 +1,7 @@
 {
   "icon": "/icons/128.png",
   "title": "一个假的网盘",
+  "baseDirectory": "/",
   "maxItems": 100,
   "googleFontSans": "Inter",
   "googleFontMono": "Fira Mono",
