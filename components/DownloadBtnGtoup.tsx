@@ -81,7 +81,7 @@ const DownloadButtonGroup: React.FC<{ downloadUrl: string }> = ({ downloadUrl })
         btnColor="teal"
         btnText={t('Proxy download')}
         btnIcon="download"
-        btnTitle={t('Download the file with the stream proxied through Vercel Serverless')}
+        btnTitle={t('Download the file with the stream proxied through Cloudflare Workers')}
       />
       <DownloadButton
         onClickCallback={() => {
