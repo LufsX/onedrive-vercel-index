@@ -132,14 +132,14 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             btnText={t('Download')}
             btnIcon="file-download"
           />
-          <DownloadButton
+          {/* <DownloadButton
             onClickCallback={() =>
-              window.open(`https://proxy.lufs.workers.dev?url=${encodeURIComponent(...)}`)
+              window.open(`/api/proxy?url=${encodeURIComponent(...)}`)
             }
             btnColor="teal"
             btnText={t('Proxy download')}
             btnIcon="download"
-          />
+          /> */}
           <DownloadButton
             onClickCallback={() => {
               clipboard.copy(`${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
