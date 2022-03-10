@@ -82,13 +82,13 @@ const DownloadButtonGroup = () => {
           btnIcon="file-download"
           btnTitle={t('Download the file directly through OneDrive')}
         />
-        {/* <DownloadButton
-          onClickCallback={() => window.open(`/api/proxy?url=${encodeURIComponent(downloadUrl)}`)}
+        <DownloadButton
+          onClickCallback={() => window.open(`https://proxy.lufs.workers.dev?url=${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)}
           btnColor="teal"
           btnText={t('Proxy download')}
           btnIcon="download"
-          btnTitle={t('Download the file with the stream proxied through Vercel Serverless')}
-        /> */}
+          btnTitle={t('Download the file with the stream proxied through Cloudflare Serverless')}
+        />
         <DownloadButton
           onClickCallback={() => {
             clipboard.copy(`${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)

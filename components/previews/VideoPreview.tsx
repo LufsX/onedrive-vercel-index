@@ -132,14 +132,15 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             btnText={t('Download')}
             btnIcon="file-download"
           />
-          {/* <DownloadButton
+          <DownloadButton
             onClickCallback={() =>
-              window.open(`/api/proxy?url=${encodeURIComponent(...)}`)
+              window.open(`https://proxy.lufs.workers.dev?url=${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
             }
             btnColor="teal"
             btnText={t('Proxy download')}
             btnIcon="download"
-          /> */}
+            btnTitle={t('Download the file with the stream proxied through Cloudflare Serverless')}
+          />
           <DownloadButton
             onClickCallback={() => {
               clipboard.copy(`${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
