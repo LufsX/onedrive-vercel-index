@@ -134,7 +134,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           />
           <DownloadButton
             onClickCallback={() =>
-              window.open(`https://proxy.lufs.workers.dev?url=${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
+              window.open(`https://cors.isteed.cc/${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
             }
             btnColor="teal"
             btnText={t('Proxy download')}
