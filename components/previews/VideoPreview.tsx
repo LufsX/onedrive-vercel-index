@@ -173,7 +173,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             btnImage="/players/potplayer.png"
           />
           <DownloadButton
-            onClickCallback={() => window.open(`nplayer-http://${getBaseUrl()}${videoUrl}`)}
+            onClickCallback={() => window.open(`nplayer-http://${window?.location.hostname ?? ""}${videoUrl}`)}
             btnText="nPlayer"
             btnImage="/players/nplayer.png"
           />
