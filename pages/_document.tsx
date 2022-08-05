@@ -13,6 +13,7 @@ class MyDocument extends Document {
           {siteConfig.googleFontLinks.map(link => (
             <link key={link} rel="stylesheet" href={link} />
           ))}
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-RN76JDQKTY"></script>
         </Head>
         <body>
           <Main />
