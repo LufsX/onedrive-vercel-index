@@ -80,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.writeHead(200, headers as AxiosResponseHeaders)
         stream.pipe(res)
       } else {
+        res.setHeader("Cache-Control","max-age=3600, s-maxage=1800, stale-while-revalidate=3600")
         res.redirect(data['@microsoft.graph.downloadUrl'])
       }
     } else {
