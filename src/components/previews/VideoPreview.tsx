@@ -126,6 +126,11 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           />
 
           <DownloadButton
+            onClickCallback={() => window.open(`filebox://play?url=${getBaseUrl()}${videoUrl}`)}
+            btnText="Fileball"
+            btnImage="/players/fileball.png"
+          />
+          <DownloadButton
             onClickCallback={() => window.open(`iina://weblink?url=${getBaseUrl()}${videoUrl}`)}
             btnText="IINA"
             btnImage="/players/iina.png"
