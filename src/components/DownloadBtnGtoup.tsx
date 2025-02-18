@@ -83,11 +83,17 @@ const DownloadButtonGroup = () => {
           btnTitle={t('Download the file directly through OneDrive')}
         />
         <DownloadButton
-          onClickCallback={() => window.open(`https://cors.isteed.cc/${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)}
+          onClickCallback={() =>
+            window.open(
+              `https://cors.isteed.cc/${getBaseUrl()}/api/raw/?path=${asPath}${
+                hashedToken ? `&odpt=${hashedToken}` : ''
+              }`
+            )
+          }
           btnColor="teal"
           btnText={t('Proxy download')}
           btnIcon="download"
-          btnTitle={t('Download the file with the stream proxied through Cloudflare Serverless')}
+          btnTitle={t('Download the file through Cloudflare Serverless proxy.')}
         />
         <DownloadButton
           onClickCallback={() => {
