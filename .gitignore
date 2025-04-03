@@ -65,6 +65,7 @@ Temporary Items
 .apdisk
 
 .vscode/*
+.hintrc
 
 # Local History for Visual Studio Code
 .history/

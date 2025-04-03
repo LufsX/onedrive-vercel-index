@@ -43,18 +43,9 @@ const EPUBPreview: FC<{ file: OdFileObject }> = ({ file }) => {
 
   return (
     <div>
-      <div
-        className="no-scrollbar flex w-full flex-col overflow-scroll rounded bg-white dark:bg-gray-900 md:p-3"
-        style={{ maxHeight: '90vh' }}
-      >
-        <div className="no-scrollbar w-full flex-1 overflow-scroll" ref={epubContainer} style={{ minHeight: '70vh' }}>
-          <div
-            style={{
-              position: 'absolute',
-              width: epubContainerWidth,
-              height: '70vh',
-            }}
-          >
+      <div className="no-scrollbar flex max-h-[90vh] w-full flex-col overflow-scroll rounded bg-white dark:bg-gray-900 md:p-3">
+        <div className="no-scrollbar min-h-[70vh] w-full flex-1 overflow-scroll" ref={epubContainer}>
+          <div className="absolute h-[70vh]" style={{ width: epubContainerWidth }}>
             <ReactReader
               url={`/api/raw/?path=${asPath}${hashedToken ? '&odpt=' + hashedToken : ''}`}
               getRendition={rendition => fixEpub(rendition)}

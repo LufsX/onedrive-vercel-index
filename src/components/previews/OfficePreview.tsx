@@ -26,7 +26,7 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
 
   return (
     <div>
-      <div className="overflow-scroll" ref={docContainer} style={{ maxHeight: '90vh' }}>
+      <div className="overflow-scroll max-h-[90vh]" ref={docContainer}>
         <Preview url={docUrl} width={docContainerWidth.toString()} height="600" />
       </div>
       <DownloadBtnContainer>
