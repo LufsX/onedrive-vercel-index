@@ -10,8 +10,8 @@
 module.exports = {
   // The clientId and clientSecret are used to authenticate the user with Microsoft Graph API using OAuth. You would
   // not need to change anything here if you can authenticate with your personal Microsoft account with OneDrive International.
-  clientId: '62a80d0d-1da4-4beb-93eb-c8bda9d3bc20',
-  obfuscatedClientSecret: "U2FsdGVkX1/X0c+DLiUzeDDYw19rhhoBp8C3dZj9YUTgfxII4iNT4SkJSzqwKK9bnwuq5dk7a3JRI1Vur/rvLg==",
+  clientId: '6280202a-1acd-47d6-b311-7a6367163699',
+  obfuscatedClientSecret: "U2FsdGVkX19cX6i43eNfkwzCcxDIRyIZSmgleJ68hPp7tRpjVihPpi89B2Itn0p6yo2Pz+gQ80w/5I2jKR6pdw==",
 
   // The redirectUri is the URL that the user will be redirected to after they have authenticated with Microsoft Graph API.
   // Likewise, you would not need to change redirectUri if you are using your personal Microsoft account with OneDrive International.
@@ -30,5 +30,5 @@ module.exports = {
   // - s-maxage=0: cache is fresh for 60 seconds on the edge, after which it becomes stale
   // - stale-while-revalidate: allow serving stale content while revalidating on the edge
   // https://vercel.com/docs/concepts/edge-network/caching
-  cacheControlHeader: 'max-age=0, s-maxage=60, stale-while-revalidate',
+  cacheControlHeader: 'max-age=0, s-maxage=600, stale-while-revalidate',
 }
