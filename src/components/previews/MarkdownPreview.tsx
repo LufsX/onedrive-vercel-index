@@ -60,22 +60,15 @@ const MarkdownPreview: FC<{
       )
     },
     // code: to render code blocks with react-syntax-highlighter
-    code({
-      className,
-      children,
-      node,
-      ...props
-    }: {
-      className?: string | undefined
-      children: ReactNode
-      node?: any
-    }) {
-      // Check if it is inline code
-      const isInline = node?.tagName !== 'pre' && node?.parentNode?.tagName !== 'pre'
-      
+    code: (props: React.ClassAttributes<HTMLElement> & React.HTMLAttributes<HTMLElement> & { node?: any }) => {
+      const { className, children, node, ref, ...rest } = props
+
+      // Check if it is inline code by inspecting the node's tagName
+      const isInline = node?.tagName === 'code' && node?.parentNode?.tagName !== 'pre'
+
       if (isInline) {
         return (
-          <code className={className} {...props}>
+          <code className={className} ref={ref} {...rest}>
             {children}
           </code>
         )
@@ -83,7 +76,12 @@ const MarkdownPreview: FC<{
 
       const match = /language-(\w+)/.exec(className || '')
       return (
-        <SyntaxHighlighter language={match ? match[1] : 'language-text'} style={tomorrowNight} PreTag="div" {...props}>
+        <SyntaxHighlighter
+          language={match ? match[1] : 'language-text'}
+          style={tomorrowNight as any}
+          PreTag="div"
+          {...rest}
+        >
           {String(children).replace(/\n$/, '')}
         </SyntaxHighlighter>
       )
