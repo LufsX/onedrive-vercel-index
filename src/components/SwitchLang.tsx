@@ -52,7 +52,7 @@ const SwitchLang = () => {
   return (
     <div className="relative">
       <Menu>
-        <MenuButton className="flex items-center space-x-1.5 hover:opacity-80 dark:text-white">
+        <MenuButton className="flex items-center gap-1.5 hover:opacity-80 dark:text-white">
           <FontAwesomeIcon className="h-4 w-4" icon="language" />
           <FontAwesomeIcon className="h-3 w-3" icon="chevron-down" />
         </MenuButton>
@@ -66,7 +66,7 @@ const SwitchLang = () => {
           leaveFrom="transform scale-100 opacity-100"
           leaveTo="transform scale-95 opacity-0"
         >
-          <MenuItems className="absolute top-0 right-0 z-20 mt-8 w-28 divide-y divide-gray-900 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-none dark:border-gray-500/30 dark:bg-gray-900 dark:text-white">
+          <MenuItems className="absolute top-0 right-0 z-20 mt-8 w-28 divide-y divide-gray-900 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900 dark:text-white">
             {[...locales!]
               .sort((a, b) => {
                 const preferredOrder = ['en', 'zh-CN', 'zh-TW', 'de-DE', 'es', 'hi', 'id', 'tr-TR']

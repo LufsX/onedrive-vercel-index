@@ -93,7 +93,7 @@ function SearchResultItemTemplate({
     <Link
       href={driveItemPath}
       passHref
-      className={`flex items-center space-x-4 border-b border-gray-400/30 px-4 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-850 ${
+      className={`flex items-center gap-4 border-b border-gray-400/30 px-4 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-850 ${
         disabled ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
       }`}
     >
@@ -214,13 +214,13 @@ export default function SearchModal({
             <div className="my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-xl transition-all">
               <DialogTitle
                 as="h3"
-                className="flex items-center space-x-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white"
+                className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white"
               >
                 <FontAwesomeIcon icon="search" className="h-4 w-4" />
                 <input
                   type="text"
                   id="search-box"
-                  className="w-full bg-transparent focus:outline-none focus-visible:outline-none"
+                  className="w-full bg-transparent focus:outline-hidden focus-visible:outline-hidden"
                   placeholder={t('Search ...')}
                   value={query}
                   onChange={e => setQuery(e.target.value)}

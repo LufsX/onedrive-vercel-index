@@ -21,7 +21,7 @@ const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="h-32 overflow-hidden rounded border border-gray-900/10 dark:border-gray-500/30">
         {thumbnailUrl && !brokenThumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -41,8 +41,8 @@ const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
         )}
       </div>
 
-      <div className="flex items-start justify-center space-x-2">
-        <span className="w-5 flex-shrink-0 text-center">
+      <div className="flex items-start justify-center gap-2">
+        <span className="w-5 shrink-0 text-center">
           <ChildIcon child={c} />
         </span>
         <ChildName name={c.name} folder={Boolean(c.folder)} />
@@ -77,7 +77,7 @@ const FolderGridLayout = ({
   const getItemPath = (name: string) => `${path === '/' ? '' : path}/${encodeURIComponent(name)}`
 
   return (
-    <div className="rounded bg-white shadow-sm dark:bg-gray-900 dark:text-gray-100">
+    <div className="rounded bg-white shadow-xs dark:bg-gray-900 dark:text-gray-100">
       <div className="flex items-center border-b border-gray-900/10 px-3 text-xs font-bold uppercase tracking-widest text-gray-600 dark:border-gray-500/30 dark:text-gray-400">
         <div className="flex-1">{t('{{count}} item(s)', { count: folderChildren.length })}</div>
         <div className="flex p-1.5 text-gray-700 dark:text-gray-400">

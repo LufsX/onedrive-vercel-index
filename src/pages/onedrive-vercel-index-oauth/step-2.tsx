@@ -86,7 +86,7 @@ export default function OAuthStep2() {
             </div>
 
             <input
-              className={`my-2 w-full flex-1 rounded border bg-gray-50 p-2 font-mono text-sm font-medium focus:outline-none focus:ring dark:bg-gray-800 dark:text-white ${
+              className={`my-2 w-full flex-1 rounded border bg-gray-50 p-2 font-mono text-sm font-medium focus:outline-hidden focus:ring dark:bg-gray-800 dark:text-white ${
                 authCode
                   ? 'border-green-500/50 focus:ring-green-500/30 dark:focus:ring-green-500/40'
                   : 'border-red-500/50 focus:ring-red-500/30 dark:focus:ring-red-500/40'

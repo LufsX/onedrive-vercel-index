@@ -16,7 +16,7 @@ export function DownloadingToast({ router, progress }: { router: NextRouter; pro
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center gap-2">
       <div className="w-56">
         <span>{progress ? t('Downloading {{progress}}%', { progress }) : t('Downloading selected files...')}</span>
 
@@ -27,7 +27,7 @@ export function DownloadingToast({ router, progress }: { router: NextRouter; pro
         </div>
       </div>
       <button
-        className="rounded bg-red-500 p-2 text-white hover:bg-red-400 focus:outline-none focus:ring focus:ring-red-300"
+        className="rounded bg-red-500 p-2 text-white hover:bg-red-400 focus:outline-hidden focus:ring focus:ring-red-300"
         onClick={() => router.reload()}
       >
         {t('Cancel')}

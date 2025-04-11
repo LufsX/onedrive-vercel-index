@@ -53,7 +53,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   return (
     <>
       <PreviewContainer>
-        <div className="flex flex-col space-y-4 md:flex-row md:space-x-4">
+        <div className="flex flex-col gap4 md:flex-row md:gap-4">
           <div className="relative flex aspect-square w-full items-center justify-center rounded bg-gray-100 transition-all duration-75 dark:bg-gray-700 md:w-48">
             <div
               className={`absolute z-20 flex h-full w-full items-center justify-center transition-all duration-300 ${
