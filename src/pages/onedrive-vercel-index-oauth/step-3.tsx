@@ -6,7 +6,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCheckCircle } from '@fortawesome/free-regular-svg-icons'
 import { faArrowLeft, faCheck, faExclamationCircle, faKey } from '@fortawesome/free-solid-svg-icons'
 import { useTranslation, Trans } from 'next-i18next/pages'
-import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations'
 
 import siteConfig from '../../../config/site.config'
 import Navbar from '../../components/Navbar'
@@ -14,6 +13,7 @@ import Footer from '../../components/Footer'
 
 import { getAuthPersonInfo, requestTokenWithAuthCode, sendTokenToServer } from '../../utils/oAuthHandler'
 import { LoadingIcon } from '../../components/Loading'
+import { serverSideTranslations } from '../../utils/serverSideTranslations'
 
 export default function OAuthStep3({ accessToken, expiryTime, refreshToken, error, description, errorUri }) {
   const router = useRouter()

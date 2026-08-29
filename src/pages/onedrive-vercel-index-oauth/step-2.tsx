@@ -5,13 +5,13 @@ import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowRight, faExclamationCircle, faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons'
 import { useTranslation, Trans } from 'next-i18next/pages'
-import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations'
 
 import siteConfig from '../../../config/site.config'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import { LoadingIcon } from '../../components/Loading'
 import { extractAuthCodeFromRedirected, generateAuthorisationUrl } from '../../utils/oAuthHandler'
+import { serverSideTranslations } from '../../utils/serverSideTranslations'
 
 export default function OAuthStep2() {
   const router = useRouter()
