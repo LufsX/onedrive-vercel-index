@@ -1,5 +1,5 @@
 import axios from 'axios'
-import CryptoJS from 'crypto-js'
+import { AES, Utf8 } from 'crypto-es'
 
 import apiConfig from '../../config/api.config'
 
@@ -8,13 +8,13 @@ import apiConfig from '../../config/api.config'
 const AES_SECRET_KEY = 'onedrive-vercel-index'
 export function obfuscateToken(token: string): string {
   // Encrypt token with AES
-  const encrypted = CryptoJS.AES.encrypt(token, AES_SECRET_KEY)
+  const encrypted = AES.encrypt(token, AES_SECRET_KEY)
   return encrypted.toString()
 }
 export function revealObfuscatedToken(obfuscated: string): string {
   // Decrypt SHA256 obfuscated token
-  const decrypted = CryptoJS.AES.decrypt(obfuscated, AES_SECRET_KEY)
-  return decrypted.toString(CryptoJS.enc.Utf8)
+  const decrypted = AES.decrypt(obfuscated, AES_SECRET_KEY)
+  return decrypted.toString(Utf8)
 }
 
 // Generate the Microsoft OAuth 2.0 authorization URL, used for requesting the authorisation code

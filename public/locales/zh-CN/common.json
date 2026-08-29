@@ -117,5 +117,13 @@
   "What is this?": "这是什么？",
   "Where is the auth code? Did you follow step 2 you silly donut?": "授权码呢？你遵守了第 2 步吗？你这个傻瓜甜甜圈！o(￣ヘ￣o＃)",
   "Whoops, looks like we got a problem: {{error}}.": "Whoops，看来我们遇到了一个问题：{{error}}",
-  "Download the file through Cloudflare Serverless proxy.": "通过 Cloudflare Serverless 代理下载文件。"
+  "Download the file through Cloudflare Serverless proxy.": "通过 Cloudflare Serverless 代理下载文件。",
+  "Office preview renderer": "Office 预览方式",
+  "Preview locally": "使用本地查看",
+  "Local preview": "本地查看",
+  "Preview with Microsoft Office Online": "使用 Microsoft Office Online 预览",
+  "Microsoft": "Microsoft",
+  "Microsoft preview requires a public URL.": "Microsoft 预览需要可公开访问的 URL。",
+  "Microsoft Office preview": "Microsoft Office 预览",
+  "PDF Preview: {{name}}": "PDF 预览：{{name}}"
 }

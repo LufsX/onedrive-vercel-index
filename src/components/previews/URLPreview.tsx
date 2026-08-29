@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
+import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons'
 
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
@@ -14,7 +15,7 @@ const parseDotUrl = (content: string): string | undefined => {
     ?.split('=')[1]
 }
 
-const TextPreview = ({ file }) => {
+const URLPreview = () => {
   const { asPath } = useRouter()
   const { t } = useTranslation()
 
@@ -54,7 +55,7 @@ const TextPreview = ({ file }) => {
             onClickCallback={() => window.open(parseDotUrl(content) ?? '')}
             btnColor="blue"
             btnText={t('Open URL')}
-            btnIcon="external-link-alt"
+            btnIcon={faExternalLinkAlt}
             btnTitle={t('Open URL{{url}}', { url: ' ' + (parseDotUrl(content) ?? '') })}
           />
         </div>
@@ -63,4 +64,4 @@ const TextPreview = ({ file }) => {
   )
 }
 
-export default TextPreview
+export default URLPreview

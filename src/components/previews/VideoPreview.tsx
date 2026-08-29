@@ -4,7 +4,9 @@ import { FC, useState } from 'react'
 import { useRouter } from 'next/router'
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useTranslation } from 'next-i18next'
+import { faCopy } from '@fortawesome/free-regular-svg-icons'
+import { faDownload, faFileDownload, faPen } from '@fortawesome/free-solid-svg-icons'
+import { useTranslation } from 'next-i18next/pages'
 
 import toast from 'react-hot-toast'
 import { useClipboard } from 'use-clipboard-copy'
@@ -94,7 +96,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             onClickCallback={() => window.open(videoUrl)}
             btnColor="blue"
             btnText={t('Download')}
-            btnIcon="file-download"
+            btnIcon={faFileDownload}
           />
           <DownloadButton
             onClickCallback={() =>
@@ -106,7 +108,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             }
             btnColor="teal"
             btnText={t('Proxy download')}
-            btnIcon="download"
+            btnIcon={faDownload}
             btnTitle={t('Download the file through Cloudflare Serverless proxy.')}
           />
           <DownloadButton
@@ -116,13 +118,13 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             }}
             btnColor="pink"
             btnText={t('Copy direct link')}
-            btnIcon="copy"
+            btnIcon={faCopy}
           />
           <DownloadButton
             onClickCallback={() => setMenuOpen(true)}
             btnColor="teal"
             btnText={t('Customise link')}
-            btnIcon="pen"
+            btnIcon={faPen}
           />
 
           <DownloadButton

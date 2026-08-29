@@ -1,12 +1,12 @@
 import { FC } from 'react'
-import { useTranslation } from 'next-i18next'
-import useSystemTheme from 'react-use-system-theme'
+import { useTranslation } from 'next-i18next/pages'
 import { useRouter } from 'next/router'
 
 import { LightAsync as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrowNightEighties, tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
 
 import useFileContent from '../../utils/fetchOnMount'
+import useSystemTheme from '../../utils/useSystemTheme'
 import { getLanguageByFileName } from '../../utils/getPreviewType'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'

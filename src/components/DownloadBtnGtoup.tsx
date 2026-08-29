@@ -1,9 +1,11 @@
 import { MouseEventHandler, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { IconProp } from '@fortawesome/fontawesome-svg-core'
+import { faCopy } from '@fortawesome/free-regular-svg-icons'
+import { faDownload, faFileDownload, faPen } from '@fortawesome/free-solid-svg-icons'
 import toast from 'react-hot-toast'
 import { useClipboard } from 'use-clipboard-copy'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 
 import Image from 'next/image'
 import { useRouter } from 'next/router'
@@ -56,7 +58,7 @@ export const DownloadButton = ({
       onClick={onClickCallback}
     >
       {btnIcon && <FontAwesomeIcon icon={btnIcon} />}
-      {btnImage && <Image src={btnImage} alt={btnImage} width={20} height={20} priority />}
+      {btnImage && <Image src={btnImage} alt={btnImage} width={20} height={20} preload />}
       <span>{btnText}</span>
     </button>
   )
@@ -79,7 +81,7 @@ const DownloadButtonGroup = () => {
           onClickCallback={() => window.open(`/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)}
           btnColor="blue"
           btnText={t('Download')}
-          btnIcon="file-download"
+          btnIcon={faFileDownload}
           btnTitle={t('Download the file directly through OneDrive')}
         />
         <DownloadButton
@@ -92,7 +94,7 @@ const DownloadButtonGroup = () => {
           }
           btnColor="teal"
           btnText={t('Proxy download')}
-          btnIcon="download"
+          btnIcon={faDownload}
           btnTitle={t('Download the file through Cloudflare Serverless proxy.')}
         />
         <DownloadButton
@@ -102,14 +104,14 @@ const DownloadButtonGroup = () => {
           }}
           btnColor="pink"
           btnText={t('Copy direct link')}
-          btnIcon="copy"
+          btnIcon={faCopy}
           btnTitle={t('Copy the permalink to the file to the clipboard')}
         />
         <DownloadButton
           onClickCallback={() => setMenuOpen(true)}
           btnColor="teal"
           btnText={t('Customise link')}
-          btnIcon="pen"
+          btnIcon={faPen}
         />
       </div>
     </>

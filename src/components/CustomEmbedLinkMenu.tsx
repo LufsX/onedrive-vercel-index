@@ -1,7 +1,9 @@
 import { Dispatch, Fragment, SetStateAction, useRef, useState } from 'react'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 import { Dialog,DialogPanel,DialogTitle,Description, Transition,TransitionChild } from '@headlessui/react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faCopy } from '@fortawesome/free-regular-svg-icons'
+import { faCheck } from '@fortawesome/free-solid-svg-icons'
 import { useClipboard } from 'use-clipboard-copy'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
@@ -19,7 +21,7 @@ function LinkContainer({ title, value }: { title: string; value: string }) {
           onClick={() => clipboard.copy(value)}
           className="absolute top-[0.2rem] right-[0.2rem] w-8 rounded border border-gray-400/40 bg-gray-100 py-1.5 opacity-0 transition-all duration-100 hover:bg-gray-200 group-hover:opacity-100 dark:bg-gray-850 dark:hover:bg-gray-700"
         >
-          {clipboard.copied ? <FontAwesomeIcon icon="check" /> : <FontAwesomeIcon icon="copy" />}
+          {clipboard.copied ? <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faCopy} />}
         </button>
       </div>
     </>

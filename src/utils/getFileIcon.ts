@@ -1,20 +1,35 @@
-import type { IconPrefix, IconName } from '@fortawesome/fontawesome-svg-core'
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
+import {
+  faFile,
+  faFileAlt,
+  faFileArchive,
+  faFileAudio,
+  faFileCode,
+  faFileExcel,
+  faFileImage,
+  faFilePdf,
+  faFilePowerpoint,
+  faFileVideo,
+  faFileWord,
+} from '@fortawesome/free-regular-svg-icons'
+import { faMarkdown } from '@fortawesome/free-brands-svg-icons'
+import { faBook, faLink } from '@fortawesome/free-solid-svg-icons'
 
-const icons: { [key: string]: [IconPrefix, IconName] } = {
-  image: ['far', 'file-image'],
-  pdf: ['far', 'file-pdf'],
-  word: ['far', 'file-word'],
-  powerpoint: ['far', 'file-powerpoint'],
-  excel: ['far', 'file-excel'],
-  audio: ['far', 'file-audio'],
-  video: ['far', 'file-video'],
-  archive: ['far', 'file-archive'],
-  code: ['far', 'file-code'],
-  text: ['far', 'file-alt'],
-  file: ['far', 'file'],
-  markdown: ['fab', 'markdown'],
-  book: ['fas', 'book'],
-  link: ['fas', 'link'],
+const icons: Record<string, IconDefinition> = {
+  image: faFileImage,
+  pdf: faFilePdf,
+  word: faFileWord,
+  powerpoint: faFilePowerpoint,
+  excel: faFileExcel,
+  audio: faFileAudio,
+  video: faFileVideo,
+  archive: faFileArchive,
+  code: faFileCode,
+  text: faFileAlt,
+  file: faFile,
+  markdown: faMarkdown,
+  book: faBook,
+  link: faLink,
 }
 
 const extensions = {
@@ -114,7 +129,7 @@ export function getExtension(fileName: string): string {
   return getRawExtension(fileName).toLowerCase()
 }
 
-export function getFileIcon(fileName: string, flags?: { video?: boolean }): [IconPrefix, IconName] {
+export function getFileIcon(fileName: string, flags?: { video?: boolean }): IconDefinition {
   const extension = getExtension(fileName)
   let icon = hasKey(extensions, extension) ? extensions[extension] : icons.file
 

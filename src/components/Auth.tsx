@@ -1,9 +1,10 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faArrowRight } from '@fortawesome/free-solid-svg-icons'
 
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { FC, useState } from 'react'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 
 import { matchProtectedRoute } from '../utils/protectedRouteHandler'
 import useLocalStorage from '../utils/useLocalStorage'
@@ -13,14 +14,14 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
 
   const router = useRouter()
   const [token, setToken] = useState('')
-  const [_, setPersistedToken] = useLocalStorage(authTokenPath, '')
+  const [, setPersistedToken] = useLocalStorage(authTokenPath, '')
 
   const { t } = useTranslation()
 
   return (
     <div className="mx-auto flex max-w-sm flex-col gap-4 md:my-10">
       <div className="mx-auto w-3/4 md:w-5/6">
-        <Image src={'/images/fabulous-wapmire-weekdays.png'} alt="authenticate" width={912} height={912} priority />
+        <Image src={'/images/fabulous-wapmire-weekdays.png'} alt="authenticate" width={912} height={912} preload />
       </div>
       <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{t('Enter Password')}</div>
 
@@ -54,7 +55,7 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
           }}
           title='Enter'
         >
-          <FontAwesomeIcon icon="arrow-right" />
+          <FontAwesomeIcon icon={faArrowRight} />
         </button>
       </div>
     </div>

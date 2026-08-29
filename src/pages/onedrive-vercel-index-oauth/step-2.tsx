@@ -3,8 +3,9 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useTranslation, Trans } from 'next-i18next'
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations'
+import { faArrowRight, faExclamationCircle, faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons'
+import { useTranslation, Trans } from 'next-i18next/pages'
+import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations'
 
 import siteConfig from '../../../config/site.config'
 import Navbar from '../../components/Navbar'
@@ -40,7 +41,7 @@ export default function OAuthStep2() {
                 width={912}
                 height={912}
                 alt="fabulous come back later"
-                priority
+                preload
               />
             </div>
             <h3 className="mb-4 text-center text-xl font-medium">
@@ -51,7 +52,7 @@ export default function OAuthStep2() {
 
             <p className="py-1 text-sm font-medium text-red-400">
               <Trans>
-                <FontAwesomeIcon icon="exclamation-circle" className="mr-1" /> If you are not the owner of this website,
+                <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" /> If you are not the owner of this website,
                 stop now, as continuing with this process may expose your personal files in OneDrive.
               </Trans>
             </p>
@@ -63,7 +64,7 @@ export default function OAuthStep2() {
               }}
             >
               <div className="absolute top-0 right-0 p-1 opacity-60">
-                <FontAwesomeIcon icon="external-link-alt" />
+                <FontAwesomeIcon icon={faExternalLinkAlt} />
               </div>
               <pre className="overflow-x-auto whitespace-pre-wrap p-2">
                 <code>{oAuthUrl}</code>
@@ -127,7 +128,7 @@ export default function OAuthStep2() {
                   </>
                 ) : (
                   <>
-                    <span>{t('Get tokens')}</span> <FontAwesomeIcon icon="arrow-right" />
+                    <span>{t('Get tokens')}</span> <FontAwesomeIcon icon={faArrowRight} />
                   </>
                 )}
               </button>

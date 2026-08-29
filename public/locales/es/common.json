@@ -118,5 +118,13 @@
   "Welcome to your new onedrive-vercel-index 🎉": "Bienvenido a tu nuevo onedrive-vercel-index 🎉",
   "What is this?": "¿Qué es esto?",
   "Where is the auth code? Did you follow step 2 you silly donut?": "¿Dónde está el código de autorización? ¿Siguiste el paso 2, bobo?",
-  "Whoops, looks like we got a problem: {{error}}.": "¡Vaya, parece que tenemos un problema: {{error}}."
+  "Whoops, looks like we got a problem: {{error}}.": "¡Vaya, parece que tenemos un problema: {{error}}.",
+  "Office preview renderer": "Selector de vista previa de Office",
+  "Preview locally": "Vista previa local",
+  "Local preview": "Vista previa local",
+  "Preview with Microsoft Office Online": "Vista previa con Microsoft Office Online",
+  "Microsoft": "Microsoft",
+  "Microsoft preview requires a public URL.": "La vista previa de Microsoft requiere una URL pública.",
+  "Microsoft Office preview": "Vista previa de Microsoft Office",
+  "PDF Preview: {{name}}": "Vista previa de PDF: {{name}}"
 }

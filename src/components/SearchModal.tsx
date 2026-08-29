@@ -4,10 +4,12 @@ import { Dispatch, Fragment, SetStateAction, useState } from 'react'
 import AwesomeDebouncePromise from 'awesome-debounce-promise'
 import { useAsync } from 'react-async-hook'
 import useConstant from 'use-constant'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFolder } from '@fortawesome/free-regular-svg-icons'
+import { faSearch } from '@fortawesome/free-solid-svg-icons'
 import { Dialog, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 
 import type { OdDriveItem, OdSearchResult } from '../types'
@@ -97,7 +99,7 @@ function SearchResultItemTemplate({
         disabled ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
       }`}
     >
-      <FontAwesomeIcon icon={driveItem.file ? getFileIcon(driveItem.name) : ['far', 'folder']} />
+      <FontAwesomeIcon icon={driveItem.file ? getFileIcon(driveItem.name) : faFolder} />
       <div>
         <div className="text-sm font-medium leading-8">{driveItem.name}</div>
         <div
@@ -216,7 +218,7 @@ export default function SearchModal({
                 as="h3"
                 className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white"
               >
-                <FontAwesomeIcon icon="search" className="h-4 w-4" />
+                <FontAwesomeIcon icon={faSearch} className="h-4 w-4" />
                 <input
                   type="text"
                   id="search-box"

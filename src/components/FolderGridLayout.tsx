@@ -3,8 +3,9 @@ import type { OdFolderChildren } from '../types'
 import Link from 'next/link'
 import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faArrowAltCircleDown, faCopy } from '@fortawesome/free-regular-svg-icons'
 import { useClipboard } from 'use-clipboard-copy'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { formatModifiedDateTime } from '../utils/fileDetails'
@@ -96,7 +97,7 @@ const FolderGridLayout = ({
               toast.success(t('Copied selected files permalink.'))
             }}
           >
-            <FontAwesomeIcon icon={['far', 'copy']} size="lg" />
+            <FontAwesomeIcon icon={faCopy} size="lg" />
           </button>
           {totalGenerating ? (
             <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
@@ -107,7 +108,7 @@ const FolderGridLayout = ({
               disabled={totalSelected === 0}
               onClick={handleSelectedDownload}
             >
-              <FontAwesomeIcon icon={['far', 'arrow-alt-circle-down']} size="lg" />
+              <FontAwesomeIcon icon={faArrowAltCircleDown} size="lg" />
             </button>
           )}
         </div>
@@ -130,7 +131,7 @@ const FolderGridLayout = ({
                       toast(t('Copied folder permalink.'), { icon: '👌' })
                     }}
                   >
-                    <FontAwesomeIcon icon={['far', 'copy']} />
+                    <FontAwesomeIcon icon={faCopy} />
                   </span>
                   {folderGenerating[c.id] ? (
                     <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
@@ -140,7 +141,7 @@ const FolderGridLayout = ({
                       className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
                       onClick={handleFolderDownload(getItemPath(c.name), c.id, c.name)}
                     >
-                      <FontAwesomeIcon icon={['far', 'arrow-alt-circle-down']} />
+                      <FontAwesomeIcon icon={faArrowAltCircleDown} />
                     </span>
                   )}
                 </div>
@@ -158,7 +159,7 @@ const FolderGridLayout = ({
                       toast.success(t('Copied raw file permalink.'))
                     }}
                   >
-                    <FontAwesomeIcon icon={['far', 'copy']} />
+                    <FontAwesomeIcon icon={faCopy} />
                   </span>
                   <a
                     title={t('Download file')}
@@ -167,7 +168,7 @@ const FolderGridLayout = ({
                       hashedToken ? `&odpt=${hashedToken}` : ''
                     }`}
                   >
-                    <FontAwesomeIcon icon={['far', 'arrow-alt-circle-down']} />
+                    <FontAwesomeIcon icon={faArrowAltCircleDown} />
                   </a>
                 </div>
               )}

@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { FC } from 'react'
 import { useClipboard } from 'use-clipboard-copy'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useTranslation } from 'next-i18next'
+import { faArrowAltCircleDown, faCopy } from '@fortawesome/free-regular-svg-icons'
+import { useTranslation } from 'next-i18next/pages'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
@@ -85,7 +86,7 @@ const FolderListLayout = ({
                 toast.success(t('Copied selected files permalink.'))
               }}
             >
-              <FontAwesomeIcon icon={['far', 'copy']} size="lg" />
+              <FontAwesomeIcon icon={faCopy} size="lg" />
             </button>
             {totalGenerating ? (
               <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
@@ -96,7 +97,7 @@ const FolderListLayout = ({
                 disabled={totalSelected === 0}
                 onClick={handleSelectedDownload}
               >
-                <FontAwesomeIcon icon={['far', 'arrow-alt-circle-down']} size="lg" />
+                <FontAwesomeIcon icon={faArrowAltCircleDown} size="lg" />
               </button>
             )}
           </div>
@@ -126,7 +127,7 @@ const FolderListLayout = ({
                   toast(t('Copied folder permalink.'), { icon: '👌' })
                 }}
               >
-                <FontAwesomeIcon icon={['far', 'copy']} />
+                <FontAwesomeIcon icon={faCopy} />
               </span>
               {folderGenerating[c.id] ? (
                 <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
@@ -139,7 +140,7 @@ const FolderListLayout = ({
                     handleFolderDownload(p, c.id, c.name)()
                   }}
                 >
-                  <FontAwesomeIcon icon={['far', 'arrow-alt-circle-down']} />
+                  <FontAwesomeIcon icon={faArrowAltCircleDown} />
                 </span>
               )}
             </div>
@@ -155,14 +156,14 @@ const FolderListLayout = ({
                   toast.success(t('Copied raw file permalink.'))
                 }}
               >
-                <FontAwesomeIcon icon={['far', 'copy']} />
+                <FontAwesomeIcon icon={faCopy} />
               </span>
               <a
                 title={t('Download file')}
                 className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
                 href={`/api/raw/?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
               >
-                <FontAwesomeIcon icon={['far', 'arrow-alt-circle-down']} />
+                <FontAwesomeIcon icon={faArrowAltCircleDown} />
               </a>
             </div>
           )}

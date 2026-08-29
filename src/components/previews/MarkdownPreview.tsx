@@ -1,10 +1,10 @@
-import { FC, CSSProperties } from 'react'
+import { FC } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 import { LightAsync as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrowNight } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
 
@@ -32,26 +32,12 @@ const MarkdownPreview: FC<{
   // Custom renderer:
   const customRenderer = {
     // img: to render images in markdown with relative file paths
-    img: ({
-      alt,
-      src,
-      title,
-      width,
-      height,
-      style,
-    }: {
-      alt?: string
-      src?: string
-      title?: string
-      width?: string | number
-      height?: string | number
-      style?: CSSProperties
-    }) => {
+    img: ({ alt, src, title, width, height, style }: React.ComponentProps<'img'>) => {
       return (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt={alt}
-          src={isUrlAbsolute(src as string) ? src : `/api/?path=${parentPath}/${src}&raw=true`}
+          src={isUrlAbsolute(String(src ?? '')) ? String(src) : `/api/?path=${parentPath}/${src ?? ''}&raw=true`}
           title={title}
           width={width}
           height={height}

@@ -2,12 +2,14 @@ import type { OdFileObject, OdFolderChildren, OdFolderObject } from '../types'
 import { ParsedUrlQuery } from 'querystring'
 import { FC, MouseEventHandler, SetStateAction, useEffect, useRef, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFolder } from '@fortawesome/free-regular-svg-icons'
+import { faChevronCircleDown } from '@fortawesome/free-solid-svg-icons'
 import toast, { Toaster } from 'react-hot-toast'
 import emojiRegex from 'emoji-regex'
 
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 
 import useLocalStorage from '../utils/useLocalStorage'
 import { getPreviewType, preview } from '../utils/getPreviewType'
@@ -85,7 +87,7 @@ export const ChildIcon: FC<{ child: OdFolderChildren }> = ({ child }) => {
   return render ? (
     <span>{emoji ? emoji[0] : '📁'}</span>
   ) : (
-    <FontAwesomeIcon icon={child.file ? getFileIcon(child.name, { video: Boolean(child.video) }) : ['far', 'folder']} />
+    <FontAwesomeIcon icon={child.file ? getFileIcon(child.name, { video: Boolean(child.video) }) : faFolder} />
   )
 }
 
@@ -156,7 +158,7 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
 
   const router = useRouter()
   const hashedToken = getStoredToken(router.asPath)
-  const [layout, _] = useLocalStorage('preferredLayout', layouts[0])
+  const [layout] = useLocalStorage('preferredLayout', layouts[0])
 
   const { t } = useTranslation()
 
@@ -373,7 +375,7 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
               ) : (
                 <>
                   <span>{t('Load more')}</span>
-                  <FontAwesomeIcon icon="chevron-circle-down" />
+                  <FontAwesomeIcon icon={faChevronCircleDown} />
                 </>
               )}
             </button>
@@ -399,7 +401,7 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
           return <ImagePreview file={file} />
 
         case preview.text:
-          return <TextPreview file={file} />
+          return <TextPreview />
 
         case preview.code:
           return <CodePreview file={file} />
@@ -420,10 +422,10 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
           return <OfficePreview file={file} />
 
         case preview.epub:
-          return <EPUBPreview file={file} />
+          return <EPUBPreview />
 
         case preview.url:
-          return <URLPreview file={file} />
+          return <URLPreview />
 
         default:
           return <DefaultPreview file={file} />

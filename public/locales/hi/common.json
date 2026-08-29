@@ -112,5 +112,13 @@
   "Welcome to your new onedrive-vercel-index 🎉": "आपके नए onedrive-vercel-index में आपका स्वागत है 🎉",
   "What is this?": "यह क्या है?",
   "Where is the auth code? Did you follow step 2 you silly donut?": "ऑथ कोड कहां है? क्या आपने चरण 2 का पालन किया, मूर्ख डोनट?",
-  "Whoops, looks like we got a problem: {{error}}.": "ओह, ऐसा लगता है कि हमें कोई समस्या हो गई है：{{error}}"
+  "Whoops, looks like we got a problem: {{error}}.": "ओह, ऐसा लगता है कि हमें कोई समस्या हो गई है：{{error}}",
+  "Office preview renderer": "Office पूर्वावलोकन रेंडरर",
+  "Preview locally": "स्थानीय रूप से देखें",
+  "Local preview": "स्थानीय पूर्वावलोकन",
+  "Preview with Microsoft Office Online": "Microsoft Office Online से पूर्वावलोकन करें",
+  "Microsoft": "Microsoft",
+  "Microsoft preview requires a public URL.": "Microsoft पूर्वावलोकन के लिए सार्वजनिक URL आवश्यक है।",
+  "Microsoft Office preview": "Microsoft Office पूर्वावलोकन",
+  "PDF Preview: {{name}}": "PDF पूर्वावलोकन: {{name}}"
 }

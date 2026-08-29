@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
@@ -7,7 +7,7 @@ import DownloadButtonGroup from '../DownloadBtnGtoup'
 import useFileContent from '../../utils/fetchOnMount'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
-const TextPreview = ({ file }) => {
+const TextPreview = () => {
   const { asPath } = useRouter()
   const { t } = useTranslation()
 

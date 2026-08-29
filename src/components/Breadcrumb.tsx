@@ -2,14 +2,16 @@ import type { ParsedUrlQuery } from 'querystring'
 
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useTranslation } from 'next-i18next'
+import { faFlag } from '@fortawesome/free-regular-svg-icons'
+import { faAngleRight } from '@fortawesome/free-solid-svg-icons'
+import { useTranslation } from 'next-i18next/pages'
 
 const HomeCrumb = () => {
   const { t } = useTranslation()
 
   return (
     <Link href="/" className="flex items-center">
-      <FontAwesomeIcon className="h-3 w-3" icon={['far', 'flag']} />
+      <FontAwesomeIcon className="h-3 w-3" icon={faFlag} />
       <span className="ml-2 font-medium">{t('Home')}</span>
     </Link>
   )
@@ -28,7 +30,7 @@ const Breadcrumb: React.FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
             .reverse()
             .map((p: string, i: number) => (
               <li key={i} className="flex shrink-0 items-center">
-                <FontAwesomeIcon className="h-3 w-3" icon="angle-right" />
+                <FontAwesomeIcon className="h-3 w-3" icon={faAngleRight} />
                 <Link
                   href={`/${path
                     .slice(0, path.length - i)

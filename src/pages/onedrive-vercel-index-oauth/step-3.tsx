@@ -3,8 +3,10 @@ import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useTranslation, Trans } from 'next-i18next'
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations'
+import { faCheckCircle } from '@fortawesome/free-regular-svg-icons'
+import { faArrowLeft, faCheck, faExclamationCircle, faKey } from '@fortawesome/free-solid-svg-icons'
+import { useTranslation, Trans } from 'next-i18next/pages'
+import { serverSideTranslations } from 'next-i18next/pages/serverSideTranslations'
 
 import siteConfig from '../../../config/site.config'
 import Navbar from '../../components/Navbar'
@@ -31,7 +33,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
 
   const [buttonContent, setButtonContent] = useState(
     <div>
-      <span>{t('Store tokens')}</span> <FontAwesomeIcon icon="key" />
+      <span>{t('Store tokens')}</span> <FontAwesomeIcon icon={faKey} />
     </div>
   )
   const [buttonError, setButtonError] = useState(false)
@@ -50,7 +52,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
       setButtonError(true)
       setButtonContent(
         <div>
-          <span>{t('Error validating identify, restart')}</span> <FontAwesomeIcon icon="exclamation-circle" />
+          <span>{t('Error validating identify, restart')}</span> <FontAwesomeIcon icon={faExclamationCircle} />
         </div>
       )
       return
@@ -59,7 +61,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
       setButtonError(true)
       setButtonContent(
         <div>
-          <span>{t('Do not pretend to be the site owner')}</span> <FontAwesomeIcon icon="exclamation-circle" />
+          <span>{t('Do not pretend to be the site owner')}</span> <FontAwesomeIcon icon={faExclamationCircle} />
         </div>
       )
       return
@@ -70,18 +72,18 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
         setButtonError(false)
         setButtonContent(
           <div>
-            <span>{t('Stored! Going home...')}</span> <FontAwesomeIcon icon="check" />
+          <span>{t('Stored! Going home...')}</span> <FontAwesomeIcon icon={faCheck} />
           </div>
         )
         setTimeout(() => {
           router.push('/')
         }, 2000)
       })
-      .catch(_ => {
+      .catch(() => {
         setButtonError(true)
         setButtonContent(
           <div>
-            <span>{t('Error storing the token')}</span> <FontAwesomeIcon icon="exclamation-circle" />
+          <span>{t('Error storing the token')}</span> <FontAwesomeIcon icon={faExclamationCircle} />
           </div>
         )
       })
@@ -104,7 +106,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
                 width={912}
                 height={912}
                 alt="fabulous celebration"
-                priority
+                preload
               />
             </div>
             <h3 className="mb-4 text-center text-xl font-medium">
@@ -115,7 +117,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
             {error ? (
               <div>
                 <p className="py-1 font-medium text-red-500">
-                  <FontAwesomeIcon icon="exclamation-circle" className="mr-2" />
+                  <FontAwesomeIcon icon={faExclamationCircle} className="mr-2" />
                   <span>
                     {t('Whoops, looks like we got a problem: {{error}}.', {
                       // t('No auth code present')
@@ -153,7 +155,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
                       router.push('/onedrive-vercel-index-oauth/step-1')
                     }}
                   >
-                    <FontAwesomeIcon icon="arrow-left" /> <span>{t('Restart')}</span>
+                    <FontAwesomeIcon icon={faArrowLeft} /> <span>{t('Restart')}</span>
                   </button>
                 </div>
               </div>
@@ -163,7 +165,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
                 <ol className="py-1">
                   {accessToken && (
                     <li>
-                      <FontAwesomeIcon icon={['far', 'check-circle']} className="text-green-500" />{' '}
+                      <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />{' '}
                       <span>
                         {t('Acquired access_token: ')}
                         <code className="font-mono text-sm opacity-80">{`${accessToken.substring(0, 60)}...`}</code>
@@ -172,7 +174,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
                   )}
                   {refreshToken && (
                     <li>
-                      <FontAwesomeIcon icon={['far', 'check-circle']} className="text-green-500" />{' '}
+                      <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />{' '}
                       <span>
                         {t('Acquired refresh_token: ')}
                         <code className="font-mono text-sm opacity-80">{`${refreshToken.substring(0, 60)}...`}</code>
@@ -182,7 +184,7 @@ export default function OAuthStep3({ accessToken, expiryTime, refreshToken, erro
                 </ol>
 
                 <p className="py-1 text-sm font-medium text-teal-500">
-                  <FontAwesomeIcon icon="exclamation-circle" className="mr-1" />{' '}
+                  <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" />{' '}
                   {t('These tokens may take a few seconds to populate after you click the button below. ') +
                     t('If you go back home and still see the welcome page telling you to re-authenticate, ') +
                     t('revisit home and do a hard refresh.')}

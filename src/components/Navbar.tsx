@@ -1,5 +1,8 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { IconName } from '@fortawesome/fontawesome-svg-core'
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
+import * as BrandIcons from '@fortawesome/free-brands-svg-icons'
+import { faEnvelope, faTrashAlt } from '@fortawesome/free-regular-svg-icons'
+import { faKey, faSearch, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import toast, { Toaster } from 'react-hot-toast'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -8,12 +11,18 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/router'
 import { Fragment, useEffect, useState } from 'react'
-import { useTranslation } from 'next-i18next'
+import { useTranslation } from 'next-i18next/pages'
 
 import siteConfig from '../../config/site.config'
 import SearchModal from './SearchModal'
 import SwitchLang from './SwitchLang'
 import useDeviceOS from '../utils/useDeviceOS'
+
+const brandIcons = Object.values(BrandIcons).filter(
+  (icon): icon is IconDefinition => typeof icon === 'object' && icon !== null && 'iconName' in icon
+)
+
+const getBrandIcon = (name: string) => brandIcons.find(icon => icon.iconName === name.toLowerCase())
 
 const Navbar = () => {
   const router = useRouter()
@@ -65,7 +74,7 @@ const Navbar = () => {
 
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-4 py-1">
         <Link href="/" passHref className="flex items-center gap-2 py-2 hover:opacity-80 dark:text-white md:p-2">
-          <Image src={siteConfig.icon} alt="icon" width="25" height="25" priority />
+          <Image src={siteConfig.icon} alt="icon" width="25" height="25" preload />
           <span className="hidden font-bold sm:block">{siteConfig.title}</span>
         </Link>
 
@@ -75,7 +84,7 @@ const Navbar = () => {
             onClick={openSearchBox}
           >
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon className="h-4 w-4" icon="search" />
+              <FontAwesomeIcon className="h-4 w-4" icon={faSearch} />
               <span className="truncate text-sm font-medium">{t('Search ...')}</span>
             </div>
 
@@ -90,28 +99,31 @@ const Navbar = () => {
           <SwitchLang />
 
           {siteConfig.links.length !== 0 &&
-            siteConfig.links.map((l: { name: string; link: string }) => (
-              <a
-                key={l.name}
-                href={l.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:opacity-80 dark:text-white"
-              >
-                <FontAwesomeIcon icon={['fab', l.name.toLowerCase() as IconName]} />
-                <span className="hidden text-sm font-medium md:inline-block">
-                  {
-                    // Append link name comments here to add translations
-                    // t('Weibo')
-                    t(l.name)
-                  }
-                </span>
-              </a>
-            ))}
+            siteConfig.links.map((l: { name: string; link: string }) => {
+              const brandIcon = getBrandIcon(l.name)
+              return (
+                <a
+                  key={l.name}
+                  href={l.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:opacity-80 dark:text-white"
+                >
+                  {brandIcon && <FontAwesomeIcon icon={brandIcon} />}
+                  <span className="hidden text-sm font-medium md:inline-block">
+                    {
+                      // Append link name comments here to add translations
+                      // t('Weibo')
+                      t(l.name)
+                    }
+                  </span>
+                </a>
+              )
+            })}
 
           {siteConfig.email && (
             <a href={siteConfig.email} className="flex items-center gap-2 hover:opacity-80 dark:text-white">
-              <FontAwesomeIcon icon={['far', 'envelope']} />
+              <FontAwesomeIcon icon={faEnvelope} />
               <span className="hidden text-sm font-medium md:inline-block">{t('Email')}</span>
             </a>
           )}
@@ -122,7 +134,7 @@ const Navbar = () => {
               onClick={() => setIsOpen(true)}
             >
               <span className="hidden text-sm font-medium md:inline-block">{t('Logout')}</span>
-              <FontAwesomeIcon icon="sign-out-alt" />
+              <FontAwesomeIcon icon={faSignOutAlt} />
             </button>
           )}
         </div>
@@ -170,7 +182,7 @@ const Navbar = () => {
                 <div className="mt-4 max-h-32 overflow-y-scroll font-mono text-sm dark:text-gray-100">
                   {siteConfig.protectedRoutes.map((r, i) => (
                     <div key={i} className="flex items-center gap-1">
-                      <FontAwesomeIcon icon="key" />
+                      <FontAwesomeIcon icon={faKey} />
                       <span className="truncate">{r}</span>
                     </div>
                   ))}
@@ -187,7 +199,7 @@ const Navbar = () => {
                     className="inline-flex items-center justify-center gap-2 rounded bg-red-500 px-4 py-2 text-white hover:bg-red-400 focus:outline-hidden focus:ring focus:ring-red-300"
                     onClick={() => clearTokens()}
                   >
-                    <FontAwesomeIcon icon={['far', 'trash-alt']} />
+                    <FontAwesomeIcon icon={faTrashAlt} />
                     <span>{t('Clear all')}</span>
                   </button>
                 </div>

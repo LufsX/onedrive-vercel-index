@@ -112,5 +112,13 @@
   "Welcome to your new onedrive-vercel-index 🎉": "歡迎來到全新的 onedrive-vercel-index 🎉",
   "What is this?": "這是什麼？",
   "Where is the auth code? Did you follow step 2 you silly donut?": "授權碼在哪裡？你有跟著第 2 步完成了嗎？o(￣ヘ￣o＃)",
-  "Whoops, looks like we got a problem: {{error}}.": "Whoops，看來現在遇到一些問題：{{error}}"
+  "Whoops, looks like we got a problem: {{error}}.": "Whoops，看來現在遇到一些問題：{{error}}",
+  "Office preview renderer": "Office 預覽方式",
+  "Preview locally": "使用本機檢視",
+  "Local preview": "本機檢視",
+  "Preview with Microsoft Office Online": "使用 Microsoft Office Online 預覽",
+  "Microsoft": "Microsoft",
+  "Microsoft preview requires a public URL.": "Microsoft 預覽需要可公開存取的 URL。",
+  "Microsoft Office preview": "Microsoft Office 預覽",
+  "PDF Preview: {{name}}": "PDF 預覽：{{name}}"
 }

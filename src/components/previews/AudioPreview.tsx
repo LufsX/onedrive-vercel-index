@@ -3,7 +3,8 @@ import { FC, useEffect, useRef, useState } from 'react'
 
 import ReactAudioPlayer from 'react-audio-player'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useTranslation } from 'next-i18next'
+import { faMusic } from '@fortawesome/free-solid-svg-icons'
+import { useTranslation } from 'next-i18next/pages'
 import { useRouter } from 'next/router'
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -80,7 +81,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             ) : (
               <FontAwesomeIcon
                 className={`z-10 h-5 w-5 ${playerStatus === PlayerState.Playing ? 'animate-spin' : ''}`}
-                icon="music"
+                icon={faMusic}
                 size="2x"
               />
             )}

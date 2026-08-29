@@ -116,5 +116,13 @@
   "Welcome to your new onedrive-vercel-index 🎉": "Onedrive-vercel-index'inize hoş geldiniz 🎉",
   "What is this?": "Bu Nedir?",
   "Where is the auth code? Did you follow step 2 you silly donut?": "Yetkilendirme kodu nerede? 2. adımı izledin mi seni Aptal ?",
-  "Whoops, looks like we got a problem: {{error}}.": "Hata! Bir sorunumuz var gibi görünüyor: {{error}}."
+  "Whoops, looks like we got a problem: {{error}}.": "Hata! Bir sorunumuz var gibi görünüyor: {{error}}.",
+  "Office preview renderer": "Office önizleme görüntüleyicisi",
+  "Preview locally": "Yerel olarak önizle",
+  "Local preview": "Yerel önizleme",
+  "Preview with Microsoft Office Online": "Microsoft Office Online ile önizle",
+  "Microsoft": "Microsoft",
+  "Microsoft preview requires a public URL.": "Microsoft önizlemesi için herkese açık bir URL gerekir.",
+  "Microsoft Office preview": "Microsoft Office önizlemesi",
+  "PDF Preview: {{name}}": "PDF önizlemesi: {{name}}"
 }
