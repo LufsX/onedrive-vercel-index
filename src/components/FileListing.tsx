@@ -27,25 +27,33 @@ import { layouts } from './SwitchLayout'
 import Loading, { LoadingIcon } from './Loading'
 import FourOhFour from './FourOhFour'
 import Auth from './Auth'
-import TextPreview from './previews/TextPreview'
-import MarkdownPreview from './previews/MarkdownPreview'
-import CodePreview from './previews/CodePreview'
-import OfficePreview from './previews/OfficePreview'
-import AudioPreview from './previews/AudioPreview'
-import VideoPreview from './previews/VideoPreview'
-import PDFPreview from './previews/PDFPreview'
-import URLPreview from './previews/URLPreview'
-import ImagePreview from './previews/ImagePreview'
-import DefaultPreview from './previews/DefaultPreview'
 import { PreviewContainer } from './previews/Containers'
 
 import FolderListLayout from './FolderListLayout'
 import FolderGridLayout from './FolderGridLayout'
 
-// Disabling SSR for some previews
-const EPUBPreview = dynamic(() => import('./previews/EPUBPreview'), {
-  ssr: false,
-})
+const PreviewLoading = () => {
+  const { t } = useTranslation()
+
+  return (
+    <PreviewContainer>
+      <Loading loadingText={t('Loading ...')} />
+    </PreviewContainer>
+  )
+}
+
+// Preview dependencies are loaded only when a file needs that renderer.
+const TextPreview = dynamic(() => import('./previews/TextPreview'), { ssr: false, loading: PreviewLoading })
+const MarkdownPreview = dynamic(() => import('./previews/MarkdownPreview'), { ssr: false, loading: PreviewLoading })
+const CodePreview = dynamic(() => import('./previews/CodePreview'), { ssr: false, loading: PreviewLoading })
+const OfficePreview = dynamic(() => import('./previews/OfficePreview'), { ssr: false, loading: PreviewLoading })
+const AudioPreview = dynamic(() => import('./previews/AudioPreview'), { ssr: false, loading: PreviewLoading })
+const VideoPreview = dynamic(() => import('./previews/VideoPreview'), { ssr: false, loading: PreviewLoading })
+const PDFPreview = dynamic(() => import('./previews/PDFPreview'), { ssr: false, loading: PreviewLoading })
+const URLPreview = dynamic(() => import('./previews/URLPreview'), { ssr: false, loading: PreviewLoading })
+const ImagePreview = dynamic(() => import('./previews/ImagePreview'), { ssr: false, loading: PreviewLoading })
+const DefaultPreview = dynamic(() => import('./previews/DefaultPreview'), { ssr: false, loading: PreviewLoading })
+const EPUBPreview = dynamic(() => import('./previews/EPUBPreview'), { ssr: false, loading: PreviewLoading })
 
 /**
  * Convert url query into path string

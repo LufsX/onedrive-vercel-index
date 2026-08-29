@@ -41,6 +41,8 @@ const MarkdownPreview: FC<{
           title={title}
           width={width}
           height={height}
+          loading="lazy"
+          decoding="async"
           style={style}
         />
       )

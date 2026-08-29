@@ -30,6 +30,8 @@ const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
             className="h-full w-full object-cover object-top"
             src={thumbnailUrl}
             alt={c.name}
+            loading="lazy"
+            decoding="async"
             onError={() => setBrokenThumbnail(true)}
           />
         ) : (

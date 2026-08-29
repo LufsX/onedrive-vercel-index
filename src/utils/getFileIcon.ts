@@ -12,7 +12,7 @@ import {
   faFileVideo,
   faFileWord,
 } from '@fortawesome/free-regular-svg-icons'
-import { faMarkdown } from '@fortawesome/free-brands-svg-icons'
+import { faMarkdown } from '@fortawesome/free-brands-svg-icons/faMarkdown'
 import { faBook, faLink } from '@fortawesome/free-solid-svg-icons'
 
 const icons: Record<string, IconDefinition> = {

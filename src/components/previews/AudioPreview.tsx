@@ -100,7 +100,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
               src={`/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
               ref={rapRef}
               controls
-              preload="auto"
+              preload="metadata"
               volume={playerVolume}
             />
           </div>

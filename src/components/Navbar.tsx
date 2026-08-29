@@ -1,6 +1,5 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
-import * as BrandIcons from '@fortawesome/free-brands-svg-icons'
 import { faEnvelope, faTrashAlt } from '@fortawesome/free-regular-svg-icons'
 import { faKey, faSearch, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
@@ -9,25 +8,26 @@ import { useHotkeys } from 'react-hotkeys-hook'
 
 import Link from 'next/link'
 import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'next-i18next/pages'
 
 import siteConfig from '../../config/site.config'
-import SearchModal from './SearchModal'
 import SwitchLang from './SwitchLang'
 import useDeviceOS from '../utils/useDeviceOS'
 
-const brandIcons = Object.values(BrandIcons).filter(
-  (icon): icon is IconDefinition => typeof icon === 'object' && icon !== null && 'iconName' in icon
-)
+const SearchModal = dynamic(() => import('./SearchModal'), { ssr: false })
 
-const getBrandIcon = (name: string) => brandIcons.find(icon => icon.iconName === name.toLowerCase())
+const brandIconLoaders: Record<string, () => Promise<IconDefinition>> = {
+  telegram: () => import('@fortawesome/free-brands-svg-icons/faTelegram').then(({ faTelegram }) => faTelegram),
+}
 
 const Navbar = () => {
   const router = useRouter()
   const os = useDeviceOS()
 
+  const [brandIcons, setBrandIcons] = useState<Record<string, IconDefinition>>({})
   const [tokenPresent, setTokenPresent] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
@@ -51,6 +51,51 @@ const Navbar = () => {
     setTokenPresent(storedToken())
   }, [])
 
+  useEffect(() => {
+    const linkNames = [...new Set(siteConfig.links.map(({ name }) => name.toLowerCase()))]
+    if (linkNames.length === 0) return
+
+    let cancelled = false
+    const loadBrandIcons = async () => {
+      const iconEntries = await Promise.all(
+        linkNames.map(async name => {
+          const loader = brandIconLoaders[name]
+          return loader ? ([name, await loader()] as const) : null
+        })
+      )
+      const icons = Object.fromEntries(
+        iconEntries.filter((entry): entry is readonly [string, IconDefinition] => entry !== null)
+      ) as Record<string, IconDefinition>
+      const unknownNames = linkNames.filter(name => !brandIconLoaders[name])
+
+      if (unknownNames.length > 0) {
+        const brandModule = await import('@fortawesome/free-brands-svg-icons')
+        Object.values(brandModule).forEach(icon => {
+          if (typeof icon !== 'object' || icon === null || !('iconName' in icon) || typeof icon.iconName !== 'string') {
+            return
+          }
+
+          const iconName = icon.iconName.toLowerCase()
+          if (unknownNames.includes(iconName)) icons[iconName] = icon as IconDefinition
+        })
+      }
+
+      if (!cancelled) setBrandIcons(icons)
+    }
+
+    const idleCallback = (window as Window & { requestIdleCallback?: (callback: () => void) => number })
+      .requestIdleCallback
+    if (idleCallback) {
+      idleCallback(loadBrandIcons)
+    } else {
+      window.setTimeout(loadBrandIcons, 1500)
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const { t } = useTranslation()
 
   const clearTokens = () => {
@@ -70,7 +115,7 @@ const Navbar = () => {
     <div className="sticky top-0 z-[100] border-b border-gray-900/10 bg-white/80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
       <Toaster />
 
-      <SearchModal searchOpen={searchOpen} setSearchOpen={setSearchOpen} />
+      {searchOpen && <SearchModal searchOpen={searchOpen} setSearchOpen={setSearchOpen} />}
 
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-4 py-1">
         <Link href="/" passHref className="flex items-center gap-2 py-2 hover:opacity-80 dark:text-white md:p-2">
@@ -100,7 +145,7 @@ const Navbar = () => {
 
           {siteConfig.links.length !== 0 &&
             siteConfig.links.map((l: { name: string; link: string }) => {
-              const brandIcon = getBrandIcon(l.name)
+              const brandIcon = brandIcons[l.name.toLowerCase()]
               return (
                 <a
                   key={l.name}
@@ -109,7 +154,9 @@ const Navbar = () => {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:opacity-80 dark:text-white"
                 >
-                  {brandIcon && <FontAwesomeIcon icon={brandIcon} />}
+                  <span className="flex h-4 w-4 items-center justify-center">
+                    {brandIcon && <FontAwesomeIcon icon={brandIcon} />}
+                  </span>
                   <span className="hidden text-sm font-medium md:inline-block">
                     {
                       // Append link name comments here to add translations

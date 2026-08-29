@@ -3,7 +3,7 @@ import { FC, useState } from 'react'
 import { useRouter } from 'next/router'
 import dynamic from 'next/dynamic'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faMicrosoft } from '@fortawesome/free-brands-svg-icons'
+import { faMicrosoft } from '@fortawesome/free-brands-svg-icons/faMicrosoft'
 import { faFile } from '@fortawesome/free-regular-svg-icons'
 import { useTranslation } from 'next-i18next/pages'
 

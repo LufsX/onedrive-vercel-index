@@ -21,6 +21,7 @@ const ImagePreview: FC<{ file: OdFileObject }> = ({ file }) => {
           alt={file.name}
           width={file.image?.width}
           height={file.image?.height}
+          decoding="async"
         />
       </PreviewContainer>
       <DownloadBtnContainer>
