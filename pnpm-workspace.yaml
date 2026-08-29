@@ -1,3 +1,9 @@
 overrides:
   '@xmldom/xmldom': ^0.8.13
   echarts: ^6.1.0
+
+allowBuilds:
+  '@swc/core': true
+  core-js: true
+  es5-ext: true
+  unrs-resolver: true
