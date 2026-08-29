@@ -1,9 +1,7 @@
 import { FC } from 'react'
 import { useTranslation } from 'next-i18next/pages'
 import { useRouter } from 'next/router'
-
-import { LightAsync as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { tomorrowNightEighties, tomorrow } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
+import { themes } from 'prism-react-renderer'
 
 import useFileContent from '../../utils/fetchOnMount'
 import useSystemTheme from '../../utils/useSystemTheme'
@@ -12,6 +10,7 @@ import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import CodeBlock from './CodeBlock'
 
 const CodePreview: FC<{ file: any }> = ({ file }) => {
   const { asPath } = useRouter()
@@ -43,12 +42,11 @@ const CodePreview: FC<{ file: any }> = ({ file }) => {
   return (
     <>
       <PreviewContainer>
-        <SyntaxHighlighter
+        <CodeBlock
+          code={String(content ?? '')}
           language={getLanguageByFileName(file.name)}
-          style={theme === 'dark' ? tomorrowNightEighties : tomorrow}
-        >
-          {content}
-        </SyntaxHighlighter>
+          theme={theme === 'dark' ? themes.vsDark : themes.vsLight}
+        />
       </PreviewContainer>
       <DownloadBtnContainer>
         <DownloadButtonGroup />

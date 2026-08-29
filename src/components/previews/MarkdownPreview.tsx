@@ -5,8 +5,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
 import { useTranslation } from 'next-i18next/pages'
-import { LightAsync as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { tomorrowNight } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
+import { themes } from 'prism-react-renderer'
 
 import 'katex/dist/katex.min.css'
 
@@ -15,6 +14,7 @@ import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import CodeBlock from './CodeBlock'
 
 const MarkdownPreview: FC<{
   file: any
@@ -45,7 +45,7 @@ const MarkdownPreview: FC<{
         />
       )
     },
-    // code: to render code blocks with react-syntax-highlighter
+    // code: to render code blocks with Prism
     code: (props: React.ClassAttributes<HTMLElement> & React.HTMLAttributes<HTMLElement> & { node?: any }) => {
       const { className, children, node, ref, ...rest } = props
 
@@ -60,16 +60,14 @@ const MarkdownPreview: FC<{
         )
       }
 
-      const match = /language-(\w+)/.exec(className || '')
+      const match = /language-([^\s]+)/.exec(className || '')
       return (
-        <SyntaxHighlighter
-          language={match ? match[1] : 'language-text'}
-          style={tomorrowNight as any}
-          PreTag="div"
-          {...rest}
-        >
-          {String(children).replace(/\n$/, '')}
-        </SyntaxHighlighter>
+        <CodeBlock
+          code={String(children).replace(/\n$/, '')}
+          language={match ? match[1] : 'text'}
+          theme={themes.vsDark}
+          withinPre
+        />
       )
     },
   }

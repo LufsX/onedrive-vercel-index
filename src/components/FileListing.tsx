@@ -14,7 +14,7 @@ import { useTranslation } from 'next-i18next/pages'
 import useLocalStorage from '../utils/useLocalStorage'
 import { getPreviewType, preview } from '../utils/getPreviewType'
 import { useProtectedSWRInfinite } from '../utils/fetchWithSWR'
-import { getExtension, getRawExtension, getFileIcon } from '../utils/getFileIcon'
+import { getRawExtension, getFileIcon } from '../utils/getFileIcon'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import {
   DownloadingToast,
@@ -393,7 +393,7 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
 
   if ('file' in responses[0] && responses.length === 1) {
     const file = responses[0].file as OdFileObject
-    const previewType = getPreviewType(getExtension(file.name), { video: Boolean(file.video) })
+    const previewType = getPreviewType(file.name, { video: Boolean(file.video) })
 
     if (previewType) {
       switch (previewType) {
