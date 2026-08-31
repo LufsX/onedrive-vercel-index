@@ -10,3 +10,22 @@
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
+
+/* Custom utilities for enhanced styling */
+@layer utilities {
+  .dark .dark\:bg-gray-750 {
+    background-color: rgb(55 65 81 / 0.85);
+  }
+  
+  .dark .dark\:hover\:bg-gray-750:hover {
+    background-color: rgb(55 65 81 / 0.85);
+  }
+  
+  .dark .dark\:bg-gray-850 {
+    background-color: rgb(32 36 42);
+  }
+  
+  .dark .dark\:hover\:bg-gray-850:hover {
+    background-color: rgb(32 36 42);
+  }
+}

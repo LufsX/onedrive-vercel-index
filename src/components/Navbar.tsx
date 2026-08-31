@@ -169,7 +169,7 @@ const Navbar = () => {
             })}
 
           {siteConfig.email && (
-            <a href={siteConfig.email} className="flex items-center gap-2 hover:opacity-80 dark:text-white">
+            <a href={siteConfig.email} className="flex items-center gap-2 transition-opacity hover:opacity-70 dark:text-white">
               <FontAwesomeIcon icon={faEnvelope} />
               <span className="hidden text-sm font-medium md:inline-block">{t('Email')}</span>
             </a>
@@ -177,7 +177,7 @@ const Navbar = () => {
 
           {tokenPresent && (
             <button
-              className="flex items-center gap-2 hover:opacity-80 dark:text-white"
+              className="flex items-center gap-2 transition-opacity hover:opacity-70 dark:text-white"
               onClick={() => setIsOpen(true)}
             >
               <span className="hidden text-sm font-medium md:inline-block">{t('Logout')}</span>
@@ -237,13 +237,13 @@ const Navbar = () => {
 
                 <div className="mt-8 flex items-center justify-end">
                   <button
-                    className="mr-3 inline-flex items-center justify-center gap-2 rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-400 focus:outline-hidden focus:ring focus:ring-blue-300"
+                    className="mr-3 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/50"
                     onClick={() => setIsOpen(false)}
                   >
                     {t('Cancel')}
                   </button>
                   <button
-                    className="inline-flex items-center justify-center gap-2 rounded bg-red-500 px-4 py-2 text-white hover:bg-red-400 focus:outline-hidden focus:ring focus:ring-red-300"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-red-500/50"
                     onClick={() => clearTokens()}
                   >
                     <FontAwesomeIcon icon={faTrashAlt} />

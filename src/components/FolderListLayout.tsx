@@ -66,10 +66,10 @@ const FolderListLayout = ({
         <div className="hidden text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 md:block">
           {t('Size')}
         </div>
-        <div className="hidden text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 md:block">
+        <div className="hidden text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 md:block">
           {t('Actions')}
         </div>
-        <div className="hidden text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 md:block">
+        <div className="hidden text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 md:block">
           <div className="hidden p-1.5 text-gray-700 dark:text-gray-400 md:flex">
             <Checkbox
               checked={totalSelected}
@@ -106,7 +106,7 @@ const FolderListLayout = ({
 
       {folderChildren.map((c: OdFolderChildren) => (
         <div
-          className="grid grid-cols-12 transition-all duration-100 hover:bg-gray-100 dark:hover:bg-gray-850"
+          className="grid grid-cols-12 border-b border-gray-900/5 transition-all duration-100 last:border-0 hover:bg-gray-50 dark:border-gray-500/10 dark:hover:bg-gray-850"
           key={c.id}
         >
           <Link
@@ -121,7 +121,7 @@ const FolderListLayout = ({
             <div className="hidden p-1.5 text-gray-700 dark:text-gray-400 md:flex">
               <span
                 title={t('Copy folder permalink')}
-                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="cursor-pointer rounded px-1.5 py-1 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                 onClick={() => {
                   clipboard.copy(`${getBaseUrl()}${`${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`}`)
                   toast(t('Copied folder permalink.'), { icon: '👌' })
@@ -134,7 +134,7 @@ const FolderListLayout = ({
               ) : (
                 <span
                   title={t('Download folder')}
-                  className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                  className="cursor-pointer rounded px-1.5 py-1 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                   onClick={() => {
                     const p = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
                     handleFolderDownload(p, c.id, c.name)()
@@ -148,7 +148,7 @@ const FolderListLayout = ({
             <div className="hidden p-1.5 text-gray-700 dark:text-gray-400 md:flex">
               <span
                 title={t('Copy raw file permalink')}
-                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="cursor-pointer rounded px-1.5 py-1 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                 onClick={() => {
                   clipboard.copy(
                     `${getBaseUrl()}/api/raw/?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
@@ -160,7 +160,7 @@ const FolderListLayout = ({
               </span>
               <a
                 title={t('Download file')}
-                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="cursor-pointer rounded px-1.5 py-1 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                 href={`/api/raw/?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
               >
                 <FontAwesomeIcon icon={faArrowAltCircleDown} />

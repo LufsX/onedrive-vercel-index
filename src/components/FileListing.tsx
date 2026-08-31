@@ -129,7 +129,7 @@ export const Checkbox: FC<{
   return (
     <span
       title={title}
-      className="inline-flex cursor-pointer items-center rounded p-1.5 hover:bg-gray-300 dark:hover:bg-gray-600"
+      className="inline-flex cursor-pointer items-center rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
       onClick={handleClick}
     >
       <input
@@ -356,7 +356,7 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
         {layout.name === 'Grid' ? <FolderGridLayout {...folderProps} /> : <FolderListLayout {...folderProps} />}
 
         {!onlyOnePage && (
-          <div className="rounded-b bg-white dark:bg-gray-900 dark:text-gray-100">
+          <div className="overflow-hidden rounded-b-lg border-t border-gray-900/10 bg-white dark:border-gray-500/30 dark:bg-gray-900 dark:text-gray-100">
             <div className="border-b border-gray-200 p-3 text-center font-mono text-sm text-gray-400 dark:border-gray-700">
               {t('- showing {{count}} page(s) ', {
                 count: size,
@@ -367,8 +367,8 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
                   : t('of {{count}} file(s) -', { count: folderChildren.length, context: 'loaded' }))}
             </div>
             <button
-              className={`flex w-full items-center justify-center gap-2 p-3 disabled:cursor-not-allowed ${
-                isLoadingMore || isReachingEnd ? 'opacity-60' : 'hover:bg-gray-100 dark:hover:bg-gray-850'
+              className={`flex w-full items-center justify-center gap-2 p-3 transition-colors disabled:cursor-not-allowed ${
+                isLoadingMore || isReachingEnd ? 'opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-850'
               }`}
               onClick={() => setSize(size + 1)}
               disabled={isLoadingMore || isReachingEnd}

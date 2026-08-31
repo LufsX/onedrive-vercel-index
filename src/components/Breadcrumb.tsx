@@ -37,15 +37,15 @@ const Breadcrumb: React.FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
                     .map(p => encodeURIComponent(p))
                     .join('/')}`}
                   passHref
-                  className={`ml-1 transition-all duration-75 hover:opacity-70 md:ml-3 ${
-                    i == 0 && 'pointer-events-none opacity-80'
+                  className={`ml-1 font-medium transition-opacity duration-150 hover:opacity-70 md:ml-3 ${
+                    i == 0 && 'pointer-events-none opacity-90'
                   }`}
                 >
                   {p}
                 </Link>
               </li>
             ))}
-          <li className="shrink-0 transition-all duration-75 hover:opacity-80">
+          <li className="shrink-0 font-medium transition-opacity duration-150 hover:opacity-80">
             <HomeCrumb />
           </li>
         </ol>
@@ -54,7 +54,7 @@ const Breadcrumb: React.FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
   }
 
   return (
-    <div className="text-sm text-gray-600 transition-all duration-75 hover:opacity-80 dark:text-gray-300">
+    <div className="font-medium text-sm text-gray-600 transition-opacity duration-150 hover:opacity-80 dark:text-gray-300">
       <HomeCrumb />
     </div>
   )

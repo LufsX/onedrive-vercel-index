@@ -35,7 +35,7 @@ function MyApp({ Component, pageProps }: AppProps) {
       <Script strategy="lazyOnload" id="Crisp Chat">
         {`window.$crisp=[];window.CRISP_WEBSITE_ID="50407113-3d15-4148-997a-290ded719655";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();`}
       </Script>
-      <NextNProgress height={1} color="rgb(156, 163, 175, 0.9)" options={{ showSpinner: false }} />
+      <NextNProgress height={2} color="rgb(59, 130, 246)" options={{ showSpinner: false }} />
       <Analytics />
       <CookiesProvider>
         <Component {...pageProps} />

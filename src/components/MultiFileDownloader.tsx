@@ -21,13 +21,13 @@ export function DownloadingToast({ router, progress }: { router: NextRouter; pro
         <span>{progress ? t('Downloading {{progress}}%', { progress }) : t('Downloading selected files...')}</span>
 
         <div className="relative mt-2">
-          <div className="flex h-1 overflow-hidden rounded bg-gray-100">
-            <div style={{ width: `${progress}%` }} className="bg-gray-500 text-white transition-all duration-100"></div>
+          <div className="flex h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div style={{ width: `${progress}%` }} className="bg-blue-600 text-white transition-all duration-300"></div>
           </div>
         </div>
       </div>
       <button
-        className="rounded bg-red-500 p-2 text-white hover:bg-red-400 focus:outline-hidden focus:ring focus:ring-red-300"
+        className="rounded-lg bg-red-600 p-2 font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-red-500/50"
         onClick={() => router.reload()}
       >
         {t('Cancel')}

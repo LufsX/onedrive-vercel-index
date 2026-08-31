@@ -32,7 +32,7 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
 
       <div className="flex items-center gap-2">
         <input
-          className="flex-1 rounded border border-gray-600/10 p-2 font-mono focus:outline-hidden focus:ring focus:ring-blue-300 dark:bg-gray-600 dark:text-white dark:focus:ring-blue-700"
+          className="flex-1 rounded-lg border border-gray-900/10 bg-white p-2.5 font-mono shadow-sm transition-shadow focus:outline-hidden focus:ring-2 focus:ring-blue-500/50 dark:border-gray-500/20 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-400/50"
           autoFocus
           type="password"
           placeholder="************"
@@ -48,7 +48,7 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
           }}
         />
         <button
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-500 focus:outline-hidden focus:ring focus:ring-blue-400"
+          className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/50"
           onClick={() => {
             setPersistedToken(token)
             router.reload()

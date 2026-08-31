@@ -22,12 +22,12 @@ const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="h-32 overflow-hidden rounded border border-gray-900/10 dark:border-gray-500/30">
+    <div className="flex flex-col gap-2 p-2">
+      <div className="h-32 overflow-hidden rounded-lg border border-gray-900/10 bg-gray-50 transition-transform dark:border-gray-500/30 dark:bg-gray-800/30">
         {thumbnailUrl && !brokenThumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            className="h-full w-full object-cover object-top"
+            className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
             src={thumbnailUrl}
             alt={c.name}
             loading="lazy"
@@ -35,22 +35,22 @@ const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
             onError={() => setBrokenThumbnail(true)}
           />
         ) : (
-          <div className="relative flex h-full w-full items-center justify-center rounded-lg">
+          <div className="relative flex h-full w-full items-center justify-center">
             <ChildIcon child={c} />
-            <span className="absolute bottom-0 right-0 m-1 font-medium text-gray-700 dark:text-gray-500">
+            <span className="absolute bottom-0 right-0 m-1.5 rounded bg-white/80 px-1.5 py-0.5 text-xs font-medium text-gray-700 backdrop-blur-sm dark:bg-gray-900/80 dark:text-gray-400">
               {c.folder?.childCount}
             </span>
           </div>
         )}
       </div>
 
-      <div className="flex items-start justify-center gap-2">
-        <span className="w-5 shrink-0 text-center">
+      <div className="flex items-start justify-center gap-2 px-1">
+        <span className="w-5 shrink-0 pt-0.5 text-center text-gray-600 dark:text-gray-400">
           <ChildIcon child={c} />
         </span>
         <ChildName name={c.name} folder={Boolean(c.folder)} />
       </div>
-      <div className="truncate text-center font-mono text-xs text-gray-700 dark:text-gray-500">
+      <div className="truncate text-center font-mono text-xs text-gray-600 dark:text-gray-500">
         {formatModifiedDateTime(c.lastModifiedDateTime)}
       </div>
     </div>
@@ -92,7 +92,7 @@ const FolderGridLayout = ({
           />
           <button
             title={t('Copy selected files permalink')}
-            className="cursor-pointer rounded p-1.5 hover:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white dark:hover:bg-gray-600 disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900"
+            className="cursor-pointer rounded p-1.5 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent dark:hover:bg-gray-700 disabled:dark:text-gray-600"
             disabled={totalSelected === 0}
             onClick={() => {
               clipboard.copy(handleSelectedPermalink(getBaseUrl()))
@@ -106,7 +106,7 @@ const FolderGridLayout = ({
           ) : (
             <button
               title={t('Download selected files')}
-              className="cursor-pointer rounded p-1.5 hover:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white dark:hover:bg-gray-600 disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900"
+              className="cursor-pointer rounded p-1.5 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent dark:hover:bg-gray-700 disabled:dark:text-gray-600"
               disabled={totalSelected === 0}
               onClick={handleSelectedDownload}
             >
