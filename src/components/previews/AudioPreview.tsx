@@ -25,8 +25,9 @@ enum PlayerState {
 const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const t = useTranslations()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const rawSearchParams = useSearchParams()
+  const searchParams = new URLSearchParams(rawSearchParams.toString())
+  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
   const hashedToken = getStoredToken(asPath)
 
   const rapRef = useRef<ReactAudioPlayer>(null)
@@ -112,10 +113,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
       </PreviewContainer>
 
       <DownloadBtnContainer>
-        <DownloadButtonGroup
-          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-          path={asPath}
-        />
+        <DownloadButtonGroup />
       </DownloadBtnContainer>
     </>
   )

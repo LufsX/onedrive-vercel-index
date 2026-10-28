@@ -2,24 +2,18 @@
 
 import type { OdFileObject } from '../../types'
 import { FC } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useTranslations } from '../ClientProviders'
 
 import { getFileIcon } from '../../utils/getFileIcon'
 import { formatModifiedDateTime, humanFileSize } from '../../utils/fileDetails'
-import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
 const DefaultPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const t = useTranslations()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
-  const hashedToken = getStoredToken(asPath)
 
   return (
     <div>
@@ -81,10 +75,7 @@ const DefaultPreview: FC<{ file: OdFileObject }> = ({ file }) => {
         </div>
       </PreviewContainer>
       <DownloadBtnContainer>
-        <DownloadButtonGroup
-          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-          path={asPath}
-        />
+        <DownloadButtonGroup />
       </DownloadBtnContainer>
     </div>
   )

@@ -24,8 +24,9 @@ import CustomEmbedLinkMenu from '../CustomEmbedLinkMenu'
 
 const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const rawSearchParams = useSearchParams()
+  const searchParams = new URLSearchParams(rawSearchParams.toString())
+  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
   const hashedToken = getStoredToken(asPath)
   const clipboard = useClipboard()
 

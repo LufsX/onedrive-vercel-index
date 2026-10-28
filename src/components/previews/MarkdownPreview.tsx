@@ -8,12 +8,10 @@ import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
 import { useTranslations } from '../ClientProviders'
 import { themes } from 'prism-react-renderer'
-import { usePathname, useSearchParams } from 'next/navigation'
 
 import 'katex/dist/katex.min.css'
 
 import useFileContent from '../../utils/fetchOnMount'
-import { getStoredToken } from '../../utils/protectedRouteHandler'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -25,11 +23,6 @@ const MarkdownPreview: FC<{
   path: string
   standalone?: boolean
 }> = ({ file, path, standalone = true }) => {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
-  const hashedToken = getStoredToken(asPath)
-
   // The parent folder of the markdown file, which is also the relative image folder
   const parentPath = standalone ? path.substring(0, path.lastIndexOf('/')) : path
 
@@ -98,10 +91,7 @@ const MarkdownPreview: FC<{
         </PreviewContainer>
         {standalone && (
           <DownloadBtnContainer>
-            <DownloadButtonGroup
-              downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-              path={asPath}
-            />
+            <DownloadButtonGroup />
           </DownloadBtnContainer>
         )}
       </>
@@ -129,10 +119,7 @@ const MarkdownPreview: FC<{
       </PreviewContainer>
       {standalone && (
         <DownloadBtnContainer>
-          <DownloadButtonGroup
-            downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-            path={asPath}
-          />
+          <DownloadButtonGroup />
         </DownloadBtnContainer>
       )}
     </div>

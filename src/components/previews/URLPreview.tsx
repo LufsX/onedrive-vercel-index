@@ -19,8 +19,9 @@ const parseDotUrl = (content: string): string | undefined => {
 
 const URLPreview = () => {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const rawSearchParams = useSearchParams()
+  const searchParams = new URLSearchParams(rawSearchParams.toString())
+  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
   const t = useTranslations()
 
   const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)

@@ -8,7 +8,6 @@ import { themes } from 'prism-react-renderer'
 import useFileContent from '../../utils/fetchOnMount'
 import useSystemTheme from '../../utils/useSystemTheme'
 import { getLanguageByFileName } from '../../utils/getPreviewType'
-import { getStoredToken } from '../../utils/protectedRouteHandler'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -17,9 +16,9 @@ import CodeBlock from './CodeBlock'
 
 const CodePreview: FC<{ file: any }> = ({ file }) => {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
-  const hashedToken = getStoredToken(asPath)
+  const rawSearchParams = useSearchParams()
+  const searchParams = new URLSearchParams(rawSearchParams.toString())
+  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
   const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
 
   const theme = useSystemTheme('dark')
@@ -39,10 +38,7 @@ const CodePreview: FC<{ file: any }> = ({ file }) => {
           <Loading loadingText={t('Loading file content...')} />
         </PreviewContainer>
         <DownloadBtnContainer>
-          <DownloadButtonGroup
-            downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-            path={asPath}
-          />
+          <DownloadButtonGroup />
         </DownloadBtnContainer>
       </>
     )
@@ -58,10 +54,7 @@ const CodePreview: FC<{ file: any }> = ({ file }) => {
         />
       </PreviewContainer>
       <DownloadBtnContainer>
-        <DownloadButtonGroup
-          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-          path={asPath}
-        />
+        <DownloadButtonGroup />
       </DownloadBtnContainer>
     </>
   )

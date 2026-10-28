@@ -7,14 +7,13 @@ import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import useFileContent from '../../utils/fetchOnMount'
-import { getStoredToken } from '../../utils/protectedRouteHandler'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
 const TextPreview = () => {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
-  const hashedToken = getStoredToken(asPath)
+  const rawSearchParams = useSearchParams()
+  const searchParams = new URLSearchParams(rawSearchParams.toString())
+  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
   const t = useTranslations()
 
   const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
@@ -33,10 +32,7 @@ const TextPreview = () => {
           <Loading loadingText={t('Loading file content...')} />
         </PreviewContainer>
         <DownloadBtnContainer>
-          <DownloadButtonGroup
-            downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-            path={asPath}
-          />
+          <DownloadButtonGroup />
         </DownloadBtnContainer>
       </>
     )
@@ -49,10 +45,7 @@ const TextPreview = () => {
           <FourOhFour errorMsg={t('File is empty.')} />
         </PreviewContainer>
         <DownloadBtnContainer>
-          <DownloadButtonGroup
-            downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-            path={asPath}
-          />
+          <DownloadButtonGroup />
         </DownloadBtnContainer>
       </>
     )
@@ -64,10 +57,7 @@ const TextPreview = () => {
         <pre className="overflow-x-scroll p-0 text-sm md:p-3">{content}</pre>
       </PreviewContainer>
       <DownloadBtnContainer>
-        <DownloadButtonGroup
-          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-          path={asPath}
-        />
+        <DownloadButtonGroup />
       </DownloadBtnContainer>
     </div>
   )

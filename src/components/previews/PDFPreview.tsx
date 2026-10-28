@@ -10,8 +10,9 @@ import { DownloadBtnContainer } from './Containers'
 
 const PDFEmbedPreview: React.FC<{ file: OdFileObject }> = ({ file }) => {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const rawSearchParams = useSearchParams()
+  const searchParams = new URLSearchParams(rawSearchParams.toString())
+  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
   const t = useTranslations()
   const filePath = asPath.split(/[?#]/)[0]
   const hashedToken = getStoredToken(filePath)
@@ -35,10 +36,7 @@ const PDFEmbedPreview: React.FC<{ file: OdFileObject }> = ({ file }) => {
         />
       </div>
       <DownloadBtnContainer>
-        <DownloadButtonGroup
-          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-          path={asPath}
-        />
+        <DownloadButtonGroup />
       </DownloadBtnContainer>
     </div>
   )
