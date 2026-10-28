@@ -1,64 +1,87 @@
+'use client'
+
+import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowRight } from '@fortawesome/free-solid-svg-icons'
-
+import { faCircleNotch, faFileContract, faFolderOpen, faTimesCircle } from '@fortawesome/free-solid-svg-icons'
 import Image from 'next/image'
-import { useRouter } from 'next/router'
-import { FC, useState } from 'react'
-import { useTranslation } from 'next-i18next/pages'
+import { useRouter } from 'next/navigation'
+import { FC } from 'react'
+import { useTranslations } from './ClientProviders'
 
-import { matchProtectedRoute } from '../utils/protectedRouteHandler'
-import useLocalStorage from '../utils/useLocalStorage'
+import { PreviewContainer } from './previews/Containers'
+import { setStoredToken } from '../utils/protectedRouteHandler'
 
 const Auth: FC<{ redirect: string }> = ({ redirect }) => {
-  const authTokenPath = matchProtectedRoute(redirect)
-
   const router = useRouter()
+  const t = useTranslations()
   const [token, setToken] = useState('')
-  const [, setPersistedToken] = useLocalStorage(authTokenPath, '')
-
-  const { t } = useTranslation()
+  const [requesting, setRequesting] = useState(false)
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col gap-4 md:my-10">
-      <div className="mx-auto w-3/4 md:w-5/6">
-        <Image src={'/images/fabulous-wapmire-weekdays.png'} alt="authenticate" width={912} height={912} preload />
-      </div>
-      <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{t('Enter Password')}</div>
+    <PreviewContainer>
+      <div className="mx-auto w-3/4">
+        <div className="mx-auto w-52">
+          <Image src="/images/fabulous-authentication.png" width={912} height={912} alt="authentication" priority />
+        </div>
 
-      <p className="text-sm font-medium text-gray-500">
-        {t('This route (the folder itself and the files inside) is password protected. ') +
-          t('If you know the password, please enter it below.')}
-      </p>
+        <div className="mb-4 text-xl font-bold text-gray-900 dark:text-gray-100">{t('Enter Password')}</div>
 
-      <div className="flex items-center gap-2">
-        <input
-          className="flex-1 rounded-lg border border-gray-900/10 bg-white p-2.5 font-mono shadow-sm transition-shadow focus:outline-hidden focus:ring-2 focus:ring-blue-500/50 dark:border-gray-500/20 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-400/50"
-          autoFocus
-          type="password"
-          placeholder="************"
-          value={token}
-          onChange={e => {
-            setToken(e.target.value)
-          }}
-          onKeyDown={e => {
-            if (e.key === 'Enter' || e.key === 'NumpadEnter') {
-              setPersistedToken(token)
-              router.reload()
-            }
-          }}
-        />
+        <p className="py-1 text-sm font-medium text-gray-500 dark:text-gray-400">
+          {t('This route is password protected. Enter the password to view it.')}
+        </p>
+
+        <div className="my-4">
+          <input
+            className="w-full rounded border border-gray-300 bg-white p-2 font-mono text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            autoFocus
+            type="text"
+            placeholder={t('Enter password here...')}
+            value={token}
+            onChange={e => {
+              setToken(e.target.value)
+            }}
+            onKeyPress={e => {
+              if (e.key === 'Enter' || e.key === 'NumpadEnter') {
+                setRequesting(true)
+                setStoredToken(redirect, token)
+                router.refresh()
+              }
+            }}
+          />
+        </div>
+
         <button
-          className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/50"
+          className="w-full rounded bg-blue-600 py-2 font-medium text-white transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50 focus:outline-hidden disabled:cursor-not-allowed disabled:bg-gray-400"
+          disabled={token === '' || requesting}
           onClick={() => {
-            setPersistedToken(token)
-            router.reload()
+            setRequesting(true)
+            setStoredToken(redirect, token)
+            router.refresh()
           }}
-          title='Enter'
         >
-          <FontAwesomeIcon icon={faArrowRight} />
+          {requesting ? (
+            <>
+              <FontAwesomeIcon icon={faCircleNotch} spin /> <span className="ml-2">{t('Requesting...')}</span>
+            </>
+          ) : (
+            <>
+              <FontAwesomeIcon icon={faFolderOpen} /> <span className="ml-2">{t('Access')}</span>
+            </>
+          )}
         </button>
+
+        <div className="my-4 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 py-1">
+            <FontAwesomeIcon icon={faFileContract} className="h-4 w-4" />
+            <span>{t('Password will be stored in your browser using localStorage.')}</span>
+          </div>
+          <div className="flex items-center gap-2 py-1">
+            <FontAwesomeIcon icon={faTimesCircle} className="h-4 w-4" />
+            <span>{t('If you forgot the password, clear your browser cache and try again.')}</span>
+          </div>
+        </div>
       </div>
-    </div>
+    </PreviewContainer>
   )
 }
 

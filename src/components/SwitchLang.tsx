@@ -1,97 +1,75 @@
-import React, { Fragment } from 'react'
+'use client'
+
+import { Fragment } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faChevronDown, faLanguage } from '@fortawesome/free-solid-svg-icons'
+import { faGlobe, faCheck } from '@fortawesome/free-solid-svg-icons'
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react'
+import { useRouter } from 'next/navigation'
 
-import { useRouter } from 'next/router'
-import Link from 'next/link'
-import { useCookies } from 'react-cookie'
+import { setLocaleCookie } from '../utils/localeCookie'
+import { useLocale } from './ClientProviders'
 
-// https://headlessui.dev/react/menu#integrating-with-next-js
-const CustomLink = ({ href, children, as, locale, ...props }): React.ReactElement => {
-  return (
-    <Link href={href} as={as} locale={locale} {...props}>
-      {children}
-    </Link>
-  )
-}
-
-const localeText = (locale: string): string => {
-  switch (locale) {
-    case 'en':
-      return '🇬🇧 English'
-    case 'zh-CN':
-      return '🇨🇳 简体中文'
-    case 'zh-TW':
-      return '🇹🇼 繁體中文'
-    case 'de-DE':
-      return '🇩🇪 Deutsch'
-    case 'en':
-      return '🇬🇧 English'
-    case 'es':
-      return '🇪🇸 Español'
-    case 'zh-CN':
-      return '🇨🇳 简体中文'
-    case 'hi':
-      return '🇮🇳 हिन्दी'
-    case 'id':
-      return '🇮🇩 Indonesia'
-    case 'tr-TR':
-      return '🇹🇷 Türkçe'
-    case 'zh-TW':
-      return '🇹🇼 繁體中文'
-    default:
-      return '🇨🇳 简体中文'
-  }
+const localeMapping = {
+  'de-DE': 'Deutsch',
+  en: 'English',
+  es: 'Español',
+  'zh-CN': '简体中文',
+  hi: 'हिन्दी',
+  id: 'Bahasa Indonesia',
+  'tr-TR': 'Türkçe',
+  'zh-TW': '繁體中文',
 }
 
 const SwitchLang = () => {
-  const { locales, pathname, query, asPath } = useRouter()
+  const router = useRouter()
+  const currentLocale = useLocale()
 
-  const [, setCookie] = useCookies(['NEXT_LOCALE'])
+  const switchLanguage = (locale: string) => {
+    if (locale === currentLocale) return
+
+    setLocaleCookie(locale)
+    router.refresh()
+  }
 
   return (
-    <div className="relative">
-      <Menu>
-        <MenuButton className="flex items-center gap-1.5 hover:opacity-80 dark:text-white">
-          <FontAwesomeIcon className="h-4 w-4" icon={faLanguage} />
-          <FontAwesomeIcon className="h-3 w-3" icon={faChevronDown} />
-        </MenuButton>
+    <Menu as="div" className="relative inline-block text-left">
+      <MenuButton className="flex items-center gap-2 rounded px-2 py-1 text-gray-700 transition-colors hover:bg-gray-900/10 dark:text-gray-300 dark:hover:bg-gray-500/20">
+        <FontAwesomeIcon icon={faGlobe} className="h-4 w-4" />
+        <span className="hidden text-sm font-medium md:inline-block">
+          {localeMapping[currentLocale as keyof typeof localeMapping]}
+        </span>
+      </MenuButton>
 
-        <Transition
-          as={Fragment}
-          enter="transition duration-100 ease-out"
-          enterFrom="transform scale-95 opacity-0"
-          enterTo="transform scale-100 opacity-100"
-          leave="transition duration-75 ease-out"
-          leaveFrom="transform scale-100 opacity-100"
-          leaveTo="transform scale-95 opacity-0"
-        >
-          <MenuItems className="absolute top-0 right-0 z-20 mt-8 w-28 divide-y divide-gray-900 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900 dark:text-white">
-            {[...locales!]
-              .sort((a, b) => {
-                const preferredOrder = ['en', 'zh-CN', 'zh-TW', 'de-DE', 'es', 'hi', 'id', 'tr-TR']
-                return preferredOrder.indexOf(a) - preferredOrder.indexOf(b)
-              })
-              .map(locale => (
-                <MenuItem key={locale}>
-                  <CustomLink
-                    key={locale}
-                    href={{ pathname, query }}
-                    as={asPath}
-                    locale={locale}
-                    onClick={() => setCookie('NEXT_LOCALE', locale, { path: '/' })}
+      <Transition
+        as={Fragment}
+        enter="transition ease-out duration-100"
+        enterFrom="transform opacity-0 scale-95"
+        enterTo="transform opacity-100 scale-100"
+        leave="transition ease-in duration-75"
+        leaveFrom="transform opacity-100 scale-100"
+        leaveTo="transform opacity-0 scale-95"
+      >
+        <MenuItems className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-lg border border-gray-900/10 bg-white shadow-lg ring-1 ring-black/5 focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900">
+          <div className="py-1">
+            {Object.entries(localeMapping).map(([locale, label]) => (
+              <MenuItem key={locale}>
+                {({ active }) => (
+                  <button
+                    onClick={() => switchLanguage(locale)}
+                    className={`${
+                      active ? 'bg-gray-50 dark:bg-gray-800' : ''
+                    } flex w-full items-center justify-between px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
                   >
-                    <div className="m-1 cursor-pointer rounded px-2 py-1 text-left text-sm font-medium hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-600/10 dark:hover:text-blue-400">
-                      {localeText(locale)}
-                    </div>
-                  </CustomLink>
-                </MenuItem>
-              ))}
-          </MenuItems>
-        </Transition>
-      </Menu>
-    </div>
+                    <span>{label}</span>
+                    {currentLocale === locale && <FontAwesomeIcon icon={faCheck} className="h-3 w-3 text-blue-600" />}
+                  </button>
+                )}
+              </MenuItem>
+            ))}
+          </div>
+        </MenuItems>
+      </Transition>
+    </Menu>
   )
 }
 

@@ -73,3 +73,6 @@ Temporary Items
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# typescript incremental build cache
+*.tsbuildinfo

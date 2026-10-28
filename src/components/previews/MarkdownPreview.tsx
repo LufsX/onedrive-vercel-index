@@ -1,15 +1,19 @@
+'use client'
+
 import { FC } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
-import { useTranslation } from 'next-i18next/pages'
+import { useTranslations } from '../ClientProviders'
 import { themes } from 'prism-react-renderer'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 import 'katex/dist/katex.min.css'
 
 import useFileContent from '../../utils/fetchOnMount'
+import { getStoredToken } from '../../utils/protectedRouteHandler'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -21,11 +25,16 @@ const MarkdownPreview: FC<{
   path: string
   standalone?: boolean
 }> = ({ file, path, standalone = true }) => {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const hashedToken = getStoredToken(asPath)
+
   // The parent folder of the markdown file, which is also the relative image folder
   const parentPath = standalone ? path.substring(0, path.lastIndexOf('/')) : path
 
   const { response: content, error, validating } = useFileContent(`/api/raw/?path=${parentPath}/${file.name}`, path)
-  const { t } = useTranslation()
+  const t = useTranslations()
 
   // Check if the image is relative path instead of a absolute url
   const isUrlAbsolute = (url: string | string[]) => url.indexOf('://') > 0 || url.indexOf('//') === 0
@@ -89,7 +98,10 @@ const MarkdownPreview: FC<{
         </PreviewContainer>
         {standalone && (
           <DownloadBtnContainer>
-            <DownloadButtonGroup />
+            <DownloadButtonGroup
+              downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+              path={asPath}
+            />
           </DownloadBtnContainer>
         )}
       </>
@@ -117,7 +129,10 @@ const MarkdownPreview: FC<{
       </PreviewContainer>
       {standalone && (
         <DownloadBtnContainer>
-          <DownloadButtonGroup />
+          <DownloadButtonGroup
+            downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+            path={asPath}
+          />
         </DownloadBtnContainer>
       )}
     </div>

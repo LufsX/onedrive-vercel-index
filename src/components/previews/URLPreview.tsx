@@ -1,5 +1,7 @@
-import { useRouter } from 'next/router'
-import { useTranslation } from 'next-i18next/pages'
+'use client'
+
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useTranslations } from '../ClientProviders'
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons'
 
 import FourOhFour from '../FourOhFour'
@@ -16,8 +18,10 @@ const parseDotUrl = (content: string): string | undefined => {
 }
 
 const URLPreview = () => {
-  const { asPath } = useRouter()
-  const { t } = useTranslation()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const t = useTranslations()
 
   const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
   if (error) {

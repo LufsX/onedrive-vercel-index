@@ -1,3 +1,5 @@
+'use client'
+
 import type { FC } from 'react'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import Prism from 'prismjs'

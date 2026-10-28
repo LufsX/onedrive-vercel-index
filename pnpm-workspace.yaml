@@ -3,6 +3,7 @@ overrides:
   echarts: ^6.1.0
 
 allowBuilds:
+  '@parcel/watcher': true
   '@swc/core': true
   core-js: true
   es5-ext: true

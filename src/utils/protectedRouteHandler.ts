@@ -13,6 +13,14 @@ export function getStoredToken(path: string): string | null {
   return storedToken ? encryptToken(storedToken) : null
 }
 
+// Store token in localStorage
+export function setStoredToken(path: string, token: string): void {
+  const matchedRoute = matchProtectedRoute(path)
+  if (matchedRoute && typeof window !== 'undefined') {
+    localStorage.setItem(matchedRoute, JSON.stringify(token))
+  }
+}
+
 /**
  * Compares the hash of .password and od-protected-token header
  * @param odTokenHeader od-protected-token header (sha256 hashed token)
@@ -28,12 +36,12 @@ export function compareHashedToken({
 }): boolean {
   return encryptToken(dotPassword.trim()) === odTokenHeader
 }
+
 /**
  * Match the specified route against a list of predefined routes
  * @param route directory path
  * @returns whether the directory is protected
  */
-
 export function matchProtectedRoute(route: string): string {
   const protectedRoutes: string[] = siteConfig.protectedRoutes
   let authTokenPath = ''
@@ -46,7 +54,7 @@ export function matchProtectedRoute(route: string): string {
           r
             .split('/')
             .map(p => encodeURIComponent(p))
-            .join('/')
+            .join('/'),
         )
       ) {
         authTokenPath = r

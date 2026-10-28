@@ -1,3 +1,5 @@
+'use client'
+
 import type { OdFolderChildren } from '../types'
 
 import Link from 'next/link'
@@ -5,7 +7,7 @@ import { FC } from 'react'
 import { useClipboard } from 'use-clipboard-copy'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowAltCircleDown, faCopy } from '@fortawesome/free-regular-svg-icons'
-import { useTranslation } from 'next-i18next/pages'
+import { useTranslations } from './ClientProviders'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
@@ -22,10 +24,10 @@ const FileListItem: FC<{ fileContent: OdFolderChildren }> = ({ fileContent: c })
         </div>
         <ChildName name={c.name} folder={Boolean(c.folder)} />
       </div>
-      <div className="col-span-3 hidden shrink-0 font-mono text-sm text-gray-700 dark:text-gray-500 md:block">
+      <div className="col-span-3 hidden shrink-0 font-mono text-sm text-gray-700 md:block dark:text-gray-500">
         {formatModifiedDateTime(c.lastModifiedDateTime)}
       </div>
-      <div className="col-span-1 hidden shrink-0 truncate font-mono text-sm text-gray-700 dark:text-gray-500 md:block">
+      <div className="col-span-1 hidden shrink-0 truncate font-mono text-sm text-gray-700 md:block dark:text-gray-500">
         {humanFileSize(c.size)}
       </div>
     </div>
@@ -45,32 +47,30 @@ const FolderListLayout = ({
   handleSelectedPermalink,
   handleFolderDownload,
   toast,
-}) => {
+}: any) => {
   const clipboard = useClipboard()
   const hashedToken = getStoredToken(path)
+  const t = useTranslations()
 
-  const { t } = useTranslation()
-
-  // Get item path from item name
   const getItemPath = (name: string) => `${path === '/' ? '' : path}/${encodeURIComponent(name)}`
 
   return (
     <div className="rounded bg-white shadow-xs dark:bg-gray-900 dark:text-gray-100">
       <div className="grid grid-cols-12 items-center gap-2 border-b border-gray-900/10 px-3 dark:border-gray-500/30">
-        <div className="col-span-12 py-2 text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 md:col-span-6">
+        <div className="col-span-12 py-2 text-xs font-bold tracking-widest text-gray-600 uppercase md:col-span-6 dark:text-gray-300">
           {t('Name')}
         </div>
-        <div className="col-span-3 hidden text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 md:block">
+        <div className="col-span-3 hidden text-xs font-bold tracking-widest text-gray-600 uppercase md:block dark:text-gray-300">
           {t('Last Modified')}
         </div>
-        <div className="hidden text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-gray-300 md:block">
+        <div className="hidden text-xs font-bold tracking-widest text-gray-600 uppercase md:block dark:text-gray-300">
           {t('Size')}
         </div>
-        <div className="hidden text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 md:block">
+        <div className="hidden text-xs font-bold tracking-wider text-gray-700 uppercase md:block dark:text-gray-300">
           {t('Actions')}
         </div>
-        <div className="hidden text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 md:block">
-          <div className="hidden p-1.5 text-gray-700 dark:text-gray-400 md:flex">
+        <div className="hidden text-xs font-bold tracking-wider text-gray-700 uppercase md:block dark:text-gray-300">
+          <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
             <Checkbox
               checked={totalSelected}
               onChange={toggleTotalSelected}
@@ -106,19 +106,18 @@ const FolderListLayout = ({
 
       {folderChildren.map((c: OdFolderChildren) => (
         <div
-          className="grid grid-cols-12 border-b border-gray-900/5 transition-all duration-100 last:border-0 hover:bg-gray-50 dark:border-gray-500/10 dark:hover:bg-gray-850"
+          className="dark:hover:bg-gray-850 grid list-item grid-cols-12 border-b border-gray-900/5 transition-all duration-100 last:border-0 hover:bg-gray-50 dark:border-gray-500/10"
           key={c.id}
         >
           <Link
             href={`${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`}
-            passHref
             className="col-span-12 md:col-span-10"
           >
             <FileListItem fileContent={c} />
           </Link>
 
           {c.folder ? (
-            <div className="hidden p-1.5 text-gray-700 dark:text-gray-400 md:flex">
+            <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
               <span
                 title={t('Copy folder permalink')}
                 className="cursor-pointer rounded px-1.5 py-1 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -145,13 +144,13 @@ const FolderListLayout = ({
               )}
             </div>
           ) : (
-            <div className="hidden p-1.5 text-gray-700 dark:text-gray-400 md:flex">
+            <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
               <span
                 title={t('Copy raw file permalink')}
                 className="cursor-pointer rounded px-1.5 py-1 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                 onClick={() => {
                   clipboard.copy(
-                    `${getBaseUrl()}/api/raw/?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+                    `${getBaseUrl()}/api/raw?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
                   )
                   toast.success(t('Copied raw file permalink.'))
                 }}
@@ -161,13 +160,13 @@ const FolderListLayout = ({
               <a
                 title={t('Download file')}
                 className="cursor-pointer rounded px-1.5 py-1 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
-                href={`/api/raw/?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+                href={`/api/raw?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
               >
                 <FontAwesomeIcon icon={faArrowAltCircleDown} />
               </a>
             </div>
           )}
-          <div className="hidden p-1.5 text-gray-700 dark:text-gray-400 md:flex">
+          <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
             {!c.folder && !(c.name === '.password') && (
               <Checkbox
                 checked={selected[c.id] ? 2 : 0}

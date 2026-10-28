@@ -16,16 +16,40 @@
   .dark .dark\:bg-gray-750 {
     background-color: rgb(55 65 81 / 0.85);
   }
-  
+
   .dark .dark\:hover\:bg-gray-750:hover {
     background-color: rgb(55 65 81 / 0.85);
   }
-  
+
   .dark .dark\:bg-gray-850 {
     background-color: rgb(32 36 42);
   }
-  
+
   .dark .dark\:hover\:bg-gray-850:hover {
     background-color: rgb(32 36 42);
   }
+
+  /* Performance optimizations */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+}
+
+/* Optimize animations for better performance */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Content visibility optimization for long lists */
+.list-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px;
 }

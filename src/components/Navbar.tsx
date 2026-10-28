@@ -1,3 +1,5 @@
+'use client'
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import { faEnvelope, faTrashAlt } from '@fortawesome/free-regular-svg-icons'
@@ -9,9 +11,9 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import Link from 'next/link'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
-import { useRouter } from 'next/router'
+import { useRouter } from 'next/navigation'
 import { Fragment, useEffect, useState } from 'react'
-import { useTranslation } from 'next-i18next/pages'
+import { useTranslations } from './ClientProviders'
 
 import siteConfig from '../../config/site.config'
 import SwitchLang from './SwitchLang'
@@ -26,6 +28,7 @@ const brandIconLoaders: Record<string, () => Promise<IconDefinition>> = {
 const Navbar = () => {
   const router = useRouter()
   const os = useDeviceOS()
+  const t = useTranslations()
 
   const [brandIcons, setBrandIcons] = useState<Record<string, IconDefinition>>({})
   const [tokenPresent, setTokenPresent] = useState(false)
@@ -61,10 +64,10 @@ const Navbar = () => {
         linkNames.map(async name => {
           const loader = brandIconLoaders[name]
           return loader ? ([name, await loader()] as const) : null
-        })
+        }),
       )
       const icons = Object.fromEntries(
-        iconEntries.filter((entry): entry is readonly [string, IconDefinition] => entry !== null)
+        iconEntries.filter((entry): entry is readonly [string, IconDefinition] => entry !== null),
       ) as Record<string, IconDefinition>
       const unknownNames = linkNames.filter(name => !brandIconLoaders[name])
 
@@ -96,8 +99,6 @@ const Navbar = () => {
     }
   }, [])
 
-  const { t } = useTranslation()
-
   const clearTokens = () => {
     setIsOpen(false)
 
@@ -107,25 +108,28 @@ const Navbar = () => {
 
     toast.success(t('Cleared all tokens'))
     setTimeout(() => {
-      router.reload()
+      router.refresh()
     }, 1000)
   }
 
   return (
-    <div className="sticky top-0 z-[100] border-b border-gray-900/10 bg-white/80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
+    <div className="gpu-accelerated sticky top-0 z-[100] border-b border-gray-900/10 bg-white/80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
       <Toaster />
 
       {searchOpen && <SearchModal searchOpen={searchOpen} setSearchOpen={setSearchOpen} />}
 
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-4 py-1">
-        <Link href="/" passHref className="flex items-center gap-2 py-2 hover:opacity-80 dark:text-white md:p-2">
-          <Image src={siteConfig.icon} alt="icon" width="25" height="25" preload />
+        <Link
+          href="/"
+          className="flex items-center gap-2 py-2 transition-opacity hover:opacity-80 md:p-2 dark:text-white"
+        >
+          <Image src={siteConfig.icon} alt="icon" width={25} height={25} priority />
           <span className="hidden font-bold sm:block">{siteConfig.title}</span>
         </Link>
 
         <div className="flex flex-1 items-center gap-4 text-gray-700 md:flex-initial">
           <button
-            className="flex flex-1 items-center justify-between rounded-lg bg-gray-100 px-2.5 py-1.5 hover:opacity-80 dark:bg-gray-800 dark:text-white md:w-48"
+            className="flex flex-1 items-center justify-between rounded-lg bg-gray-100 px-2.5 py-1.5 hover:opacity-80 md:w-48 dark:bg-gray-800 dark:text-white"
             onClick={openSearchBox}
           >
             <div className="flex items-center gap-2">
@@ -157,19 +161,16 @@ const Navbar = () => {
                   <span className="flex h-4 w-4 items-center justify-center">
                     {brandIcon && <FontAwesomeIcon icon={brandIcon} />}
                   </span>
-                  <span className="hidden text-sm font-medium md:inline-block">
-                    {
-                      // Append link name comments here to add translations
-                      // t('Weibo')
-                      t(l.name)
-                    }
-                  </span>
+                  <span className="hidden text-sm font-medium md:inline-block">{t(l.name)}</span>
                 </a>
               )
             })}
 
           {siteConfig.email && (
-            <a href={siteConfig.email} className="flex items-center gap-2 transition-opacity hover:opacity-70 dark:text-white">
+            <a
+              href={siteConfig.email}
+              className="flex items-center gap-2 transition-opacity hover:opacity-70 dark:text-white"
+            >
               <FontAwesomeIcon icon={faEnvelope} />
               <span className="hidden text-sm font-medium md:inline-block">{t('Email')}</span>
             </a>
@@ -202,7 +203,6 @@ const Navbar = () => {
               <div className="fixed inset-0 cursor-pointer bg-gray-50 dark:bg-gray-800" />
             </TransitionChild>
 
-            {/* This element is to trick the browser into centering the modal contents. */}
             <span className="inline-block h-screen align-middle" aria-hidden="true">
               &#8203;
             </span>
@@ -221,8 +221,9 @@ const Navbar = () => {
                 </DialogTitle>
                 <div className="mt-2">
                   <p className="text-sm text-gray-500">
-                    {t('These tokens are used to authenticate yourself into password protected folders, ') +
-                      t('clearing them means that you will need to re-enter the passwords again.')}
+                    {t(
+                      'These tokens are used to authenticate yourself into password protected folders, clearing them means that you will need to re-enter the passwords again.',
+                    )}
                   </p>
                 </div>
 
@@ -237,13 +238,13 @@ const Navbar = () => {
 
                 <div className="mt-8 flex items-center justify-end">
                   <button
-                    className="mr-3 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/50"
+                    className="mr-3 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50 focus:outline-hidden"
                     onClick={() => setIsOpen(false)}
                   >
                     {t('Cancel')}
                   </button>
                   <button
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-red-500/50"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 font-medium text-white shadow-sm transition-colors hover:bg-red-700 focus:ring-2 focus:ring-red-500/50 focus:outline-hidden"
                     onClick={() => clearTokens()}
                   >
                     <FontAwesomeIcon icon={faTrashAlt} />

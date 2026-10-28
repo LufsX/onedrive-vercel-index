@@ -1,7 +1,9 @@
+'use client'
+
 import { FC, useEffect, useRef, useState } from 'react'
 import { ReactReader } from 'react-reader'
-import { useRouter } from 'next/router'
-import { useTranslation } from 'next-i18next/pages'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useTranslations } from '../ClientProviders'
 
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -9,7 +11,9 @@ import { DownloadBtnContainer } from './Containers'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 const EPUBPreview: FC = () => {
-  const { asPath } = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
   const hashedToken = getStoredToken(asPath)
 
   const [epubContainerWidth, setEpubContainerWidth] = useState(400)
@@ -22,7 +26,7 @@ const EPUBPreview: FC = () => {
   const [location, setLocation] = useState<string | null>(null)
   const onLocationChange = (cfiStr: string) => setLocation(cfiStr)
 
-  const { t } = useTranslation()
+  const t = useTranslations()
 
   // Fix for not valid epub files according to
   // https://github.com/gerhardsletten/react-reader/issues/33#issuecomment-673964947
@@ -41,7 +45,7 @@ const EPUBPreview: FC = () => {
 
   return (
     <div>
-      <div className="no-scrollbar flex max-h-[90vh] w-full flex-col overflow-scroll rounded bg-white dark:bg-gray-900 md:p-3">
+      <div className="no-scrollbar flex max-h-[90vh] w-full flex-col overflow-scroll rounded bg-white md:p-3 dark:bg-gray-900">
         <div className="no-scrollbar min-h-[70vh] w-full flex-1 overflow-scroll" ref={epubContainer}>
           <div className="absolute h-[70vh]" style={{ width: epubContainerWidth }}>
             <ReactReader
@@ -57,7 +61,10 @@ const EPUBPreview: FC = () => {
         </div>
       </div>
       <DownloadBtnContainer>
-        <DownloadButtonGroup />
+        <DownloadButtonGroup
+          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+          path={asPath}
+        />
       </DownloadBtnContainer>
     </div>
   )

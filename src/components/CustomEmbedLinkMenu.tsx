@@ -1,6 +1,8 @@
+'use client'
+
 import { Dispatch, Fragment, SetStateAction, useRef, useState } from 'react'
-import { useTranslation } from 'next-i18next/pages'
-import { Dialog,DialogPanel,DialogTitle,Description, Transition,TransitionChild } from '@headlessui/react'
+import { useTranslations } from './ClientProviders'
+import { Dialog, DialogPanel, DialogTitle, Description, Transition, TransitionChild } from '@headlessui/react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCopy } from '@fortawesome/free-regular-svg-icons'
 import { faCheck } from '@fortawesome/free-solid-svg-icons'
@@ -14,12 +16,12 @@ function LinkContainer({ title, value }: { title: string; value: string }) {
   const clipboard = useClipboard({ copiedTimeout: 1000 })
   return (
     <>
-      <h4 className="py-2 text-xs font-medium uppercase tracking-wider">{title}</h4>
-      <div className="group relative mb-2 max-h-24 overflow-y-scroll break-all rounded-lg border border-gray-900/10 bg-gray-50 p-2.5 font-mono text-sm shadow-sm dark:border-gray-500/20 dark:bg-gray-800">
+      <h4 className="py-2 text-xs font-medium tracking-wider uppercase">{title}</h4>
+      <div className="group relative mb-2 max-h-24 overflow-y-scroll rounded-lg border border-gray-900/10 bg-gray-50 p-2.5 font-mono text-sm break-all shadow-sm dark:border-gray-500/20 dark:bg-gray-800">
         <div className="opacity-80">{value}</div>
         <button
           onClick={() => clipboard.copy(value)}
-          className="absolute top-[0.2rem] right-[0.2rem] w-8 rounded border border-gray-900/10 bg-white py-1.5 opacity-0 shadow-sm transition-all duration-200 hover:bg-gray-100 group-hover:opacity-100 dark:border-gray-500/20 dark:bg-gray-850 dark:hover:bg-gray-700"
+          className="dark:bg-gray-850 absolute top-[0.2rem] right-[0.2rem] w-8 rounded border border-gray-900/10 bg-white py-1.5 opacity-0 shadow-sm transition-all duration-200 group-hover:opacity-100 hover:bg-gray-100 dark:border-gray-500/20 dark:hover:bg-gray-700"
         >
           {clipboard.copied ? <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faCopy} />}
         </button>
@@ -37,7 +39,7 @@ export default function CustomEmbedLinkMenu({
   menuOpen: boolean
   setMenuOpen: Dispatch<SetStateAction<boolean>>
 }) {
-  const { t } = useTranslation()
+  const t = useTranslations()
 
   const hashedToken = getStoredToken(path)
 
@@ -97,13 +99,13 @@ export default function CustomEmbedLinkMenu({
               </Description>
 
               <div className="mt-4">
-                <h4 className="py-2 text-xs font-medium uppercase tracking-wider">{t('Filename')}</h4>
+                <h4 className="py-2 text-xs font-medium tracking-wider uppercase">{t('Filename')}</h4>
                 <input
-                  className="mb-2 w-full rounded-lg border border-gray-900/10 bg-white p-2.5 font-mono shadow-sm transition-shadow focus:outline-hidden focus:ring-2 focus:ring-blue-500/50 dark:border-gray-500/20 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-400/50"
+                  className="mb-2 w-full rounded-lg border border-gray-900/10 bg-white p-2.5 font-mono shadow-sm transition-shadow focus:ring-2 focus:ring-blue-500/50 focus:outline-hidden dark:border-gray-500/20 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-400/50"
                   ref={focusInputRef}
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  title='FileName'
+                  title="FileName"
                 />
 
                 <LinkContainer

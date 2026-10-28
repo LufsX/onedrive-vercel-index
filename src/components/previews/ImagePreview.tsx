@@ -1,14 +1,18 @@
+'use client'
+
 import type { OdFileObject } from '../../types'
 
 import { FC } from 'react'
-import { useRouter } from 'next/router'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 import { PreviewContainer, DownloadBtnContainer } from './Containers'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 const ImagePreview: FC<{ file: OdFileObject }> = ({ file }) => {
-  const { asPath } = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
   const hashedToken = getStoredToken(asPath)
 
   return (
@@ -25,7 +29,10 @@ const ImagePreview: FC<{ file: OdFileObject }> = ({ file }) => {
         />
       </PreviewContainer>
       <DownloadBtnContainer>
-        <DownloadButtonGroup />
+        <DownloadButtonGroup
+          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+          path={asPath}
+        />
       </DownloadBtnContainer>
     </>
   )

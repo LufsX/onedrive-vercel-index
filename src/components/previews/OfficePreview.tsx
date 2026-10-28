@@ -1,13 +1,17 @@
+'use client'
+
 import type { OdFileObject } from '../../types'
 import { FC, useState } from 'react'
-import { useRouter } from 'next/router'
+import { usePathname, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faMicrosoft } from '@fortawesome/free-brands-svg-icons/faMicrosoft'
 import { faFile } from '@fortawesome/free-regular-svg-icons'
-import { useTranslation } from 'next-i18next/pages'
+import { useTranslations } from '../ClientProviders'
 
-const OfficeFileViewer = dynamic(() => import('office-file-viewer').then(module => module.OfficeFileViewer), { ssr: false })
+const OfficeFileViewer = dynamic(() => import('office-file-viewer').then(module => module.OfficeFileViewer), {
+  ssr: false,
+})
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer } from './Containers'
@@ -27,8 +31,10 @@ function isLocalAddress(hostname: string) {
 }
 
 const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
-  const { asPath } = useRouter()
-  const { t } = useTranslation()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const t = useTranslations()
   const filePath = asPath.split(/[?#]/)[0]
   const hashedToken = getStoredToken(filePath)
   const [renderer, setRenderer] = useState<'local' | 'microsoft'>('local')
@@ -107,7 +113,10 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
         )}
       </div>
       <DownloadBtnContainer>
-        <DownloadButtonGroup />
+        <DownloadButtonGroup
+          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+          path={asPath}
+        />
       </DownloadBtnContainer>
     </div>
   )

@@ -1,11 +1,14 @@
+'use client'
+
 import { FC } from 'react'
-import { useTranslation } from 'next-i18next/pages'
-import { useRouter } from 'next/router'
+import { useTranslations } from '../ClientProviders'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { themes } from 'prism-react-renderer'
 
 import useFileContent from '../../utils/fetchOnMount'
 import useSystemTheme from '../../utils/useSystemTheme'
 import { getLanguageByFileName } from '../../utils/getPreviewType'
+import { getStoredToken } from '../../utils/protectedRouteHandler'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
@@ -13,11 +16,14 @@ import { DownloadBtnContainer, PreviewContainer } from './Containers'
 import CodeBlock from './CodeBlock'
 
 const CodePreview: FC<{ file: any }> = ({ file }) => {
-  const { asPath } = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+  const hashedToken = getStoredToken(asPath)
   const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
 
   const theme = useSystemTheme('dark')
-  const { t } = useTranslation()
+  const t = useTranslations()
 
   if (error) {
     return (
@@ -33,7 +39,10 @@ const CodePreview: FC<{ file: any }> = ({ file }) => {
           <Loading loadingText={t('Loading file content...')} />
         </PreviewContainer>
         <DownloadBtnContainer>
-          <DownloadButtonGroup />
+          <DownloadButtonGroup
+            downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+            path={asPath}
+          />
         </DownloadBtnContainer>
       </>
     )
@@ -49,7 +58,10 @@ const CodePreview: FC<{ file: any }> = ({ file }) => {
         />
       </PreviewContainer>
       <DownloadBtnContainer>
-        <DownloadButtonGroup />
+        <DownloadButtonGroup
+          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+          path={asPath}
+        />
       </DownloadBtnContainer>
     </>
   )

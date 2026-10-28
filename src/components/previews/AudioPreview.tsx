@@ -1,11 +1,13 @@
+'use client'
+
 import type { OdFileObject } from '../../types'
 import { FC, useEffect, useRef, useState } from 'react'
 
 import ReactAudioPlayer from 'react-audio-player'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faMusic } from '@fortawesome/free-solid-svg-icons'
-import { useTranslation } from 'next-i18next/pages'
-import { useRouter } from 'next/router'
+import { useTranslations } from '../ClientProviders'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
@@ -21,8 +23,10 @@ enum PlayerState {
 }
 
 const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
-  const { t } = useTranslation()
-  const { asPath } = useRouter()
+  const t = useTranslations()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const asPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
   const hashedToken = getStoredToken(asPath)
 
   const rapRef = useRef<ReactAudioPlayer>(null)
@@ -54,8 +58,8 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   return (
     <>
       <PreviewContainer>
-        <div className="flex flex-col gap4 md:flex-row md:gap-4">
-          <div className="relative flex aspect-square w-full items-center justify-center rounded bg-gray-100 transition-all duration-75 dark:bg-gray-700 md:w-48">
+        <div className="gap4 flex flex-col md:flex-row md:gap-4">
+          <div className="relative flex aspect-square w-full items-center justify-center rounded bg-gray-100 transition-all duration-75 md:w-48 dark:bg-gray-700">
             <div
               className={`absolute z-20 flex h-full w-full items-center justify-center transition-all duration-300 ${
                 playerStatus === PlayerState.Loading
@@ -108,7 +112,10 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
       </PreviewContainer>
 
       <DownloadBtnContainer>
-        <DownloadButtonGroup />
+        <DownloadButtonGroup
+          downloadUrl={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+          path={asPath}
+        />
       </DownloadBtnContainer>
     </>
   )
