@@ -5,7 +5,7 @@ import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
 import { revealObfuscatedToken } from '../utils/oAuthHandler'
 import { compareHashedToken } from '../utils/protectedRouteHandler'
-import { getOdAuthTokens, storeOdAuthTokens } from '../utils/odAuthTokenStore'
+import { getAccessTokenTtl, getOdAuthTokens, storeOdAuthTokens } from '../utils/odAuthTokenStore'
 
 const basePath = pathPosix.resolve('/', siteConfig.baseDirectory)
 const clientSecret = revealObfuscatedToken(apiConfig.obfuscatedClientSecret)
@@ -21,10 +21,59 @@ export function encodePath(path: string): string {
   return `:${encodeURIComponent(encodedPath)}`
 }
 
+// Refresh before the token expires so a request never races its own expiry.
+const ACCESS_TOKEN_MIN_TTL_SECONDS = 120
+
+// Microsoft rotates the refresh token on every use, so two concurrent refreshes
+// invalidate each other and leave the site with "no access token" for a moment.
+let refreshInFlight: Promise<string> | null = null
+
+async function refreshAccessToken(refreshToken: string): Promise<string> {
+  const body = new URLSearchParams()
+  body.append('client_id', apiConfig.clientId)
+  body.append('redirect_uri', apiConfig.redirectUri)
+  body.append('client_secret', clientSecret)
+  body.append('refresh_token', refreshToken)
+  body.append('grant_type', 'refresh_token')
+
+  try {
+    const resp = await axiosInstance.post(apiConfig.authApi, body, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    })
+
+    if ('access_token' in resp.data && 'refresh_token' in resp.data) {
+      const { expires_in, access_token, refresh_token } = resp.data
+      await storeOdAuthTokens({
+        accessToken: access_token,
+        accessTokenExpiry: parseInt(expires_in),
+        refreshToken: refresh_token,
+      })
+      console.log('Fetch new access token with stored refresh token.')
+      return access_token
+    }
+
+    return ''
+  } catch (error: any) {
+    // A rejected refresh token means the site has to be re-authorised: return an
+    // empty token so callers answer 403 instead of asking for a password.
+    console.error('Failed to refresh access token:', error?.response?.data ?? error?.message)
+    return ''
+  }
+}
+
+/**
+ * Return a usable access token, refreshing it when it is missing or about to
+ * expire. Resolves to an empty string when the site needs to be re-authorised,
+ * which callers surface as a 403 instead of asking the user for a password.
+ */
 export async function getAccessToken(): Promise<string> {
   const { accessToken, refreshToken } = await getOdAuthTokens()
+  const hasAccessToken = typeof accessToken === 'string' && accessToken !== ''
+  const ttl = hasAccessToken ? await getAccessTokenTtl() : -1
 
-  if (typeof accessToken === 'string') {
+  if (hasAccessToken && ttl > ACCESS_TOKEN_MIN_TTL_SECONDS) {
     console.log('Fetch access token from storage.')
     return accessToken
   }
@@ -34,39 +83,11 @@ export async function getAccessToken(): Promise<string> {
     return ''
   }
 
-  const body = new URLSearchParams()
-  body.append('client_id', apiConfig.clientId)
-  body.append('redirect_uri', apiConfig.redirectUri)
-  body.append('client_secret', clientSecret)
-  body.append('refresh_token', refreshToken)
-  body.append('grant_type', 'refresh_token')
+  refreshInFlight ??= refreshAccessToken(refreshToken).finally(() => {
+    refreshInFlight = null
+  })
 
-  let resp
-  try {
-    resp = await axiosInstance.post(apiConfig.authApi, body, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    })
-  } catch (error: any) {
-    // A rejected refresh token means the site must be re-authorised: reply with an
-    // empty token so callers return 403 and the client opens the OAuth flow.
-    console.error('Failed to refresh access token:', error?.response?.data ?? error?.message)
-    return ''
-  }
-
-  if ('access_token' in resp.data && 'refresh_token' in resp.data) {
-    const { expires_in, access_token, refresh_token } = resp.data
-    await storeOdAuthTokens({
-      accessToken: access_token,
-      accessTokenExpiry: parseInt(expires_in),
-      refreshToken: refresh_token,
-    })
-    console.log('Fetch new access token with stored refresh token.')
-    return access_token
-  }
-
-  return ''
+  return refreshInFlight
 }
 
 /**

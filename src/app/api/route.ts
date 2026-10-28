@@ -5,6 +5,7 @@ import axiosInstance from '../../utils/axiosInstance'
 import apiConfig from '../../../config/api.config'
 import siteConfig from '../../../config/site.config'
 import { checkAuthRoute, encodePath, getAccessToken, storeTokensFromRequestBody } from '../../lib/odApi'
+import { hasStoredRefreshToken } from '../../utils/odAuthTokenStore'
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
@@ -41,7 +42,10 @@ export async function GET(request: NextRequest) {
   const accessToken = await getAccessToken()
 
   if (!accessToken) {
-    return NextResponse.json({ error: 'No access token.' }, { status: 403 })
+    // Only redirect the visitor to the setup wizard when nothing has been stored
+    // yet; a failed refresh must not look like a first-time setup.
+    const setupRequired = !(await hasStoredRefreshToken())
+    return NextResponse.json({ error: 'No access token.', setupRequired }, { status: 403 })
   }
 
   const odTokenHeader = request.headers.get('od-protected-token') || ''

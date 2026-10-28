@@ -217,7 +217,7 @@ const Navbar = () => {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="my-8 inline-block w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle transition-all dark:bg-gray-900">
+              <DialogPanel className="relative z-10 my-8 inline-block w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-left align-middle transition-all dark:bg-gray-900">
                 <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
                   {t('Clear all tokens?')}
                 </DialogTitle>

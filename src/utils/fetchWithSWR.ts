@@ -16,7 +16,10 @@ export async function fetcher([url, token]: [url: string, token?: string]): Prom
         : axios.get(url))
     ).data
   } catch (err: any) {
-    throw { status: err.response.status, message: err.response.data }
+    throw {
+      status: err.response?.status ?? 0,
+      message: err.response?.data ?? { error: err.message ?? 'Network error' },
+    }
   }
 }
 

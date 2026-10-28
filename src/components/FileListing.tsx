@@ -180,21 +180,31 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
 
   const { data, error, size, setSize } = useProtectedSWRInfinite(path)
 
-  // If error includes 403 which means the user has not completed initial setup, redirect to OAuth page
+  // 403 with setupRequired means the site has no stored credentials yet: run setup.
+  // Any other failure stays on the page, so a token refresh hiccup cannot throw the
+  // visitor out to the OAuth wizard mid-browse.
+  const setupRequired = error?.status === 403 && Boolean(error?.message?.setupRequired)
+
   useEffect(() => {
-    if (error?.status === 403) {
+    if (setupRequired) {
       router.replace('/onedrive-vercel-index-oauth/step-1')
     }
-  }, [error, router])
+  }, [setupRequired, router])
 
   if (error) {
-    if (error.status === 403) {
+    if (setupRequired) {
       return <div />
     }
 
     return (
       <PreviewContainer>
-        {error.status === 401 ? <Auth redirect={path} /> : <FourOhFour errorMsg={JSON.stringify(error.message)} />}
+        {error.status === 401 ? (
+          <Auth redirect={path} />
+        ) : (
+          <FourOhFour
+            errorMsg={typeof error.message?.error === 'string' ? error.message.error : JSON.stringify(error.message)}
+          />
+        )}
       </PreviewContainer>
     )
   }

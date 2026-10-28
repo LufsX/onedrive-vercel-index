@@ -9,6 +9,23 @@ const getKv = () => getRedisClient()
 const accessTokenKey = () => `${siteConfig.kvPrefix}access_token`
 const refreshTokenKey = () => `${siteConfig.kvPrefix}refresh_token`
 
+/** Whether a refresh token is stored (used to distinguish "not set up" from "temporarily failing"). */
+export async function hasStoredRefreshToken(): Promise<boolean> {
+  try {
+    const pipeline = getKv().pipeline()
+    pipeline.exists(refreshTokenKey())
+    const result = await pipeline.exec()
+    const [error, exists] = result?.[0] ?? []
+
+    // When Redis itself is unavailable we cannot tell: assume configured, so
+    // visitors are not pushed back into the setup wizard by an outage.
+    if (error) return true
+    return Number(exists) > 0
+  } catch {
+    return true
+  }
+}
+
 export async function getOdAuthTokens(): Promise<{ accessToken: unknown; refreshToken: unknown }> {
   const kv = getKv()
 
@@ -22,6 +39,15 @@ export async function getOdAuthTokens(): Promise<{ accessToken: unknown; refresh
   return {
     accessToken: results?.[0]?.[1] ?? null,
     refreshToken: results?.[1]?.[1] ?? null,
+  }
+}
+
+/** Remaining lifetime of the stored access token in seconds (-1 when unknown/none). */
+export async function getAccessTokenTtl(): Promise<number> {
+  try {
+    return await getKv().ttl(accessTokenKey())
+  } catch {
+    return -1
   }
 }
 

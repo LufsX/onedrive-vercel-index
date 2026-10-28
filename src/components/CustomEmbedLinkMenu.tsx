@@ -5,7 +5,7 @@ import { useTranslations } from './ClientProviders'
 import { Dialog, DialogPanel, DialogTitle, Description, Transition, TransitionChild } from '@headlessui/react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCopy } from '@fortawesome/free-regular-svg-icons'
-import { faCheck } from '@fortawesome/free-solid-svg-icons'
+import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { useClipboard } from 'use-clipboard-copy'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
@@ -64,7 +64,7 @@ export default function CustomEmbedLinkMenu({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-white/60 dark:bg-gray-800/60" />
+            <div className="fixed inset-0 bg-gray-900/30 backdrop-blur-xs dark:bg-gray-900/70" />
           </TransitionChild>
 
           {/* This element is to trick the browser into centering the modal contents. */}
@@ -80,10 +80,20 @@ export default function CustomEmbedLinkMenu({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <DialogPanel className="inline-block max-h-[80vh] w-full max-w-3xl transform overflow-hidden overflow-y-scroll rounded border border-gray-400/30 bg-white p-4 text-left align-middle text-sm shadow-xl transition-all dark:bg-gray-900 dark:text-white">
-              <DialogTitle as="h3" className="py-2 text-xl font-bold">
-                {t('Customise direct link')}
-              </DialogTitle>
+            <DialogPanel className="relative z-10 inline-block max-h-[80vh] w-full max-w-3xl transform overflow-hidden overflow-y-auto rounded border border-gray-400/30 bg-white p-4 text-left align-middle text-sm shadow-2xl ring-1 ring-black/5 transition-all dark:bg-gray-900 dark:text-white">
+              <div className="flex items-start justify-between gap-4">
+                <DialogTitle as="h3" className="py-2 text-xl font-bold">
+                  {t('Customise direct link')}
+                </DialogTitle>
+                <button
+                  type="button"
+                  aria-label={t('Close')}
+                  className="mt-2 cursor-pointer rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                  onClick={closeMenu}
+                >
+                  <FontAwesomeIcon icon={faXmark} />
+                </button>
+              </div>
               <Description as="p" className="py-2 opacity-80">
                 <>
                   {t('Change the raw file direct link to a URL ending with the extension of the file.')}{' '}

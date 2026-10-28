@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolder } from '@fortawesome/free-regular-svg-icons'
 import { faSearch } from '@fortawesome/free-solid-svg-icons'
-import { Dialog, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
+import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 
 import type { OdDriveItem, OdSearchResult } from '../types'
 import { LoadingIcon } from './Loading'
@@ -217,7 +217,7 @@ export default function SearchModal({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-white/80 dark:bg-gray-800/80" />
+            <div className="fixed inset-0 bg-gray-900/30 backdrop-blur-xs dark:bg-gray-900/70" />
           </TransitionChild>
 
           <TransitionChild
@@ -229,7 +229,7 @@ export default function SearchModal({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <div className="my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-xl transition-all">
+            <DialogPanel className="relative z-10 my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-2xl ring-1 ring-black/5 transition-all">
               <DialogTitle
                 as="h3"
                 className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white"
@@ -250,10 +250,7 @@ export default function SearchModal({
                   ESC
                 </div>
               </DialogTitle>
-              <div
-                className="max-h-[80vh] overflow-x-hidden overflow-y-scroll bg-white dark:bg-gray-900 dark:text-white"
-                onClick={closeSearchBox}
-              >
+              <div className="max-h-[80vh] overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 dark:text-white">
                 {results.loading && (
                   <div className="px-4 py-12 text-center text-sm font-medium">
                     <LoadingIcon className="svg-inline--fa mr-2 inline-block h-4 w-4 animate-spin" />
@@ -275,7 +272,7 @@ export default function SearchModal({
                   </>
                 )}
               </div>
-            </div>
+            </DialogPanel>
           </TransitionChild>
         </div>
       </Dialog>
