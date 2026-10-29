@@ -178,7 +178,11 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
 
   const path = queryToPath(query)
 
-  const { data, error, size, setSize } = useProtectedSWRInfinite(path)
+  // Grid cards render preview images, which the listing includes when asked for.
+  const { data, error, size, setSize } = useProtectedSWRInfinite(
+    path,
+    layout.name === 'Grid' ? { thumbnails: 'medium' } : {},
+  )
 
   // 403 with setupRequired means the site has no stored credentials yet: run setup.
   // Any other failure stays on the page, so a token refresh hiccup cannot throw the

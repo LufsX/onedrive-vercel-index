@@ -14,11 +14,10 @@ import { formatModifiedDateTime } from '../utils/fileDetails'
 import { Checkbox, ChildIcon, ChildName, Downloading } from './FileListing'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 
-const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
-  // We use the generated medium thumbnail for rendering preview images (excluding folders)
-  const hashedToken = getStoredToken(path)
-  const thumbnailUrl =
-    'folder' in c ? null : `/api/thumbnail/?path=${path}&size=medium${hashedToken ? `&odpt=${hashedToken}` : ''}`
+const GridItem = ({ c }: { c: OdFolderChildren }) => {
+  // The listing carries a thumbnail URL for media files; everything else (and any
+  // item Graph has no preview for) falls back to the file icon.
+  const thumbnailUrl = 'folder' in c ? undefined : (c as { thumbnailUrl?: string }).thumbnailUrl
 
   // Some thumbnails are broken, so we check for onerror event in the image component
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
@@ -193,7 +192,7 @@ const FolderGridLayout = ({
             </div>
 
             <Link href={getItemPath(c.name)}>
-              <GridItem c={c} path={getItemPath(c.name)} />
+              <GridItem c={c} />
             </Link>
           </div>
         ))}

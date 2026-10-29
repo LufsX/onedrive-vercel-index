@@ -3,8 +3,8 @@ import { posix as pathPosix } from 'path'
 
 import axiosInstance from '../../utils/axiosInstance'
 import apiConfig from '../../../config/api.config'
-import siteConfig from '../../../config/site.config'
 import { checkAuthRoute, encodePath, getAccessToken, storeTokensFromRequestBody } from '../../lib/odApi'
+import { getDrivePath, type ThumbnailSize } from '../../lib/driveListing'
 import { hasStoredRefreshToken } from '../../utils/odAuthTokenStore'
 
 export async function POST(request: NextRequest) {
@@ -29,6 +29,11 @@ export async function GET(request: NextRequest) {
   const raw = searchParams.get('raw') === 'true'
   const next = searchParams.get('next') || ''
   const sort = searchParams.get('sort') || ''
+  const thumbnailsParam = searchParams.get('thumbnails') || ''
+  const thumbnails: ThumbnailSize | undefined =
+    thumbnailsParam === 'large' || thumbnailsParam === 'small' || thumbnailsParam === 'medium'
+      ? thumbnailsParam
+      : undefined
 
   const headers = new Headers()
   headers.set('Cache-Control', apiConfig.cacheControlHeader)
@@ -59,14 +64,10 @@ export async function GET(request: NextRequest) {
     headers.set('Cache-Control', 'no-cache')
   }
 
-  const requestPath = encodePath(cleanPath)
-  const requestUrl = `${apiConfig.driveApi}/root${requestPath}`
-  const isRoot = requestPath === ''
-
   if (raw) {
     headers.set('Cache-Control', 'no-cache')
 
-    const { data } = await axiosInstance.get(requestUrl, {
+    const { data } = await axiosInstance.get(`${apiConfig.driveApi}/root${encodePath(cleanPath)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: {
         select: 'id,@microsoft.graph.downloadUrl',
@@ -81,36 +82,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { data: identityData } = await axiosInstance.get(requestUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: {
-        select: 'name,size,id,lastModifiedDateTime,folder,file,video,image',
-      },
-    })
+    // Protected folders hold a password check, so their responses stay uncached.
+    const response = await getDrivePath(cleanPath, accessToken, { next, sort, thumbnails }, message === '')
 
-    if ('folder' in identityData) {
-      const { data: folderData } = await axiosInstance.get(`${requestUrl}${isRoot ? '' : ':'}/children`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        params: {
-          ...{
-            select: 'name,size,id,lastModifiedDateTime,folder,file,video,image',
-            $top: siteConfig.maxItems,
-          },
-          ...(next ? { $skipToken: next } : {}),
-          ...(sort ? { $orderby: sort } : {}),
-        },
-      })
-
-      const nextPage = folderData['@odata.nextLink']
-        ? folderData['@odata.nextLink'].match(/&\$skiptoken=(.+)/i)[1]
-        : null
-
-      const response = nextPage ? { folder: folderData, next: nextPage } : { folder: folderData }
-
-      return NextResponse.json(response, { headers })
-    }
-
-    return NextResponse.json({ file: identityData }, { headers })
+    return NextResponse.json(response, { headers })
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.response?.data ?? 'Internal server error.' },
