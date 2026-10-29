@@ -136,10 +136,10 @@ function OAuthStep3Content() {
               <>
                 <div className="mx-auto w-52">
                   <Image
-                    src="/images/fabulous-fireworks-off.png"
+                    src="/images/fabulous-celebration.png"
                     width={912}
                     height={912}
-                    alt="fabulous fireworks off"
+                    alt="fabulous celebration"
                     priority
                   />
                 </div>
