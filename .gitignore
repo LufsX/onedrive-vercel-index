@@ -68,6 +68,10 @@ Temporary Items
 .vscode/*
 .hintrc
 
+# Agents
+.pi
+AGENTS.md
+
 # Local History for Visual Studio Code
 .history/
 
