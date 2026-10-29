@@ -82,9 +82,9 @@ const FolderGridLayout = ({
 
   return (
     <div className="rounded bg-white shadow-xs dark:bg-gray-900 dark:text-gray-100">
-      <div className="flex items-center border-b border-gray-900/10 px-3 text-xs font-bold tracking-widest text-gray-600 uppercase dark:border-gray-500/30 dark:text-gray-400">
-        <div className="flex-1">{t('{{count}} item(s)', { count: folderChildren.length })}</div>
-        <div className="flex p-1.5 text-gray-700 dark:text-gray-400">
+      <div className="flex items-center border-b border-gray-900/10 pl-3 text-xs font-bold tracking-widest text-gray-600 uppercase dark:border-gray-500/30 dark:text-gray-400">
+        <div className="min-w-0 flex-1 py-2">{t('{{count}} item(s)', { count: folderChildren.length })}</div>
+        <div className="flex shrink-0 items-center gap-1 pr-3 text-gray-700 dark:text-gray-400">
           <Checkbox
             checked={totalSelected}
             onChange={toggleTotalSelected}

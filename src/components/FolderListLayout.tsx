@@ -15,21 +15,34 @@ import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
 import { Downloading, Checkbox, ChildIcon, ChildName } from './FileListing'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 
+/**
+ * The name/date/size block and the right hand action block use fixed widths, so
+ * the header and every row line up and the action icons can never overflow the
+ * card on narrow screens. Below `md` only the name is shown.
+ */
+// Shared by the header and every row so the columns line up exactly.
+const rowShell = 'flex min-w-0 items-center gap-3 px-3'
+const nameArea = 'flex min-w-0 flex-1 items-center gap-2'
+const dateWidth = 'hidden w-44 shrink-0 overflow-hidden text-ellipsis whitespace-nowrap md:block'
+const sizeWidth = 'hidden w-20 shrink-0 truncate md:block'
+const dateCell = `${dateWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
+const sizeCell = `${sizeWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
+const rightCell = 'hidden shrink-0 items-center justify-end gap-1 pr-3 md:flex md:w-[136px] 2xl:w-[200px]'
+const actionButton =
+  'cursor-pointer rounded p-1.5 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900'
+const rowAction = 'cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600'
+
 const FileListItem: FC<{ fileContent: OdFolderChildren }> = ({ fileContent: c }) => {
   return (
-    <div className="grid cursor-pointer grid-cols-10 items-center gap-2 px-3 py-2.5">
-      <div className="col-span-10 flex items-center gap-2 truncate md:col-span-6" title={c.name}>
+    <div className={`${rowShell} py-2.5`}>
+      <div className={nameArea} title={c.name}>
         <div className="w-5 shrink-0 text-center">
           <ChildIcon child={c} />
         </div>
         <ChildName name={c.name} folder={Boolean(c.folder)} />
       </div>
-      <div className="col-span-3 hidden shrink-0 font-mono text-sm text-gray-700 md:block dark:text-gray-500">
-        {formatModifiedDateTime(c.lastModifiedDateTime)}
-      </div>
-      <div className="col-span-1 hidden shrink-0 truncate font-mono text-sm text-gray-700 md:block dark:text-gray-500">
-        {humanFileSize(c.size)}
-      </div>
+      <div className={dateCell}>{formatModifiedDateTime(c.lastModifiedDateTime)}</div>
+      <div className={sizeCell}>{humanFileSize(c.size)}</div>
     </div>
   )
 }
@@ -58,118 +71,104 @@ const FolderListLayout = ({
 
   return (
     <div className="rounded bg-white shadow-xs dark:bg-gray-900 dark:text-gray-100">
-      <div className="grid grid-cols-12 items-center gap-2 border-b border-gray-900/10 px-3 dark:border-gray-500/30">
-        <div className="col-span-12 py-2 text-xs font-bold tracking-widest text-gray-600 uppercase md:col-span-6 dark:text-gray-300">
-          {t('Name')}
+      <div className="flex items-center border-b border-gray-900/10 text-xs font-bold tracking-widest text-gray-600 uppercase dark:border-gray-500/30 dark:text-gray-300">
+        <div className={`${rowShell} flex-1 py-2`}>
+          <div className="min-w-0 flex-1">{t('Name')}</div>
+          <div className={dateWidth}>{t('Last Modified')}</div>
+          <div className={sizeWidth}>{t('Size')}</div>
         </div>
-        <div className="col-span-3 hidden text-xs font-bold tracking-widest text-gray-600 uppercase md:block dark:text-gray-300">
-          {t('Last Modified')}
-        </div>
-        <div className="hidden text-xs font-bold tracking-widest text-gray-600 uppercase md:block dark:text-gray-300">
-          {t('Size')}
-        </div>
-        <div className="hidden text-xs font-bold tracking-widest text-gray-600 uppercase md:block dark:text-gray-300">
-          {t('Actions')}
-        </div>
-        <div className="hidden text-xs font-bold tracking-widest text-gray-600 uppercase md:block dark:text-gray-300">
-          <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
-            <Checkbox
-              checked={totalSelected}
-              onChange={toggleTotalSelected}
-              indeterminate={true}
-              title={t('Select files')}
-            />
+        <div className={`${rightCell} text-gray-700 dark:text-gray-400`}>
+          {/* The label can shrink, so it truncates instead of pushing the buttons out. */}
+          <span className="mr-auto hidden min-w-0 truncate 2xl:inline">{t('Actions')}</span>
+          <button
+            title={t('Copy selected files permalink')}
+            className={actionButton}
+            disabled={totalSelected === 0}
+            onClick={() => {
+              clipboard.copy(handleSelectedPermalink(getBaseUrl()))
+              toast.success(t('Copied selected files permalink.'))
+            }}
+          >
+            <FontAwesomeIcon icon={faCopy} size="lg" />
+          </button>
+          {totalGenerating ? (
+            <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
+          ) : (
             <button
-              title={t('Copy selected files permalink')}
-              className="cursor-pointer rounded p-1.5 hover:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white dark:hover:bg-gray-600 disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900"
+              title={t('Download selected files')}
+              className={actionButton}
               disabled={totalSelected === 0}
-              onClick={() => {
-                clipboard.copy(handleSelectedPermalink(getBaseUrl()))
-                toast.success(t('Copied selected files permalink.'))
-              }}
+              onClick={handleSelectedDownload}
             >
-              <FontAwesomeIcon icon={faCopy} size="lg" />
+              <FontAwesomeIcon icon={faArrowAltCircleDown} size="lg" />
             </button>
-            {totalGenerating ? (
-              <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
-            ) : (
-              <button
-                title={t('Download selected files')}
-                className="cursor-pointer rounded p-1.5 hover:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white dark:hover:bg-gray-600 disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900"
-                disabled={totalSelected === 0}
-                onClick={handleSelectedDownload}
-              >
-                <FontAwesomeIcon icon={faArrowAltCircleDown} size="lg" />
-              </button>
-            )}
-          </div>
+          )}
+          <Checkbox
+            checked={totalSelected}
+            onChange={toggleTotalSelected}
+            indeterminate={true}
+            title={t('Select files')}
+          />
         </div>
       </div>
 
       {folderChildren.map((c: OdFolderChildren) => (
         <div
-          className="dark:hover:bg-gray-850 grid grid-cols-12 transition-all duration-100 hover:bg-gray-100"
+          className="dark:hover:bg-gray-850 flex items-center transition-all duration-100 hover:bg-gray-100"
           key={c.id}
         >
-          <Link
-            href={`${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`}
-
-            className="col-span-12 md:col-span-10"
-          >
+          <Link href={getItemPath(c.name)} className="min-w-0 flex-1 text-gray-700 dark:text-gray-400">
             <FileListItem fileContent={c} />
           </Link>
 
-          {c.folder ? (
-            <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
-              <span
-                title={t('Copy folder permalink')}
-                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
-                onClick={() => {
-                  clipboard.copy(`${getBaseUrl()}${`${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`}`)
-                  toast(t('Copied folder permalink.'), { icon: '👌' })
-                }}
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </span>
-              {folderGenerating[c.id] ? (
-                <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
-              ) : (
+          <div className={`${rightCell} text-gray-700 dark:text-gray-400`}>
+            {c.folder ? (
+              <>
                 <span
-                  title={t('Download folder')}
-                  className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                  title={t('Copy folder permalink')}
+                  className={rowAction}
                   onClick={() => {
-                    const p = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
-                    handleFolderDownload(p, c.id, c.name)()
+                    clipboard.copy(`${getBaseUrl()}${getItemPath(c.name)}`)
+                    toast(t('Copied folder permalink.'), { icon: '👌' })
                   }}
                 >
-                  <FontAwesomeIcon icon={faArrowAltCircleDown} />
+                  <FontAwesomeIcon icon={faCopy} />
                 </span>
-              )}
-            </div>
-          ) : (
-            <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
-              <span
-                title={t('Copy raw file permalink')}
-                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
-                onClick={() => {
-                  clipboard.copy(
-                    `${getBaseUrl()}/api/raw/?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
-                  )
-                  toast.success(t('Copied raw file permalink.'))
-                }}
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </span>
-              <a
-                title={t('Download file')}
-                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
-                href={`/api/raw/?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-              >
-                <FontAwesomeIcon icon={faArrowAltCircleDown} />
-              </a>
-            </div>
-          )}
-          <div className="hidden p-1.5 text-gray-700 md:flex dark:text-gray-400">
+                {folderGenerating[c.id] ? (
+                  <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
+                ) : (
+                  <span
+                    title={t('Download folder')}
+                    className={rowAction}
+                    onClick={handleFolderDownload(getItemPath(c.name), c.id, c.name)}
+                  >
+                    <FontAwesomeIcon icon={faArrowAltCircleDown} />
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <span
+                  title={t('Copy raw file permalink')}
+                  className={rowAction}
+                  onClick={() => {
+                    clipboard.copy(
+                      `${getBaseUrl()}/api/raw?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+                    )
+                    toast.success(t('Copied raw file permalink.'))
+                  }}
+                >
+                  <FontAwesomeIcon icon={faCopy} />
+                </span>
+                <a
+                  title={t('Download file')}
+                  className={rowAction}
+                  href={`/api/raw?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+                >
+                  <FontAwesomeIcon icon={faArrowAltCircleDown} />
+                </a>
+              </>
+            )}
             {!c.folder && !(c.name === '.password') && (
               <Checkbox
                 checked={selected[c.id] ? 2 : 0}

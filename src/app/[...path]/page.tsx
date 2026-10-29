@@ -31,8 +31,8 @@ export default async function FoldersPage(props: PageProps) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-white dark:bg-gray-900">
       <main className="flex w-full flex-1 flex-col bg-gray-50 dark:bg-gray-800">
         <Navbar />
-        <div className="mx-auto w-full max-w-5xl py-4 sm:p-4">
-          <nav className="mb-4 flex items-center justify-between gap-3 px-4 sm:px-0 sm:pl-1">
+        <div className="mx-auto w-full max-w-5xl p-4">
+          <nav className="mb-4 flex items-center justify-between gap-3 sm:pl-1">
             <Breadcrumb query={query} />
             <SwitchLayout />
           </nav>
