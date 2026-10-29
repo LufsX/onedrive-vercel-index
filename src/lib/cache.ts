@@ -73,6 +73,10 @@ export function rememberKinds(
   }
 }
 
+export function rememberKind(path: string, kind: 'file' | 'folder', ttlMs: number): void {
+  kinds.set(path, { kind, expires: Date.now() + ttlMs })
+}
+
 export function knownKind(path: string): 'file' | 'folder' | undefined {
   const hit = kinds.get(path)
   if (!hit) return undefined

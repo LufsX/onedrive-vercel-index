@@ -1,7 +1,7 @@
 import axiosInstance from '../utils/axiosInstance'
 import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
-import { cacheKeyFor, cached, knownKind, rememberKinds } from './cache'
+import { cacheKeyFor, cached, knownKind, rememberKind, rememberKinds } from './cache'
 import { encodePath } from './odApi'
 
 export const METADATA_CACHE_TTL_MS = 30 * 1000
@@ -11,6 +11,9 @@ export type ThumbnailSize = 'large' | 'medium' | 'small'
 const SELECT = 'name,size,id,lastModifiedDateTime,folder,file,video,image'
 
 export type OdAPIResult = { file?: any; folder?: any; next?: string }
+
+/** Statuses Graph returns when a path is a file, not a listable folder. */
+const NOT_A_FOLDER = [400, 404, 422]
 
 /** Replace each child's thumbnail set with the single URL the UI needs. */
 function flattenThumbnails(folder: any, size: ThumbnailSize): any {
@@ -33,10 +36,15 @@ function flattenThumbnails(folder: any, size: ThumbnailSize): any {
 /**
  * Metadata for one drive path: a folder listing, or a single file.
  *
- * Shared by `/api` and `/api/thumbnails`, and folder listings cost a single Graph
- * round trip because the children call is made first (only a file path needs the
- * extra item request). Asking for thumbnails expands them in that same call
- * instead of spending one request per file.
+ * Graph has separate endpoints for the two, and picking the wrong one costs a
+ * wasted round trip, so the order is chosen from what we already know:
+ *
+ * - a path a previous listing identified as a file skips the folder probe;
+ * - a path whose last segment carries a file extension (a direct link or a
+ *   preview) is asked for as an item first;
+ * - everything else is asked for as a folder first.
+ *
+ * Each of those is one Graph call in the common case.
  */
 export async function loadDrivePath(
   cleanPath: string,
@@ -48,22 +56,15 @@ export async function loadDrivePath(
   const requestUrl = `${apiConfig.driveApi}/root${requestPath}`
   const isRoot = requestPath === ''
 
-  const fetchItem = async (): Promise<OdAPIResult> => {
+  const fetchItem = async (): Promise<any> => {
     const { data } = await axiosInstance.get(requestUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: { select: SELECT },
     })
-
-    // A folder we cannot list renders as an empty folder instead of an error.
-    if ('folder' in data) return { folder: { ...data, value: [] } }
-
-    return { file: data }
+    return data
   }
 
-  // A path the listings already identified as a file needs no folder probe.
-  if (knownKind(cleanPath) === 'file') return fetchItem()
-
-  try {
+  const fetchChildren = async (): Promise<OdAPIResult> => {
     const { data: folderData } = await axiosInstance.get(`${requestUrl}${isRoot ? '' : ':'}/children`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: {
@@ -86,9 +87,40 @@ export async function loadDrivePath(
     const folder = thumbnails ? flattenThumbnails(folderData, thumbnails) : folderData
 
     return nextPage ? { folder, next: nextPage } : { folder }
+  }
+
+  const lastSegment = cleanPath.split('/').filter(Boolean).pop() ?? ''
+  const looksLikeFile = /\.[^./]{1,16}$/.test(lastSegment)
+  const kind = knownKind(cleanPath)
+
+  if (kind === 'file' || (kind === undefined && looksLikeFile)) {
+    const item = await fetchItem()
+
+    if ('file' in item) {
+      rememberKind(cleanPath, 'file', METADATA_CACHE_TTL_MS)
+      return { file: item }
+    }
+
+    // The name fooled us: it is a folder, so list it instead.
+    rememberKind(cleanPath, 'folder', METADATA_CACHE_TTL_MS)
+    return fetchChildren()
+  }
+
+  try {
+    return await fetchChildren()
   } catch (error: any) {
-    if (error?.response?.status !== 404) throw error
-    return fetchItem()
+    // 400/404/422 all mean "this path is not a folder" for a file path.
+    if (!NOT_A_FOLDER.includes(error?.response?.status)) throw error
+
+    const item = await fetchItem()
+
+    if ('file' in item) {
+      rememberKind(cleanPath, 'file', METADATA_CACHE_TTL_MS)
+      return { file: item }
+    }
+
+    // A folder we cannot list renders as an empty folder instead of an error.
+    return { folder: { ...item, value: [] } }
   }
 }
 
