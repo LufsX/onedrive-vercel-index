@@ -98,6 +98,11 @@ export default function OAuthStep2() {
                 : '❌ No valid code extracted.'}
             </p>
 
+            <p className="py-1 text-sm font-medium text-yellow-600 dark:text-yellow-500">
+              <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" /> The code can only be used once and expires
+              in about 10 minutes. Paste the redirected URL and press &quot;Get tokens&quot; right away.
+            </p>
+
             <div className="mt-6 mb-2 text-right">
               <button
                 className="rounded-lg bg-gradient-to-br from-green-500 to-cyan-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 focus:ring-green-200 disabled:cursor-not-allowed disabled:grayscale dark:focus:ring-green-800"

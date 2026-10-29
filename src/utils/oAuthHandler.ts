@@ -78,8 +78,19 @@ export async function requestTokenWithAuthCode(
       return { expiryTime: expires_in, accessToken: access_token, refreshToken: refresh_token }
     })
     .catch(err => {
-      const { error, error_description, error_uri } = err.response.data
-      return { error, errorDescription: error_description, errorUri: error_uri }
+      // A network failure has no response body; never let the wizard sit on
+      // "Requesting tokens..." forever.
+      const data = err?.response?.data
+      if (!data || typeof data !== 'object' || !('error' in data)) {
+        return {
+          error: 'network_error',
+          errorDescription: err?.message ?? 'Could not reach the Microsoft token endpoint.',
+          errorUri: '',
+        }
+      }
+
+      const { error, error_description, error_uri } = data
+      return { error, errorDescription: error_description ?? '', errorUri: error_uri ?? '' }
     })
 }
 
@@ -87,11 +98,18 @@ export async function requestTokenWithAuthCode(
 // in the Microsoft Graph API. If the userPrincipalName matches, proceed with token storing.
 export async function getAuthPersonInfo(accessToken: string) {
   const profileApi = apiConfig.driveApi.replace('/drive', '')
-  return axios.get(profileApi, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
+
+  try {
+    const response = await axios.get(profileApi, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    return { data: response.data, status: response.status }
+  } catch (error: any) {
+    return { data: error?.response?.data ?? {}, status: error?.response?.status ?? 0 }
+  }
 }
 
 export async function sendTokenToServer(accessToken: string, refreshToken: string, expiryTime: string) {
