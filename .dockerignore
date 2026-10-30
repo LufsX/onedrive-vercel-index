@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.vercel
+.env*
+coverage
+*.tsbuildinfo
+*.log
+*.pem
+dump.rdb
+.pi
+.history
