@@ -1,15 +1,15 @@
 'use client'
 
-import { Children, isValidElement, type FC } from 'react'
+import { useClientConfig } from '../ClientConfigProvider'
+
+import { Children, isValidElement, lazy, Suspense, type FC } from 'react'
 import { rawFileUrl } from '../../utils/rawFileUrl'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
-import rehypeRaw from 'rehype-raw'
 import { useTranslations } from '../ClientProviders'
-import { themes } from 'prism-react-renderer'
 
 import 'katex/dist/katex.min.css'
 
@@ -18,13 +18,14 @@ import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
-import CodeBlock from './CodeBlock'
+const MarkdownCodeBlock = lazy(() => import('./MarkdownCodeBlock'))
 
 const MarkdownPreview: FC<{
   file: any
   path: string
   standalone?: boolean
 }> = ({ file, path, standalone = true }) => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   // The parent folder of the markdown file, which is also the relative image folder
   const parentPath = standalone ? path.substring(0, path.lastIndexOf('/')) : path
 
@@ -32,13 +33,13 @@ const MarkdownPreview: FC<{
     response: content,
     error,
     validating,
-  } = useFileContent(rawFileUrl(`${parentPath}/${encodeURIComponent(file.name)}`), path)
+  } = useFileContent(rawFileUrl(`${parentPath}/${encodeURIComponent(file.name)}`), path, protectedRoutes)
   const t = useTranslations()
 
   const imageUrl = (src: string) => {
     if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(src)) return src
     const resolved = new URL(src, `https://preview.invalid${parentPath.replace(/\/$/, '')}/`)
-    const token = getStoredToken(resolved.pathname)
+    const token = getStoredToken(resolved.pathname, protectedRoutes)
     return rawFileUrl(resolved.pathname, token ? { odpt: token } : {})
   }
   // Custom renderer:
@@ -82,12 +83,9 @@ const MarkdownPreview: FC<{
       const language = /language-([^\s]+)/.exec(child.props.className || '')?.[1] || 'text'
       return (
         <pre>
-          <CodeBlock
-            code={String(child.props.children ?? '').replace(/\n$/, '')}
-            language={language}
-            theme={themes.vsDark}
-            withinPre
-          />
+          <Suspense fallback={<code>{child.props.children}</code>}>
+            <MarkdownCodeBlock code={String(child.props.children ?? '').replace(/\n$/, '')} language={language} />
+          </Suspense>
         </pre>
       )
     },
@@ -119,15 +117,15 @@ const MarkdownPreview: FC<{
     <div>
       <PreviewContainer>
         <div className="markdown-body">
-          {/* Using rehypeRaw to render HTML inside Markdown is potentially dangerous, use under safe environments. (#18) */}
           <ReactMarkdown
+            skipHtml
             // @ts-ignore
             remarkPlugins={[remarkGfm, remarkMath]}
             // The type error is introduced by caniuse-lite upgrade.
             // Since type errors occur often in remark toolchain and the use is so common,
             // ignoring it shoudld be safe enough.
             // @ts-ignore
-            rehypePlugins={[rehypeKatex, rehypeRaw]}
+            rehypePlugins={[rehypeKatex]}
             components={customRenderer}
           >
             {content}
