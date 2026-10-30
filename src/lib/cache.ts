@@ -19,21 +19,28 @@ function pruneExpired<T extends { expires: number; pending?: boolean }>(entries:
 
 /** Cache successful values and coalesce concurrent loads, including loads slower than the TTL. */
 export async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
-  pruneExpired(store, Date.now())
+  const now = Date.now()
   const hit = store.get(key)
-  if (hit) return hit.promise as Promise<T>
+  if (hit && !hit.pending && hit.expires <= now) {
+    store.delete(key)
+  } else if (hit) {
+    return hit.promise as Promise<T>
+  }
 
   if (store.size >= MAX_METADATA_ENTRIES) {
-    // Evict the oldest settled entry, never a flight another caller may join.
-    const victim = [...store].find(([, entry]) => !entry.pending)
-    if (victim) {
-      store.delete(victim[0])
-    } else {
-      // At saturation, wait for a slot instead of growing a second, unbounded flight map.
-      const version = generation
-      await Promise.race([...store.values()].map(entry => entry.promise.catch(() => undefined)))
-      if (version !== generation) return load()
-      return cached(key, ttlMs, load)
+    pruneExpired(store, now)
+    if (store.size >= MAX_METADATA_ENTRIES) {
+      // Evict the oldest settled entry, never a flight another caller may join.
+      const victim = [...store].find(([, entry]) => !entry.pending)
+      if (victim) {
+        store.delete(victim[0])
+      } else {
+        // At saturation, wait for a slot instead of growing a second, unbounded flight map.
+        const version = generation
+        await Promise.race([...store.values()].map(entry => entry.promise.catch(() => undefined)))
+        if (version !== generation) return load()
+        return cached(key, ttlMs, load)
+      }
     }
   }
 
@@ -78,27 +85,41 @@ export function rememberKinds(
 ): void {
   const prefix = parentPath === '/' || parentPath === '' ? '' : parentPath
   const now = Date.now()
-  pruneExpired(kinds, now)
-  if (ttlMs <= 0) return
+  const expires = now + ttlMs
+  if (ttlMs <= 0 || expires <= now) return
+  let pruned = false
   for (const item of items) {
     const kind = item.folder ? 'folder' : item.file ? 'file' : undefined
-    if (kind) setKind(`${prefix}/${item.name}`, kind, now + ttlMs)
+    if (kind) pruned = setKind(`${prefix}/${item.name}`, kind, expires, now, pruned)
   }
 }
 
 export function rememberKind(path: string, kind: 'file' | 'folder', ttlMs: number): void {
   const now = Date.now()
-  pruneExpired(kinds, now)
-  if (ttlMs <= 0) return
-  setKind(path, kind, now + ttlMs)
+  const expires = now + ttlMs
+  if (ttlMs <= 0 || expires <= now) return
+  setKind(path, kind, expires, now)
 }
 
-function setKind(path: string, kind: 'file' | 'folder', expires: number): void {
-  if (!kinds.has(path) && kinds.size >= MAX_KIND_ENTRIES) kinds.delete(kinds.keys().next().value!)
+function setKind(path: string, kind: 'file' | 'folder', expires: number, now: number, pruned = false): boolean {
+  const entry = kinds.get(path)
+  if (entry && entry.expires <= now) kinds.delete(path)
+  if (!kinds.has(path) && kinds.size >= MAX_KIND_ENTRIES) {
+    if (!pruned) {
+      pruneExpired(kinds, now)
+      pruned = true
+    }
+    if (kinds.size >= MAX_KIND_ENTRIES) kinds.delete(kinds.keys().next().value!)
+  }
   kinds.set(path, { kind, expires })
+  return pruned
 }
 
 export function knownKind(path: string): 'file' | 'folder' | undefined {
-  pruneExpired(kinds, Date.now())
-  return kinds.get(path)?.kind
+  const entry = kinds.get(path)
+  if (entry && entry.expires <= Date.now()) {
+    kinds.delete(path)
+    return undefined
+  }
+  return entry?.kind
 }
