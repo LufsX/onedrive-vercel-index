@@ -3,18 +3,18 @@
 import type { OdFolderChildren } from '../types'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { memo, useState } from 'react'
+import { FontAwesomeIcon } from './Icon'
 import { faArrowAltCircleDown, faCopy } from '@fortawesome/free-regular-svg-icons'
 import { useClipboard } from 'use-clipboard-copy'
 import { useTranslations } from './ClientProviders'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { formatModifiedDateTime } from '../utils/fileDetails'
-import { Checkbox, ChildIcon, ChildName, Downloading } from './FileListing'
+import { Checkbox, ChildIcon, ChildName, Downloading } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 
-const GridItem = ({ c }: { c: OdFolderChildren }) => {
+const GridItem = memo(function GridItem({ c }: { c: OdFolderChildren }) {
   // The listing carries a thumbnail URL for media files; everything else (and any
   // item Graph has no preview for) falls back to the file icon.
   const thumbnailUrl = 'folder' in c ? undefined : (c as { thumbnailUrl?: string }).thumbnailUrl
@@ -56,7 +56,7 @@ const GridItem = ({ c }: { c: OdFolderChildren }) => {
       </div>
     </div>
   )
-}
+})
 
 const FolderGridLayout = ({
   path,
@@ -121,9 +121,9 @@ const FolderGridLayout = ({
         {folderChildren.map((c: OdFolderChildren) => (
           <div
             key={c.id}
-            className="group dark:hover:bg-gray-850 relative overflow-hidden rounded transition-all duration-100 hover:bg-gray-100"
+            className="group dark:hover:bg-gray-850 relative overflow-hidden rounded transition-colors duration-100 hover:bg-gray-100"
           >
-            <div className="absolute top-0 right-0 z-10 m-1 rounded bg-white/50 py-0.5 opacity-0 transition-all duration-100 group-hover:opacity-100 dark:bg-gray-900/50">
+            <div className="absolute top-0 right-0 z-10 m-1 rounded bg-white/50 py-0.5 opacity-0 transition-opacity duration-100 group-hover:opacity-100 dark:bg-gray-900/50">
               {c.folder ? (
                 <div>
                   <span
@@ -191,7 +191,7 @@ const FolderGridLayout = ({
               )}
             </div>
 
-            <Link href={getItemPath(c.name)}>
+            <Link prefetch={false} href={getItemPath(c.name)}>
               <GridItem c={c} />
             </Link>
           </div>

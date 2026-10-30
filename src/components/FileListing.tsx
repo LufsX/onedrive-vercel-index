@@ -1,13 +1,11 @@
 'use client'
 
-import type { OdFileObject, OdFolderChildren, OdFolderObject } from '../types'
+import type { OdFileObject, OdFolderObject } from '../types'
 import type { ParsedUrlQuery } from 'querystring'
-import { FC, MouseEventHandler, SetStateAction, useEffect, useRef, useState } from 'react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFolder } from '@fortawesome/free-regular-svg-icons'
+import { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FontAwesomeIcon } from './Icon'
 import { faChevronCircleDown } from '@fortawesome/free-solid-svg-icons'
-import toast, { Toaster } from 'react-hot-toast'
-import emojiRegex from 'emoji-regex'
+import toast from 'react-hot-toast'
 
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -16,24 +14,14 @@ import { useTranslations } from './ClientProviders'
 import useLocalStorage from '../utils/useLocalStorage'
 import { getPreviewType, preview } from '../utils/getPreviewType'
 import { useProtectedSWRInfinite } from '../utils/fetchWithSWR'
-import { getRawExtension, getFileIcon } from '../utils/getFileIcon'
 import { getStoredToken } from '../utils/protectedRouteHandler'
-import {
-  DownloadingToast,
-  downloadMultipleFiles,
-  downloadTreelikeMultipleFiles,
-  traverseFolder,
-} from './MultiFileDownloader'
 
 import { layouts } from './SwitchLayout'
 import Loading, { LoadingIcon } from './Loading'
-import FourOhFour from './FourOhFour'
-import Auth from './Auth'
 import { PreviewContainer } from './previews/Containers'
 
 import FolderListLayout from './FolderListLayout'
-import FolderGridLayout from './FolderGridLayout'
-
+import FeatureBoundary from './FeatureBoundary'
 const PreviewLoading = () => {
   const t = useTranslations()
 
@@ -44,9 +32,50 @@ const PreviewLoading = () => {
   )
 }
 
+const FolderGridLayout = dynamic(() => import('./FolderGridLayout'), { loading: PreviewLoading })
+const Auth = dynamic(() => import('./Auth'), { loading: PreviewLoading })
+const FourOhFour = dynamic(() => import('./FourOhFour'), { loading: PreviewLoading })
+
 // Preview dependencies are loaded only when a file needs that renderer.
+const TablePreview = dynamic(() => import('./previews/TablePreview'), { ssr: false, loading: PreviewLoading })
 const TextPreview = dynamic(() => import('./previews/TextPreview'), { ssr: false, loading: PreviewLoading })
-const MarkdownPreview = dynamic(() => import('./previews/MarkdownPreview'), { ssr: false, loading: PreviewLoading })
+const MarkdownPreview = memo(
+  dynamic(() => import('./previews/MarkdownPreview'), { ssr: false, loading: PreviewLoading }),
+)
+// README rendering can load Markdown, math and syntax highlighting dependencies.
+// Defer that work until the directory footer is near the viewport.
+const FolderReadme = memo(function FolderReadme({
+  file,
+  path,
+}: {
+  file: OdFolderObject['value'][number]
+  path: string
+}) {
+  const container = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (!container.current) return
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(container.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={container} className="mt-4 min-h-24">
+      {visible && <MarkdownPreview file={file} path={path} standalone={false} />}
+    </div>
+  )
+})
+
 const CodePreview = dynamic(() => import('./previews/CodePreview'), { ssr: false, loading: PreviewLoading })
 const OfficePreview = dynamic(() => import('./previews/OfficePreview'), { ssr: false, loading: PreviewLoading })
 const AudioPreview = dynamic(() => import('./previews/AudioPreview'), { ssr: false, loading: PreviewLoading })
@@ -73,94 +102,8 @@ const queryToPath = (query?: ParsedUrlQuery) => {
   return '/'
 }
 
-// Render the icon of a folder child (may be a file or a folder), use emoji if the name of the child contains emoji
-const renderEmoji = (name: string) => {
-  const emoji = emojiRegex().exec(name)
-  return { render: emoji && !emoji.index, emoji }
-}
-const formatChildName = (name: string) => {
-  const { render, emoji } = renderEmoji(name)
-  return render ? name.replace(emoji ? emoji[0] : '', '').trim() : name
-}
-export const ChildName: FC<{ name: string; folder?: boolean }> = ({ name, folder }) => {
-  const original = formatChildName(name)
-  const extension = folder ? '' : getRawExtension(original)
-  const prename = folder ? original : original.substring(0, original.length - extension.length)
-  return (
-    <span className="truncate before:float-right before:content-[attr(data-tail)]" data-tail={extension}>
-      {prename}
-    </span>
-  )
-}
-export const ChildIcon: FC<{ child: OdFolderChildren }> = ({ child }) => {
-  const { render, emoji } = renderEmoji(child.name)
-  return render ? (
-    <span>{emoji ? emoji[0] : '📁'}</span>
-  ) : (
-    <FontAwesomeIcon icon={child.file ? getFileIcon(child.name, { video: Boolean(child.video) }) : faFolder} />
-  )
-}
-
-export const Checkbox: FC<{
-  checked: 0 | 1 | 2
-  onChange: () => void
-  title: string
-  indeterminate?: boolean
-}> = ({ checked, onChange, title, indeterminate }) => {
-  const ref = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.checked = Boolean(checked)
-      if (indeterminate) {
-        ref.current.indeterminate = checked == 1
-      }
-    }
-  }, [ref, checked, indeterminate])
-
-  const handleClick: MouseEventHandler = e => {
-    if (ref.current) {
-      if (e.target === ref.current) {
-        e.stopPropagation()
-      } else {
-        ref.current.click()
-      }
-    }
-  }
-
-  return (
-    <span
-      title={title}
-      className="inline-flex cursor-pointer items-center rounded p-1.5 hover:bg-gray-300 dark:hover:bg-gray-600"
-      onClick={handleClick}
-    >
-      <input
-        className="form-check-input cursor-pointer"
-        type="checkbox"
-        value={checked ? '1' : ''}
-        ref={ref}
-        aria-label={title}
-        onChange={onChange}
-      />
-    </span>
-  )
-}
-
-export const Downloading: FC<{ title: string; style: string }> = ({ title, style }) => {
-  return (
-    <span title={title} className={`${style} rounded`} role="status">
-      <LoadingIcon
-        // Use fontawesome far theme via class `svg-inline--fa` to get style `vertical-align` only
-        // for consistent icon alignment, as class `align-*` cannot satisfy it
-        className="svg-inline--fa inline-block h-4 w-4 animate-spin"
-      />
-    </span>
-  )
-}
-
-const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
-  const [selected, setSelected] = useState<{ [key: string]: boolean }>({})
-  const [totalSelected, setTotalSelected] = useState<0 | 1 | 2>(0)
+const FileListingContent: FC<{ path: string }> = ({ path }) => {
+  const [selection, setSelected] = useState<Record<string, boolean>>({})
   const [totalGenerating, setTotalGenerating] = useState<boolean>(false)
   const [folderGenerating, setFolderGenerating] = useState<{
     [key: string]: boolean
@@ -172,17 +115,15 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
   const searchParams = new URLSearchParams(rawSearchParams.toString())
   const asPath = searchParams.toString() ? `${pathname}?${searchParams}` : pathname
   const hashedToken = getStoredToken(asPath)
-  const [layout] = useLocalStorage('preferredLayout', layouts[0])
+  const [layout, , layoutReady] = useLocalStorage('preferredLayout', layouts[0])
 
   const t = useTranslations()
 
-  const path = queryToPath(query)
-
   // Grid cards render preview images, which the listing includes when asked for.
-  const { data, error, size, setSize } = useProtectedSWRInfinite(
-    path,
-    layout.name === 'Grid' ? { thumbnails: 'medium' } : {},
-  )
+  const { data, error, size, setSize } = useProtectedSWRInfinite(path, {
+    ...(layout.name === 'Grid' ? { thumbnails: 'medium' as const } : {}),
+    enabled: layoutReady,
+  })
 
   // 403 with setupRequired means the site has no stored credentials yet: run setup.
   // Any other failure stays on the page, so a token refresh hiccup cannot throw the
@@ -195,7 +136,150 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
     }
   }, [setupRequired, router])
 
-  if (error) {
+  const responses: any[] = useMemo(() => (data ? [].concat(...data) : []), [data])
+  const folderChildren = useMemo<OdFolderObject['value']>(
+    () => responses.flatMap(response => response?.folder?.value ?? []),
+    [responses],
+  )
+  const readmeFile = useMemo(() => folderChildren.find(c => c.name.toLowerCase() === 'readme.md'), [folderChildren])
+  const selectableFiles = useMemo(
+    () => folderChildren.filter(c => !c.folder && c.name !== '.password'),
+    [folderChildren],
+  )
+  // Selection and bulk actions are restricted to the currently loaded files.
+  const selected = useMemo<Record<string, boolean>>(
+    () => Object.fromEntries(selectableFiles.filter(c => selection[c.id]).map(c => [c.id, true])),
+    [selectableFiles, selection],
+  )
+  const selectedCount = Object.keys(selected).length
+  const totalSelected: 0 | 1 | 2 = selectedCount === 0 ? 0 : selectedCount === selectableFiles.length ? 2 : 1
+
+  const toggleItemSelected = useCallback((id: string) => {
+    setSelected(previous => {
+      const next = { ...previous }
+      if (next[id]) delete next[id]
+      else next[id] = true
+      return next
+    })
+  }, [])
+
+  const toggleTotalSelected = useCallback(() => {
+    setSelected(previous =>
+      selectableFiles.every(c => previous[c.id]) ? {} : Object.fromEntries(selectableFiles.map(c => [c.id, true])),
+    )
+  }, [selectableFiles])
+
+  // Selected file download
+  const handleSelectedDownload = useCallback(async () => {
+    const folderName = path.substring(path.lastIndexOf('/') + 1)
+    const folder = folderName ? decodeURIComponent(folderName) : undefined
+    const files = selectableFiles
+      .filter(c => selected[c.id])
+      .map(c => ({
+        name: c.name,
+        url: `/api/raw/?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+      }))
+
+    if (files.length == 1) {
+      const el = document.createElement('a')
+      el.style.display = 'none'
+      document.body.appendChild(el)
+      el.href = files[0].url
+      el.click()
+      el.remove()
+    } else if (files.length > 1) {
+      setTotalGenerating(true)
+
+      try {
+        const { DownloadingToast, downloadMultipleFiles } = await import('./MultiFileDownloader')
+        const toastId = toast.loading(<DownloadingToast router={router} />)
+        await downloadMultipleFiles({ toastId, router, files, folder })
+          .then(() => {
+            setTotalGenerating(false)
+            toast.success(t('Finished downloading selected files.'), {
+              id: toastId,
+            })
+          })
+          .catch(() => {
+            setTotalGenerating(false)
+            toast.error(t('Failed to download selected files.'), { id: toastId })
+          })
+      } catch {
+        setTotalGenerating(false)
+        toast.error(t('Failed to download selected files.'))
+      }
+    }
+  }, [selectableFiles, selected, path, hashedToken, router, t])
+
+  // Get selected file permalink
+  const handleSelectedPermalink = useCallback(
+    (baseUrl: string) => {
+      return selectableFiles
+        .filter(c => selected[c.id])
+        .map(
+          c =>
+            `${baseUrl}/api/raw/?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+        )
+        .join('\n')
+    },
+    [selectableFiles, selected, path, hashedToken],
+  )
+
+  // Folder recursive download
+  const handleFolderDownload = useCallback(
+    (path: string, id: string, name?: string) => async () => {
+      setFolderGenerating(previous => ({ ...previous, [id]: true }))
+      try {
+        const { DownloadingToast, downloadTreelikeMultipleFiles, traverseFolder } =
+          await import('./MultiFileDownloader')
+        const files = (async function* () {
+          for await (const { meta: c, path: p, isFolder, error } of traverseFolder(path)) {
+            if (error) {
+              toast.error(
+                t('Failed to download folder {{path}}: {{status}} {{message}} Skipped it to continue.', {
+                  path: p,
+                  status: error.status,
+                  message: error.message,
+                }),
+              )
+              continue
+            }
+            const hashedTokenForPath = getStoredToken(p)
+            yield {
+              name: c?.name,
+              url: `/api/raw/?path=${p}${hashedTokenForPath ? `&odpt=${hashedTokenForPath}` : ''}`,
+              path: p,
+              isFolder,
+            }
+          }
+        })()
+
+        const toastId = toast.loading(<DownloadingToast router={router} />)
+
+        await downloadTreelikeMultipleFiles({
+          toastId,
+          router,
+          files,
+          basePath: path,
+          folder: name,
+        })
+          .then(() => {
+            setFolderGenerating(previous => ({ ...previous, [id]: false }))
+            toast.success(t('Finished downloading folder.'), { id: toastId })
+          })
+          .catch(() => {
+            setFolderGenerating(previous => ({ ...previous, [id]: false }))
+            toast.error(t('Failed to download folder.'), { id: toastId })
+          })
+      } catch {
+        setFolderGenerating(previous => ({ ...previous, [id]: false }))
+        toast.error(t('Failed to download folder.'))
+      }
+    },
+    [router, t],
+  )
+
+  if (error && (!data || error.status === 401 || error.status === 403)) {
     if (setupRequired) {
       return <div />
     }
@@ -220,144 +304,15 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
     )
   }
 
-  const responses: any[] = data ? [].concat(...data) : []
-
   const isLoadingInitialData = !data && !error
-  const isLoadingMore = isLoadingInitialData || (size > 0 && data && typeof data[size - 1] === 'undefined')
+  const pageError = Boolean(error && data)
+  const isLoadingMore =
+    !pageError && (isLoadingInitialData || (size > 0 && data && typeof data[size - 1] === 'undefined'))
   const isEmpty = data?.[0]?.length === 0
   const isReachingEnd = isEmpty || (data && typeof data[data.length - 1]?.next === 'undefined')
   const onlyOnePage = data && typeof data[0].next === 'undefined'
 
   if ('folder' in responses[0]) {
-    // Expand list of API returns into flattened file data
-    const folderChildren = [].concat(...responses.map(r => r.folder.value)) as OdFolderObject['value']
-
-    // Find README.md file to render
-    const readmeFile = folderChildren.find(c => c.name.toLowerCase() === 'readme.md')
-
-    // Filtered file list helper
-    const getFiles = () => folderChildren.filter(c => !c.folder && c.name !== '.password')
-
-    // File selection
-    const genTotalSelected = (selected: { [key: string]: boolean }) => {
-      const selectInfo = getFiles().map(c => Boolean(selected[c.id]))
-      const [hasT, hasF] = [selectInfo.some(i => i), selectInfo.some(i => !i)]
-      return hasT && hasF ? 1 : !hasF ? 2 : 0
-    }
-
-    const toggleItemSelected = (id: string) => {
-      let val: SetStateAction<{ [key: string]: boolean }>
-      if (selected[id]) {
-        val = { ...selected }
-        delete val[id]
-      } else {
-        val = { ...selected, [id]: true }
-      }
-      setSelected(val)
-      setTotalSelected(genTotalSelected(val))
-    }
-
-    const toggleTotalSelected = () => {
-      if (genTotalSelected(selected) == 2) {
-        setSelected({})
-        setTotalSelected(0)
-      } else {
-        setSelected(Object.fromEntries(getFiles().map(c => [c.id, true])))
-        setTotalSelected(2)
-      }
-    }
-
-    // Selected file download
-    const handleSelectedDownload = () => {
-      const folderName = path.substring(path.lastIndexOf('/') + 1)
-      const folder = folderName ? decodeURIComponent(folderName) : undefined
-      const files = getFiles()
-        .filter(c => selected[c.id])
-        .map(c => ({
-          name: c.name,
-          url: `/api/raw/?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
-        }))
-
-      if (files.length == 1) {
-        const el = document.createElement('a')
-        el.style.display = 'none'
-        document.body.appendChild(el)
-        el.href = files[0].url
-        el.click()
-        el.remove()
-      } else if (files.length > 1) {
-        setTotalGenerating(true)
-
-        const toastId = toast.loading(<DownloadingToast router={router} />)
-        downloadMultipleFiles({ toastId, router, files, folder })
-          .then(() => {
-            setTotalGenerating(false)
-            toast.success(t('Finished downloading selected files.'), {
-              id: toastId,
-            })
-          })
-          .catch(() => {
-            setTotalGenerating(false)
-            toast.error(t('Failed to download selected files.'), { id: toastId })
-          })
-      }
-    }
-
-    // Get selected file permalink
-    const handleSelectedPermalink = (baseUrl: string) => {
-      return getFiles()
-        .filter(c => selected[c.id])
-        .map(
-          c =>
-            `${baseUrl}/api/raw/?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
-        )
-        .join('\n')
-    }
-
-    // Folder recursive download
-    const handleFolderDownload = (path: string, id: string, name?: string) => () => {
-      const files = (async function* () {
-        for await (const { meta: c, path: p, isFolder, error } of traverseFolder(path)) {
-          if (error) {
-            toast.error(
-              t('Failed to download folder {{path}}: {{status}} {{message}} Skipped it to continue.', {
-                path: p,
-                status: error.status,
-                message: error.message,
-              }),
-            )
-            continue
-          }
-          const hashedTokenForPath = getStoredToken(p)
-          yield {
-            name: c?.name,
-            url: `/api/raw/?path=${p}${hashedTokenForPath ? `&odpt=${hashedTokenForPath}` : ''}`,
-            path: p,
-            isFolder,
-          }
-        }
-      })()
-
-      setFolderGenerating({ ...folderGenerating, [id]: true })
-      const toastId = toast.loading(<DownloadingToast router={router} />)
-
-      downloadTreelikeMultipleFiles({
-        toastId,
-        router,
-        files,
-        basePath: path,
-        folder: name,
-      })
-        .then(() => {
-          setFolderGenerating({ ...folderGenerating, [id]: false })
-          toast.success(t('Finished downloading folder.'), { id: toastId })
-        })
-        .catch(() => {
-          setFolderGenerating({ ...folderGenerating, [id]: false })
-          toast.error(t('Failed to download folder.'), { id: toastId })
-        })
-    }
-
     // Folder layout component props
     const folderProps = {
       toast,
@@ -376,9 +331,13 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
 
     return (
       <>
-        <Toaster />
-
-        {layout.name === 'Grid' ? <FolderGridLayout {...folderProps} /> : <FolderListLayout {...folderProps} />}
+        {layout.name === 'Grid' ? (
+          <FeatureBoundary>
+            <FolderGridLayout {...folderProps} />
+          </FeatureBoundary>
+        ) : (
+          <FolderListLayout {...folderProps} />
+        )}
 
         {!onlyOnePage && (
           <div className="rounded-b bg-white dark:bg-gray-900 dark:text-gray-100">
@@ -391,11 +350,16 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
                   ? t('of {{count}} file(s) -', { count: folderChildren.length, context: 'loading' })
                   : t('of {{count}} file(s) -', { count: folderChildren.length, context: 'loaded' }))}
             </div>
+            {pageError && (
+              <p role="alert" className="px-3 pt-3 text-center text-sm text-red-500">
+                {typeof error.message?.error === 'string' ? error.message.error : JSON.stringify(error.message)}
+              </p>
+            )}
             <button
               className={`flex w-full items-center justify-center gap-2 p-3 disabled:cursor-not-allowed ${
                 isLoadingMore || isReachingEnd ? 'opacity-60' : 'dark:hover:bg-gray-850 hover:bg-gray-100'
               }`}
-              onClick={() => setSize(size + 1)}
+              onClick={() => setSize(pageError ? size : size + 1)}
               disabled={isLoadingMore || isReachingEnd}
             >
               {isLoadingMore ? (
@@ -416,9 +380,9 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
         )}
 
         {readmeFile && (
-          <div className="mt-4">
-            <MarkdownPreview file={readmeFile} path={path} standalone={false} />
-          </div>
+          <FeatureBoundary key={readmeFile.id}>
+            <FolderReadme file={readmeFile} path={path} />
+          </FeatureBoundary>
         )}
       </>
     )
@@ -432,6 +396,9 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
       switch (previewType) {
         case preview.image:
           return <ImagePreview file={file} />
+
+        case preview.table:
+          return <TablePreview />
 
         case preview.text:
           return <TextPreview />
@@ -474,4 +441,13 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
     </PreviewContainer>
   )
 }
+const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
+  const path = queryToPath(query)
+  return (
+    <FeatureBoundary key={path}>
+      <FileListingContent path={path} />
+    </FeatureBoundary>
+  )
+}
+
 export default FileListing

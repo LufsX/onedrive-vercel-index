@@ -2,7 +2,8 @@
 
 import { FC } from 'react'
 import { useTranslations } from '../ClientProviders'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { rawFileUrl } from '../../utils/rawFileUrl'
 import { themes } from 'prism-react-renderer'
 
 import useFileContent from '../../utils/fetchOnMount'
@@ -16,10 +17,8 @@ import CodeBlock from './CodeBlock'
 
 const CodePreview: FC<{ file: any }> = ({ file }) => {
   const pathname = usePathname()
-  const rawSearchParams = useSearchParams()
-  const searchParams = new URLSearchParams(rawSearchParams.toString())
-  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
-  const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
+  const asPath = pathname
+  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath), asPath)
 
   const theme = useSystemTheme('dark')
   const t = useTranslations()

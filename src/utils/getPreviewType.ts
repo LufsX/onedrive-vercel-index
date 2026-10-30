@@ -11,6 +11,7 @@ export const preview = {
   office: 'ms-office',
   epub: 'epub',
   url: 'url',
+  table: 'table',
 }
 
 export const extensions = {
@@ -19,6 +20,11 @@ export const extensions = {
   jpg: preview.image,
   png: preview.image,
   webp: preview.image,
+  avif: preview.image,
+  apng: preview.image,
+  bmp: preview.image,
+  ico: preview.image,
+  jfif: preview.image,
 
   md: preview.markdown,
   markdown: preview.markdown,
@@ -32,6 +38,16 @@ export const extensions = {
   pptx: preview.office,
   xls: preview.office,
   xlsx: preview.office,
+  docm: preview.office,
+  dotx: preview.office,
+  wps: preview.office,
+  xlsm: preview.office,
+  xltx: preview.office,
+  pptm: preview.office,
+  potx: preview.office,
+
+  csv: preview.table,
+  tsv: preview.table,
 
   c: preview.code,
   cc: preview.code,
@@ -114,6 +130,9 @@ export const extensions = {
   vtt: preview.text,
   srt: preview.text,
   log: preview.text,
+  ass: preview.text,
+  ssa: preview.text,
+  lrc: preview.text,
   mp4: preview.video,
   flv: preview.video,
   webm: preview.video,
@@ -203,6 +222,7 @@ export function getLanguageByFileName(filename: string): string {
     pl: 'perl',
     pm: 'perl',
     phtml: 'php',
+    patch: 'diff',
     proto: 'protobuf',
     properties: 'ini',
     ps1: 'powershell',

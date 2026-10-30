@@ -3,16 +3,16 @@
 import type { OdFolderChildren } from '../types'
 
 import Link from 'next/link'
-import { FC } from 'react'
+import { FC, memo } from 'react'
 import { useClipboard } from 'use-clipboard-copy'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from './Icon'
 import { faArrowAltCircleDown, faCopy } from '@fortawesome/free-regular-svg-icons'
 import { useTranslations } from './ClientProviders'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
 
-import { Downloading, Checkbox, ChildIcon, ChildName } from './FileListing'
+import { Downloading, Checkbox, ChildIcon, ChildName } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 
 /**
@@ -32,7 +32,7 @@ const actionButton =
   'cursor-pointer rounded p-1.5 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900'
 const rowAction = 'cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600'
 
-const FileListItem: FC<{ fileContent: OdFolderChildren }> = ({ fileContent: c }) => {
+const FileListItem: FC<{ fileContent: OdFolderChildren }> = memo(function FileListItem({ fileContent: c }) {
   return (
     <div className={`${rowShell} py-2.5`}>
       <div className={nameArea} title={c.name}>
@@ -45,7 +45,7 @@ const FileListItem: FC<{ fileContent: OdFolderChildren }> = ({ fileContent: c })
       <div className={sizeCell}>{humanFileSize(c.size)}</div>
     </div>
   )
-}
+})
 
 const FolderListLayout = ({
   path,
@@ -114,10 +114,10 @@ const FolderListLayout = ({
 
       {folderChildren.map((c: OdFolderChildren) => (
         <div
-          className="dark:hover:bg-gray-850 flex items-center transition-all duration-100 hover:bg-gray-100"
+          className="dark:hover:bg-gray-850 flex items-center transition-colors duration-100 hover:bg-gray-100"
           key={c.id}
         >
-          <Link href={getItemPath(c.name)} className="min-w-0 flex-1 text-gray-700 dark:text-gray-400">
+          <Link prefetch={false} href={getItemPath(c.name)} className="min-w-0 flex-1 text-gray-700 dark:text-gray-400">
             <FileListItem fileContent={c} />
           </Link>
 

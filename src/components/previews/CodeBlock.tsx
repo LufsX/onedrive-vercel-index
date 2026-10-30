@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import { memo, type FC } from 'react'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import Prism from 'prismjs'
 
@@ -50,6 +50,13 @@ const languageAliases: Record<string, string> = {
   'c#': 'csharp',
   'c++': 'cpp',
   cc: 'cpp',
+  cjs: 'javascript',
+  mjs: 'javascript',
+  cts: 'typescript',
+  mts: 'typescript',
+  jsonc: 'json',
+  pyw: 'python',
+  patch: 'diff',
   clj: 'clojure',
   cljs: 'clojure',
   cljc: 'clojure',
@@ -144,4 +151,4 @@ const CodeBlock: FC<CodeBlockProps> = ({ code, language, theme, withinPre = fals
   )
 }
 
-export default CodeBlock
+export default memo(CodeBlock)

@@ -1,6 +1,8 @@
 'use client'
 
-import { FC } from 'react'
+import { Children, isValidElement, type FC } from 'react'
+import { rawFileUrl } from '../../utils/rawFileUrl'
+import { getStoredToken } from '../../utils/protectedRouteHandler'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -26,11 +28,19 @@ const MarkdownPreview: FC<{
   // The parent folder of the markdown file, which is also the relative image folder
   const parentPath = standalone ? path.substring(0, path.lastIndexOf('/')) : path
 
-  const { response: content, error, validating } = useFileContent(`/api/raw/?path=${parentPath}/${file.name}`, path)
+  const {
+    response: content,
+    error,
+    validating,
+  } = useFileContent(rawFileUrl(`${parentPath}/${encodeURIComponent(file.name)}`), path)
   const t = useTranslations()
 
-  // Check if the image is relative path instead of a absolute url
-  const isUrlAbsolute = (url: string | string[]) => url.indexOf('://') > 0 || url.indexOf('//') === 0
+  const imageUrl = (src: string) => {
+    if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(src)) return src
+    const resolved = new URL(src, `https://preview.invalid${parentPath.replace(/\/$/, '')}/`)
+    const token = getStoredToken(resolved.pathname)
+    return rawFileUrl(resolved.pathname, token ? { odpt: token } : {})
+  }
   // Custom renderer:
   const customRenderer = {
     // img: to render images in markdown with relative file paths
@@ -39,7 +49,7 @@ const MarkdownPreview: FC<{
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt={alt}
-          src={isUrlAbsolute(String(src ?? '')) ? String(src) : `/api/?path=${parentPath}/${src ?? ''}&raw=true`}
+          src={imageUrl(String(src ?? ''))}
           title={title}
           width={width}
           height={height}
@@ -49,29 +59,36 @@ const MarkdownPreview: FC<{
         />
       )
     },
-    // code: to render code blocks with Prism
-    code: (props: React.ClassAttributes<HTMLElement> & React.HTMLAttributes<HTMLElement> & { node?: any }) => {
-      const { className, children, node, ref, ...rest } = props
-
-      // Check if it is inline code by inspecting the node's tagName
-      const isInline = node?.tagName === 'code' && node?.parentNode?.tagName !== 'pre'
-
-      if (isInline) {
-        return (
-          <code className={className} ref={ref} {...rest}>
-            {children}
-          </code>
-        )
-      }
-
-      const match = /language-([^\s]+)/.exec(className || '')
+    a: ({ href, children, title }: React.ComponentProps<'a'>) => {
+      const resolved =
+        !href || href.startsWith('#') || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(href)
+          ? href
+          : (() => {
+              const url = new URL(href, `https://preview.invalid${parentPath.replace(/\/$/, '')}/`)
+              return url.pathname + url.search + url.hash
+            })()
       return (
-        <CodeBlock
-          code={String(children).replace(/\n$/, '')}
-          language={match ? match[1] : 'text'}
-          theme={themes.vsDark}
-          withinPre
-        />
+        <a href={resolved} title={title}>
+          {children}
+        </a>
+      )
+    },
+    // The parent pre owns fenced blocks; HAST nodes have no parentNode.
+    pre: ({ children }: React.ComponentProps<'pre'>) => {
+      const child = Children.toArray(children)[0]
+      if (!isValidElement<{ className?: string; children?: React.ReactNode }>(child) || child.type !== 'code') {
+        return <pre>{children}</pre>
+      }
+      const language = /language-([^\s]+)/.exec(child.props.className || '')?.[1] || 'text'
+      return (
+        <pre>
+          <CodeBlock
+            code={String(child.props.children ?? '').replace(/\n$/, '')}
+            language={language}
+            theme={themes.vsDark}
+            withinPre
+          />
+        </pre>
       )
     },
   }

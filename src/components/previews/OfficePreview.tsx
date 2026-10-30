@@ -2,52 +2,65 @@
 
 import type { OdFileObject } from '../../types'
 import { FC, useState } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import toast from 'react-hot-toast'
+import { usePathname } from 'next/navigation'
+import { rawFileUrl } from '../../utils/rawFileUrl'
 import dynamic from 'next/dynamic'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '../Icon'
 import { faMicrosoft } from '@fortawesome/free-brands-svg-icons/faMicrosoft'
 import { faFile } from '@fortawesome/free-regular-svg-icons'
 import { useTranslations } from '../ClientProviders'
+import Loading from '../Loading'
 
 const OfficeFileViewer = dynamic(() => import('office-file-viewer').then(module => module.OfficeFileViewer), {
   ssr: false,
+  loading: () => <OfficeLoading />,
 })
+
+function OfficeLoading() {
+  const t = useTranslations()
+  return <Loading loadingText={t('Loading ...')} />
+}
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer } from './Containers'
 import { getBaseUrl } from '../../utils/getBaseUrl'
-import { getStoredToken } from '../../utils/protectedRouteHandler'
+import { getStoredToken, matchProtectedRoute } from '../../utils/protectedRouteHandler'
 
 function isLocalAddress(hostname: string) {
+  const host = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '')
   return (
-    hostname === 'localhost' ||
-    hostname === '::1' ||
-    hostname === '127.0.0.1' ||
-    hostname.endsWith('.local') ||
-    /^10\./.test(hostname) ||
-    /^192\.168\./.test(hostname) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host === '::' ||
+    host === '::1' ||
+    /^f[cd][0-9a-f]{2}:/.test(host) ||
+    /^fe[89ab][0-9a-f]:/.test(host) ||
+    /^(?:0|10|127)\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
   )
 }
 
 const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const pathname = usePathname()
-  const rawSearchParams = useSearchParams()
-  const searchParams = new URLSearchParams(rawSearchParams.toString())
-  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
+  const asPath = pathname
   const t = useTranslations()
-  const filePath = asPath.split(/[?#]/)[0]
+  const filePath = asPath
   const hashedToken = getStoredToken(filePath)
+  const protectedFile = matchProtectedRoute(filePath) !== ''
   const [renderer, setRenderer] = useState<'local' | 'microsoft'>('local')
-  const [microsoftUnavailable, setMicrosoftUnavailable] = useState(false)
 
-  const rawQuery = new URLSearchParams({ path: decodeURIComponent(filePath) })
-  if (hashedToken) {
-    rawQuery.set('odpt', hashedToken)
-  }
-
-  const docUrl = `${getBaseUrl()}/api/raw/?${rawQuery}`
-  const microsoftDocUrl = encodeURIComponent(docUrl)
+  const rawUrl = rawFileUrl(filePath, hashedToken ? { odpt: hashedToken } : {})
+  const docUrl = getBaseUrl() + rawUrl.replace('/api/raw/', `/api/name/${encodeURIComponent(file.name)}`)
+  const publicDocUrl =
+    getBaseUrl() + rawFileUrl(filePath).replace('/api/raw/', `/api/name/${encodeURIComponent(file.name)}`)
+  const microsoftDocUrl = encodeURIComponent(publicDocUrl)
 
   return (
     <div>
@@ -66,7 +79,6 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
             }`}
             onClick={() => {
               setRenderer('local')
-              setMicrosoftUnavailable(false)
             }}
             title={t('Preview locally')}
             type="button"
@@ -82,11 +94,14 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
                 : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
             }`}
             onClick={() => {
-              if (isLocalAddress(window.location.hostname)) {
-                setMicrosoftUnavailable(true)
+              if (protectedFile) {
+                toast.error(t('Protected files can only be previewed locally.'), { id: 'microsoft-preview-url' })
                 return
               }
-              setMicrosoftUnavailable(false)
+              if (isLocalAddress(window.location.hostname)) {
+                toast.error(t('Microsoft preview requires a public URL.'), { id: 'microsoft-preview-url' })
+                return
+              }
               setRenderer('microsoft')
             }}
             title={t('Preview with Microsoft Office Online')}
@@ -97,13 +112,8 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
           </button>
         </div>
       </div>
-      {microsoftUnavailable && (
-        <p className="mb-3 text-right text-sm text-gray-500 dark:text-gray-400" role="status">
-          {t('Microsoft preview requires a public URL.')}
-        </p>
-      )}
       <div className="max-h-[90vh] overflow-auto">
-        {renderer === 'local' ? (
+        {renderer === 'local' || protectedFile ? (
           <OfficeFileViewer uri={docUrl} defaultFileName={file.name} height="600px" />
         ) : (
           <iframe

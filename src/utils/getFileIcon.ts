@@ -39,17 +39,31 @@ const extensions = {
   png: icons.image,
   heic: icons.image,
   webp: icons.image,
+  avif: icons.image,
+  apng: icons.image,
+  bmp: icons.image,
+  ico: icons.image,
+  jfif: icons.image,
 
   pdf: icons.pdf,
 
   doc: icons.word,
   docx: icons.word,
+  docm: icons.word,
+  dotx: icons.word,
+  wps: icons.word,
 
   ppt: icons.powerpoint,
   pptx: icons.powerpoint,
+  pptm: icons.powerpoint,
+  potx: icons.powerpoint,
 
   xls: icons.excel,
   xlsx: icons.excel,
+  xlsm: icons.excel,
+  xltx: icons.excel,
+  csv: icons.excel,
+  tsv: icons.excel,
 
   aac: icons.audio,
   mp3: icons.audio,

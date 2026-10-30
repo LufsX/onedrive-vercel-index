@@ -2,10 +2,10 @@
 
 import type { OdFileObject } from '../../types'
 
-import { FC, useState } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { FC, useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '../Icon'
 import { faCopy } from '@fortawesome/free-regular-svg-icons'
 import { faDownload, faFileDownload, faPen } from '@fortawesome/free-solid-svg-icons'
 import { useTranslations } from '../ClientProviders'
@@ -15,6 +15,7 @@ import { useClipboard } from 'use-clipboard-copy'
 
 import { getBaseUrl } from '../../utils/getBaseUrl'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
+import { decodePathSegment } from '../../utils/pathEncoding'
 import { getFileIcon } from '../../utils/getFileIcon'
 import { formatModifiedDateTime, humanFileSize } from '../../utils/fileDetails'
 
@@ -22,22 +23,61 @@ import { DownloadButton } from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 import CustomEmbedLinkMenu from '../CustomEmbedLinkMenu'
 
+const VideoPlayer: FC<{ src: string }> = ({ src }) => {
+  const t = useTranslations()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    const video = videoRef.current
+    return () => {
+      if (video) {
+        video.pause()
+        video.removeAttribute('src')
+        video.load()
+      }
+    }
+  }, [])
+
+  return (
+    <div className="mb-4">
+      <video
+        ref={videoRef}
+        src={src}
+        controls
+        playsInline
+        preload="metadata"
+        className="max-h-[70vh] w-full"
+        onError={() => setFailed(true)}
+      />
+      {failed && (
+        <p role="alert" className="mt-2 text-sm text-red-500">
+          {t(
+            'Unable to play this media. The format may not be supported by your browser. Download it to play locally.',
+          )}
+        </p>
+      )}
+    </div>
+  )
+}
+
 const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const pathname = usePathname()
-  const rawSearchParams = useSearchParams()
-  const searchParams = new URLSearchParams(rawSearchParams.toString())
-  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
-  const hashedToken = getStoredToken(asPath)
+  const hashedToken = getStoredToken(pathname)
   const clipboard = useClipboard()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const t = useTranslations()
-  const videoUrl = `/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`
+  const params = new URLSearchParams({ path: pathname.split('/').map(decodePathSegment).join('/') })
+  if (hashedToken) params.set('odpt', hashedToken)
+  const videoUrl = '/api/raw/?' + params
+  const directUrl = getBaseUrl() + videoUrl
 
   return (
     <>
-      <CustomEmbedLinkMenu path={asPath} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <CustomEmbedLinkMenu path={pathname} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <PreviewContainer>
+        <VideoPlayer key={videoUrl} src={videoUrl} />
         <div className="items-center px-5 py-4 md:flex md:gap-8">
           <div className="rounded-lg border border-gray-900/10 px-8 py-20 text-center dark:border-gray-500/30">
             <FontAwesomeIcon icon={getFileIcon(file.name, { video: Boolean(file.video) })} />
@@ -69,7 +109,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
                       Quick XOR
                     </td>
                     <td className="px-3 py-1 font-mono whitespace-nowrap text-gray-500 dark:text-gray-400">
-                      {file.file.hashes?.quickXorHash ?? t('Unavailable')}
+                      {file.file?.hashes?.quickXorHash ?? t('Unavailable')}
                     </td>
                   </tr>
                   <tr className="border-y bg-white dark:border-gray-700 dark:bg-gray-900">
@@ -77,7 +117,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
                       SHA1
                     </td>
                     <td className="px-3 py-1 font-mono whitespace-nowrap text-gray-500 dark:text-gray-400">
-                      {file.file.hashes?.sha1Hash ?? t('Unavailable')}
+                      {file.file?.hashes?.sha1Hash ?? t('Unavailable')}
                     </td>
                   </tr>
                   <tr className="border-y bg-white dark:border-gray-700 dark:bg-gray-900">
@@ -85,7 +125,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
                       SHA256
                     </td>
                     <td className="px-3 py-1 font-mono whitespace-nowrap text-gray-500 dark:text-gray-400">
-                      {file.file.hashes?.sha256Hash ?? t('Unavailable')}
+                      {file.file?.hashes?.sha256Hash ?? t('Unavailable')}
                     </td>
                   </tr>
                 </tbody>
@@ -104,13 +144,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             btnIcon={faFileDownload}
           />
           <DownloadButton
-            onClickCallback={() =>
-              window.open(
-                `https://cors.isteed.cc/${getBaseUrl()}/api/raw/?path=${asPath}${
-                  hashedToken ? `&odpt=${hashedToken}` : ''
-                }`,
-              )
-            }
+            onClickCallback={() => window.open(`https://cors.isteed.cc/${directUrl}`)}
             btnColor="teal"
             btnText={t('Proxy download')}
             btnIcon={faDownload}
@@ -118,7 +152,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           />
           <DownloadButton
             onClickCallback={() => {
-              clipboard.copy(`${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
+              clipboard.copy(directUrl)
               toast.success(t('Copied direct link to clipboard.'))
             }}
             btnColor="pink"
@@ -133,27 +167,31 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           />
 
           <DownloadButton
-            onClickCallback={() => window.open(`filebox://play?url=${getBaseUrl()}${videoUrl}`)}
+            onClickCallback={() => window.open(`filebox://play?url=${encodeURIComponent(directUrl)}`)}
             btnText="Filebar"
             btnImage="/players/filebar.png"
           />
           <DownloadButton
-            onClickCallback={() => window.open(`iina://weblink?url=${getBaseUrl()}${videoUrl}`)}
+            onClickCallback={() => window.open(`iina://weblink?url=${encodeURIComponent(directUrl)}`)}
             btnText="IINA"
             btnImage="/players/iina.png"
           />
           <DownloadButton
-            onClickCallback={() => window.open(`vlc://${getBaseUrl()}${videoUrl}`)}
+            onClickCallback={() => window.open(`vlc://${directUrl}`)}
             btnText="VLC"
             btnImage="/players/vlc.png"
           />
           <DownloadButton
-            onClickCallback={() => window.open(`potplayer://${getBaseUrl()}${videoUrl}`)}
+            onClickCallback={() => window.open(`potplayer://${directUrl}`)}
             btnText="PotPlayer"
             btnImage="/players/potplayer.png"
           />
           <DownloadButton
-            onClickCallback={() => window.open(`nplayer-http://${window?.location.hostname ?? ''}${videoUrl}`)}
+            onClickCallback={() =>
+              window.open(
+                directUrl.replace(/^https?:/, protocol => (protocol === 'https:' ? 'nplayer-https:' : 'nplayer-http:')),
+              )
+            }
             btnText="nPlayer"
             btnImage="/players/nplayer.png"
           />

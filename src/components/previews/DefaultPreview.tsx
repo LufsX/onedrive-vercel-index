@@ -3,7 +3,7 @@
 import type { OdFileObject } from '../../types'
 import { FC } from 'react'
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '../Icon'
 import { useTranslations } from '../ClientProviders'
 
 import { getFileIcon } from '../../utils/getFileIcon'

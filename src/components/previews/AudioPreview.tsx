@@ -3,73 +3,58 @@
 import type { OdFileObject } from '../../types'
 import { FC, useEffect, useRef, useState } from 'react'
 
-import ReactAudioPlayer from 'react-audio-player'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '../Icon'
 import { faMusic } from '@fortawesome/free-solid-svg-icons'
 import { useTranslations } from '../ClientProviders'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 import { LoadingIcon } from '../Loading'
 import { formatModifiedDateTime } from '../../utils/fileDetails'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
+import { decodePathSegment } from '../../utils/pathEncoding'
 
 enum PlayerState {
   Loading,
   Ready,
   Playing,
   Paused,
+  Error,
 }
 
-const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
+const AudioPlayer: FC<{ file: OdFileObject; audioUrl: string; thumbnail: string }> = ({
+  file,
+  audioUrl,
+  thumbnail,
+}) => {
   const t = useTranslations()
-  const pathname = usePathname()
-  const rawSearchParams = useSearchParams()
-  const searchParams = new URLSearchParams(rawSearchParams.toString())
-  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
-  const hashedToken = getStoredToken(asPath)
-
-  const rapRef = useRef<ReactAudioPlayer>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
   const [playerStatus, setPlayerStatus] = useState(PlayerState.Loading)
-  const [playerVolume, setPlayerVolume] = useState(1)
-
-  // Render audio thumbnail, and also check for broken thumbnails
-  const thumbnail = `/api/thumbnail/?path=${asPath}&size=medium${hashedToken ? `&odpt=${hashedToken}` : ''}`
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
 
   useEffect(() => {
-    // Manually get the HTML audio element and set onplaying event.
-    // - As the default event callbacks provided by the React component does not guarantee playing state to be set
-    // - properly when the user seeks through the timeline or the audio is buffered.
-    const rap = rapRef.current?.audioEl.current
-    if (rap) {
-      rap.oncanplay = () => setPlayerStatus(PlayerState.Ready)
-      rap.onended = () => setPlayerStatus(PlayerState.Paused)
-      rap.onpause = () => setPlayerStatus(PlayerState.Paused)
-      rap.onplay = () => setPlayerStatus(PlayerState.Playing)
-      rap.onplaying = () => setPlayerStatus(PlayerState.Playing)
-      rap.onseeking = () => setPlayerStatus(PlayerState.Loading)
-      rap.onwaiting = () => setPlayerStatus(PlayerState.Loading)
-      rap.onerror = () => setPlayerStatus(PlayerState.Paused)
-      rap.onvolumechange = () => setPlayerVolume(rap.volume)
+    const audio = audioRef.current
+    return () => {
+      // Stop playback and cancel pending media requests when leaving this file.
+      if (audio) {
+        audio.pause()
+        audio.removeAttribute('src')
+        audio.load()
+      }
     }
   }, [])
 
   return (
     <>
       <PreviewContainer>
-        <div className="gap4 flex flex-col md:flex-row md:gap-4">
+        <div className="flex flex-col gap-4 md:flex-row">
           <div className="relative flex aspect-square w-full items-center justify-center rounded bg-gray-100 transition-all duration-75 md:w-48 dark:bg-gray-700">
-            <div
-              className={`absolute z-20 flex h-full w-full items-center justify-center transition-all duration-300 ${
-                playerStatus === PlayerState.Loading
-                  ? 'bg-white opacity-80 dark:bg-gray-800'
-                  : 'bg-transparent opacity-0'
-              }`}
-            >
-              <LoadingIcon className="z-10 inline-block h-5 w-5 animate-spin" />
-            </div>
+            {playerStatus === PlayerState.Loading && (
+              <div className="absolute z-20 flex h-full w-full items-center justify-center bg-white opacity-80 dark:bg-gray-800">
+                <LoadingIcon className="z-10 inline-block h-5 w-5 animate-spin" />
+              </div>
+            )}
 
             {!brokenThumbnail ? (
               <div className="absolute m-4 aspect-square rounded-full shadow-lg">
@@ -100,14 +85,29 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
               </div>
             </div>
 
-            <ReactAudioPlayer
+            <audio
               className="h-11 w-full"
-              src={`/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-              ref={rapRef}
+              src={audioUrl}
+              ref={audioRef}
               controls
               preload="metadata"
-              volume={playerVolume}
+              onLoadedMetadata={() => setPlayerStatus(PlayerState.Ready)}
+              onCanPlay={event => setPlayerStatus(event.currentTarget.paused ? PlayerState.Ready : PlayerState.Playing)}
+              onPlaying={() => setPlayerStatus(PlayerState.Playing)}
+              onPause={() => setPlayerStatus(PlayerState.Paused)}
+              onEnded={() => setPlayerStatus(PlayerState.Paused)}
+              onSeeking={() => setPlayerStatus(PlayerState.Loading)}
+              onSeeked={event => setPlayerStatus(event.currentTarget.paused ? PlayerState.Paused : PlayerState.Playing)}
+              onWaiting={() => setPlayerStatus(PlayerState.Loading)}
+              onError={() => setPlayerStatus(PlayerState.Error)}
             />
+            {playerStatus === PlayerState.Error && (
+              <p role="alert" className="mt-2 text-sm text-red-500">
+                {t(
+                  'Unable to play this media. The format may not be supported by your browser. Download it to play locally.',
+                )}
+              </p>
+            )}
           </div>
         </div>
       </PreviewContainer>
@@ -117,6 +117,17 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
       </DownloadBtnContainer>
     </>
   )
+}
+
+const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
+  const pathname = usePathname()
+  const hashedToken = getStoredToken(pathname)
+  const params = new URLSearchParams({ path: pathname.split('/').map(decodePathSegment).join('/') })
+  if (hashedToken) params.set('odpt', hashedToken)
+  const audioUrl = '/api/raw/?' + params
+  const thumbnail = '/api/thumbnail/?' + params + '&size=medium'
+
+  return <AudioPlayer key={audioUrl} file={file} audioUrl={audioUrl} thumbnail={thumbnail} />
 }
 
 export default AudioPreview

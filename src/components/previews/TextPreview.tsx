@@ -1,9 +1,9 @@
 'use client'
 
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { rawFileUrl } from '../../utils/rawFileUrl'
 import { useTranslations } from '../ClientProviders'
 
-import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import useFileContent from '../../utils/fetchOnMount'
@@ -11,17 +11,22 @@ import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
 const TextPreview = () => {
   const pathname = usePathname()
-  const rawSearchParams = useSearchParams()
-  const searchParams = new URLSearchParams(rawSearchParams.toString())
-  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
+  const asPath = pathname
   const t = useTranslations()
 
-  const { response: content, error, validating } = useFileContent(`/api/raw/?path=${asPath}`, asPath)
+  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath), asPath)
   if (error) {
     return (
-      <PreviewContainer>
-        <FourOhFour errorMsg={error} />
-      </PreviewContainer>
+      <>
+        <PreviewContainer>
+          <p role="alert" className="p-3 text-sm">
+            {error}
+          </p>
+        </PreviewContainer>
+        <DownloadBtnContainer>
+          <DownloadButtonGroup />
+        </DownloadBtnContainer>
+      </>
     )
   }
 
@@ -42,7 +47,7 @@ const TextPreview = () => {
     return (
       <>
         <PreviewContainer>
-          <FourOhFour errorMsg={t('File is empty.')} />
+          <p className="p-3 text-sm">{t('File is empty.')}</p>
         </PreviewContainer>
         <DownloadBtnContainer>
           <DownloadButtonGroup />

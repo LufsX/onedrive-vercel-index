@@ -2,7 +2,6 @@
 
 type RefreshableRouter = { refresh: () => void }
 import toast from 'react-hot-toast'
-import JSZip from 'jszip'
 import { useTranslations } from './ClientProviders'
 
 import { fetcher } from '../utils/fetchWithSWR'
@@ -24,7 +23,10 @@ export function DownloadingToast({ router, progress }: { router: RefreshableRout
 
         <div className="relative mt-2">
           <div className="flex h-1 overflow-hidden rounded bg-gray-100">
-            <div style={{ width: `${progress}%` }} className="bg-gray-500 text-white transition-all duration-100"></div>
+            <div
+              style={{ width: `${progress}%` }}
+              className="bg-gray-500 text-white transition-[width] duration-100"
+            ></div>
           </div>
         </div>
       </div>
@@ -71,6 +73,7 @@ export async function downloadMultipleFiles({
   files: { name: string; url: string }[]
   folder?: string
 }): Promise<void> {
+  const { default: JSZip } = await import('jszip')
   const zip = new JSZip()
   const dir = folder ? zip.folder(folder)! : zip
 
@@ -122,6 +125,7 @@ export async function downloadTreelikeMultipleFiles({
   basePath: string
   folder?: string
 }): Promise<void> {
+  const { default: JSZip } = await import('jszip')
   const zip = new JSZip()
   const root = folder ? zip.folder(folder)! : zip
   const map = [{ path: basePath, dir: root }]
@@ -191,7 +195,7 @@ export async function* traverseFolder(path: string): AsyncGenerator<TraverseItem
       i,
       path,
       data: await fetcher([
-        next ? `/api/?path=${path}&next=${next}` : `/api?path=${path}`,
+        next ? `/api/?path=${path}&next=${encodeURIComponent(next)}` : `/api?path=${path}`,
         hashedToken ?? undefined,
       ]).catch(error => ({ i, path, error })),
     }

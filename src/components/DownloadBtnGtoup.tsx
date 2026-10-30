@@ -1,8 +1,8 @@
 'use client'
 
 import { MouseEventHandler, useState } from 'react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { IconProp } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from './Icon'
+import type { IconDefinition as IconProp } from '@fortawesome/fontawesome-svg-core'
 import { faCopy } from '@fortawesome/free-regular-svg-icons'
 import { faDownload, faFileDownload, faPen } from '@fortawesome/free-solid-svg-icons'
 import toast from 'react-hot-toast'
@@ -10,7 +10,8 @@ import { useClipboard } from 'use-clipboard-copy'
 import { useTranslations } from './ClientProviders'
 
 import Image from 'next/image'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { rawFileUrl } from '../utils/rawFileUrl'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { getStoredToken } from '../utils/protectedRouteHandler'
@@ -68,10 +69,9 @@ export const DownloadButton = ({
 
 const DownloadButtonGroup = () => {
   const pathname = usePathname()
-  const rawSearchParams = useSearchParams()
-  const searchParams = new URLSearchParams(rawSearchParams.toString())
-  const asPath = searchParams.toString() ? pathname + '?' + searchParams : pathname
+  const asPath = pathname
   const hashedToken = getStoredToken(asPath)
+  const fileUrl = rawFileUrl(asPath, hashedToken ? { odpt: hashedToken } : {})
 
   const clipboard = useClipboard()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -83,20 +83,14 @@ const DownloadButtonGroup = () => {
       <CustomEmbedLinkMenu menuOpen={menuOpen} setMenuOpen={setMenuOpen} path={asPath} />
       <div className="flex flex-wrap justify-center gap-2">
         <DownloadButton
-          onClickCallback={() => window.open(`/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)}
+          onClickCallback={() => window.open(fileUrl)}
           btnColor="blue"
           btnText={t('Download')}
           btnIcon={faFileDownload}
           btnTitle={t('Download the file directly through OneDrive')}
         />
         <DownloadButton
-          onClickCallback={() =>
-            window.open(
-              `https://cors.isteed.cc/${getBaseUrl()}/api/raw/?path=${asPath}${
-                hashedToken ? `&odpt=${hashedToken}` : ''
-              }`,
-            )
-          }
+          onClickCallback={() => window.open(`https://cors.isteed.cc/${getBaseUrl()}${fileUrl}`)}
           btnColor="teal"
           btnText={t('Proxy download')}
           btnIcon={faDownload}
@@ -104,7 +98,7 @@ const DownloadButtonGroup = () => {
         />
         <DownloadButton
           onClickCallback={() => {
-            clipboard.copy(`${getBaseUrl()}/api/raw/?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
+            clipboard.copy(getBaseUrl() + fileUrl)
             toast.success(t('Copied direct link to clipboard.'))
           }}
           btnColor="pink"
