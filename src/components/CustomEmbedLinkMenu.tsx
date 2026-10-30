@@ -3,7 +3,7 @@
 import { Dispatch, Fragment, SetStateAction, useRef, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 import { Dialog, DialogPanel, DialogTitle, Description, Transition, TransitionChild } from '@headlessui/react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from './Icon'
 import { faCopy } from '@fortawesome/free-regular-svg-icons'
 import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { useClipboard } from 'use-clipboard-copy'

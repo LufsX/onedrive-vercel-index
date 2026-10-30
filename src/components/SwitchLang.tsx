@@ -1,9 +1,8 @@
 'use client'
 
-import { Fragment } from 'react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from './Icon'
 import { faCheck, faChevronDown, faLanguage } from '@fortawesome/free-solid-svg-icons'
-import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react'
+import Dropdown from './Dropdown'
 import { useRouter } from 'next/navigation'
 
 import { useLocale } from './ClientProviders'
@@ -46,41 +45,32 @@ const SwitchLang = () => {
   }
 
   return (
-    <Menu as="div" className="relative">
-      <MenuButton className="flex items-center gap-1.5 rounded px-0.5 py-1 hover:opacity-80 dark:text-white">
-        <FontAwesomeIcon className="h-4 w-4" icon={faLanguage} />
-        <FontAwesomeIcon className="h-3 w-3" icon={faChevronDown} />
-      </MenuButton>
-
-      <Transition
-        as={Fragment}
-        enter="transition duration-100 ease-out"
-        enterFrom="transform scale-95 opacity-0"
-        enterTo="transform scale-100 opacity-100"
-        leave="transition duration-75 ease-out"
-        leaveFrom="transform scale-100 opacity-100"
-        leaveTo="transform scale-95 opacity-0"
-      >
-        <MenuItems className="absolute top-full right-0 z-20 mt-1 w-44 overflow-hidden rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900 dark:text-white">
-          {locales.map(locale => (
-            <MenuItem key={locale}>
-              {({ focus }) => (
-                <button
-                  type="button"
-                  className={`flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-sm font-medium whitespace-nowrap ${
-                    focus ? 'bg-blue-50 text-blue-700 dark:bg-blue-600/10 dark:text-blue-400' : ''
-                  } ${locale === currentLocale ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'}`}
-                  onClick={() => switchLocale(locale)}
-                >
-                  <span>{localeText(locale)}</span>
-                  {locale === currentLocale && <FontAwesomeIcon className="h-3 w-3 shrink-0" icon={faCheck} />}
-                </button>
-              )}
-            </MenuItem>
-          ))}
-        </MenuItems>
-      </Transition>
-    </Menu>
+    <div className="relative">
+      <Dropdown
+        role="menu"
+        items={locales}
+        selectedIndex={locales.indexOf(currentLocale)}
+        onSelect={switchLocale}
+        triggerLabel={localeText(currentLocale)}
+        triggerClassName="flex items-center gap-1.5 rounded px-0.5 py-1 hover:opacity-80 dark:text-white"
+        trigger={
+          <>
+            <FontAwesomeIcon className="h-4 w-4" icon={faLanguage} />
+            <FontAwesomeIcon className="h-3 w-3" icon={faChevronDown} />
+          </>
+        }
+        panelClassName="absolute top-full right-0 z-20 mt-1 w-44 overflow-hidden rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900 dark:text-white"
+        itemClassName={locale =>
+          `flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-sm font-medium whitespace-nowrap outline-hidden focus:bg-blue-50 focus:text-blue-700 dark:focus:bg-blue-600/10 dark:focus:text-blue-400 ${locale === currentLocale ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'}`
+        }
+        renderItem={locale => (
+          <>
+            <span>{localeText(locale)}</span>
+            {locale === currentLocale && <FontAwesomeIcon className="h-3 w-3 shrink-0" icon={faCheck} />}
+          </>
+        )}
+      />
+    </div>
   )
 }
 

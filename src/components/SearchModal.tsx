@@ -1,12 +1,11 @@
 'use client'
 
-import axios from 'axios'
 import useSWR, { SWRResponse } from 'swr'
 import { Dispatch, Fragment, SetStateAction, useEffect, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 
 import Link from 'next/link'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from './Icon'
 import { faFolder } from '@fortawesome/free-regular-svg-icons'
 import { faSearch } from '@fortawesome/free-solid-svg-icons'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
@@ -59,13 +58,15 @@ function useDriveItemSearch() {
       return
     }
 
-    let cancelled = false
+    const controller = new AbortController()
     setResults({ loading: true })
 
     // One request per settled query rather than one per keystroke
     const timer = setTimeout(async () => {
       try {
-        const { data } = await axios.get<OdSearchResult>(`/api/search?q=${encodeURIComponent(trimmed)}`)
+        const response = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal })
+        const data = (await response.json()) as OdSearchResult
+        if (!response.ok) throw new Error((data as { error?: string }).error || response.statusText)
 
         // Map parentReference to the absolute path of the search result
         data.forEach(item => {
@@ -77,14 +78,14 @@ function useDriveItemSearch() {
                 ''
         })
 
-        if (!cancelled) setResults({ loading: false, result: data })
+        if (!controller.signal.aborted) setResults({ loading: false, result: data })
       } catch (error) {
-        if (!cancelled) setResults({ loading: false, error })
+        if (!controller.signal.aborted) setResults({ loading: false, error })
       }
     }, 300)
 
     return () => {
-      cancelled = true
+      controller.abort()
       clearTimeout(timer)
     }
   }, [query])
@@ -110,6 +111,7 @@ function SearchResultItemTemplate({
   return (
     <Link
       href={driveItemPath}
+      prefetch={false}
 
       className={`dark:hover:bg-gray-850 flex items-center gap-4 border-b border-gray-400/30 px-4 py-1.5 hover:bg-gray-50 ${
         disabled ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'

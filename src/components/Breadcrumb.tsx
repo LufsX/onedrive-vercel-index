@@ -3,7 +3,7 @@
 import type { ParsedUrlQuery } from 'querystring'
 
 import Link from 'next/link'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from './Icon'
 import { faFlag } from '@fortawesome/free-regular-svg-icons'
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons'
 import { useTranslations } from './ClientProviders'

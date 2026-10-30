@@ -1,10 +1,9 @@
 'use client'
 
-import { Fragment } from 'react'
 import { IconProp } from '@fortawesome/fontawesome-svg-core'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from './Icon'
 import { faCheck, faChevronDown, faTh, faThList } from '@fortawesome/free-solid-svg-icons'
-import { Listbox, ListboxButton, ListboxOptions, ListboxOption, Transition } from '@headlessui/react'
+import Dropdown from './Dropdown'
 import { useTranslations } from './ClientProviders'
 
 import useLocalStorage from '../utils/useLocalStorage'
@@ -26,60 +25,53 @@ const SwitchLayout = () => {
 
   return (
     <div className="relative w-24 shrink-0 text-sm text-gray-600 md:w-28 dark:text-gray-300">
-      <Listbox value={preferredLayout} onChange={setPreferredLayout}>
-        <ListboxButton className="relative w-full cursor-pointer rounded pl-4">
-          <span className="pointer-events-none flex items-center">
-            <FontAwesomeIcon className="mr-2 h-3 w-3" icon={layoutIcons[preferredLayout.name]} />
-            <span>
+      <Dropdown
+        role="listbox"
+        items={layouts}
+        selectedIndex={layouts.findIndex(layout => layout.name === preferredLayout.name)}
+        onSelect={setPreferredLayout}
+        triggerClassName="relative w-full cursor-pointer rounded pl-4"
+        trigger={
+          <>
+            <span className="pointer-events-none flex items-center">
+              <FontAwesomeIcon className="mr-2 h-3 w-3" icon={layoutIcons[preferredLayout.name]} />
+              <span>
+                {
+                  // t('Grid')
+                  // t('List')
+                  t(preferredLayout.name)
+                }
+              </span>
+            </span>
+            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+              <FontAwesomeIcon className="h-3 w-3" icon={faChevronDown} />
+            </span>
+          </>
+        }
+        panelClassName="absolute top-full right-0 z-20 mt-1 w-32 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-800"
+        itemClassName={layout =>
+          `${
+            layout.name === preferredLayout.name && 'bg-blue-50 text-blue-700 dark:bg-blue-600/10 dark:text-blue-400'
+          } relative flex w-full cursor-pointer items-center py-1.5 pl-3 text-left text-gray-600 select-none hover:opacity-80 focus:outline-hidden focus:opacity-80 dark:text-gray-300`
+        }
+        renderItem={layout => (
+          <>
+            <FontAwesomeIcon className="mr-2 h-3 w-3" icon={layoutIcons[layout.name]} />
+            <span className={layout.name === preferredLayout.name ? 'font-medium' : 'font-normal'}>
               {
                 // t('Grid')
                 // t('List')
-                t(preferredLayout.name)
+                t(layout.name)
               }
             </span>
-          </span>
-          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-            <FontAwesomeIcon className="h-3 w-3" icon={faChevronDown} />
-          </span>
-        </ListboxButton>
-
-        <Transition
-          as={Fragment}
-          enter="transition duration-100 ease-out"
-          enterFrom="transform scale-95 opacity-0"
-          enterTo="transform scale-100 opacity-100"
-          leave="transition duration-75 ease-out"
-          leaveFrom="transform scale-100 opacity-100"
-          leaveTo="transform scale-95 opacity-0"
-        >
-          <ListboxOptions className="absolute right-0 z-20 mt-1 w-32 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-800">
-            {layouts.map(layout => (
-              <ListboxOption
-                key={layout.id}
-                className={`${
-                  layout.name === preferredLayout.name &&
-                  'bg-blue-50 text-blue-700 dark:bg-blue-600/10 dark:text-blue-400'
-                } relative flex cursor-pointer items-center py-1.5 pl-3 text-gray-600 select-none hover:opacity-80 dark:text-gray-300`}
-                value={layout}
-              >
-                <FontAwesomeIcon className="mr-2 h-3 w-3" icon={layoutIcons[layout.name]} />
-                <span className={layout.name === preferredLayout.name ? 'font-medium' : 'font-normal'}>
-                  {
-                    // t('Grid')
-                    // t('List')
-                    t(layout.name)
-                  }
-                </span>
-                {layout.name === preferredLayout.name && (
-                  <span className="absolute inset-y-0 right-3 flex items-center">
-                    <FontAwesomeIcon className="h-3 w-3" icon={faCheck} />
-                  </span>
-                )}
-              </ListboxOption>
-            ))}
-          </ListboxOptions>
-        </Transition>
-      </Listbox>
+            {layout.name === preferredLayout.name && (
+              <span className="absolute inset-y-0 right-3 flex items-center">
+                <FontAwesomeIcon className="h-3 w-3" icon={faCheck} />
+              </span>
+            )}
+          </>
+        )}
+      />
     </div>
   )
 }

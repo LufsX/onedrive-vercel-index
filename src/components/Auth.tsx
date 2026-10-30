@@ -1,6 +1,6 @@
 'use client'
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from './Icon'
 import { faArrowRight } from '@fortawesome/free-solid-svg-icons'
 
 import Image from 'next/image'

@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, Suspense } from 'react'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { FontAwesomeIcon } from '../../../components/Icon'
 import { faCheckCircle } from '@fortawesome/free-regular-svg-icons'
 import { faArrowLeft, faCheck, faExclamationCircle, faKey } from '@fortawesome/free-solid-svg-icons'
 
