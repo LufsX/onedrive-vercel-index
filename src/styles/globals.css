@@ -1,6 +1,21 @@
 @config '../../tailwind.config.js';
 @import 'tailwindcss';
 
+html {
+  background-color: #fff;
+}
+
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #18181b;
+  }
+}
+
 /* Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

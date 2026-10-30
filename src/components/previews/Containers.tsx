@@ -8,7 +8,7 @@ export function PreviewContainer({ children }: { children: React.ReactNode }): R
 
 export function DownloadBtnContainer({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
-    <div className="sticky right-0 bottom-0 left-0 z-10 rounded border-t border-gray-900/10 bg-white/80 p-2 shadow-xs backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
+    <div className="sticky right-0 bottom-[env(safe-area-inset-bottom)] left-0 z-10 rounded border-t border-gray-900/10 bg-white/80 p-2 shadow-xs backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
       {children}
     </div>
   )
