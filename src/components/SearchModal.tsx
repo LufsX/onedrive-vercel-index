@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import useSWR, { SWRResponse } from 'swr'
 import { Dispatch, Fragment, SetStateAction, useEffect, useState } from 'react'
 import { useTranslations } from './ClientProviders'
@@ -13,7 +15,6 @@ import { LoadingIcon } from './Loading'
 
 import FileIcon from './FileIcon'
 import { fetcher } from '../utils/fetchWithSWR'
-import siteConfig from '../../config/site.config'
 
 /**
  * Extract the searched item's path in field 'parentReference' and convert it to the
@@ -22,10 +23,10 @@ import siteConfig from '../../config/site.config'
  * @param path Path returned from the parentReference field of the driveItem
  * @returns The absolute path of the driveItem in the search result
  */
-function mapAbsolutePath(path: string): string {
+function mapAbsolutePath(path: string, baseDirectory: string): string {
   // path is in the format of '/drive/root:/path/to/file', if baseDirectory is '/' then we split on 'root:',
   // otherwise we split on the user defined 'baseDirectory'
-  const absolutePath = path.split(siteConfig.baseDirectory === '/' ? 'root:' : siteConfig.baseDirectory)
+  const absolutePath = path.split(baseDirectory === '/' ? 'root:' : baseDirectory)
   // path returned by the API may contain #, by doing a decodeURIComponent and then encodeURIComponent we can
   // replace URL sensitive characters such as the # with %23
   return absolutePath.length > 1 // solve https://github.com/spencerwooo/onedrive-vercel-index/issues/539
@@ -43,6 +44,7 @@ function mapAbsolutePath(path: string): string {
  * @returns A react hook for a debounced async search of the drive
  */
 function useDriveItemSearch() {
+  const { siteConfig } = useClientConfig()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{ loading: boolean; error?: any; result?: OdSearchResult }>({
     loading: false,
@@ -71,7 +73,7 @@ function useDriveItemSearch() {
           item['path'] =
             'path' in item.parentReference
               ? // OneDrive International have the path returned in the parentReference field
-                `${mapAbsolutePath(item.parentReference.path)}/${encodeURIComponent(item.name)}`
+                `${mapAbsolutePath(item.parentReference.path, siteConfig.baseDirectory)}/${encodeURIComponent(item.name)}`
               : // OneDrive for Business/Education does not, so we need extra steps here
                 ''
         })
@@ -86,7 +88,7 @@ function useDriveItemSearch() {
       controller.abort()
       clearTimeout(timer)
     }
-  }, [query])
+  }, [query, siteConfig.baseDirectory])
 
   return {
     query,
@@ -135,6 +137,7 @@ function SearchResultItemTemplate({
 }
 
 function SearchResultItemLoadRemote({ result }: { result: OdSearchResult[number] }) {
+  const { baseDirectory } = useClientConfig().siteConfig
   const { data, error }: SWRResponse<OdDriveItem, { status: number; message: any }> = useSWR(
     [`/api/item?id=${result.id}`],
     fetcher,
@@ -163,7 +166,7 @@ function SearchResultItemLoadRemote({ result }: { result: OdSearchResult[number]
     )
   }
 
-  const driveItemPath = `${mapAbsolutePath(data.parentReference.path)}/${encodeURIComponent(data.name)}`
+  const driveItemPath = `${mapAbsolutePath(data.parentReference.path, baseDirectory)}/${encodeURIComponent(data.name)}`
   return (
     <SearchResultItemTemplate
       driveItem={result}

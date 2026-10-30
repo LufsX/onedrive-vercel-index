@@ -1,6 +1,5 @@
 import dayjs from 'dayjs'
 
-import siteConfig from '../../config/site.config'
 
 /**
  * Convert raw bits file/folder size into a human readable string
@@ -23,6 +22,6 @@ export const humanFileSize = (size: number) => {
  * @param lastModifedDateTime DateTime string in ISO format
  * @returns Human readable form of the file or folder last modified date
  */
-export const formatModifiedDateTime = (lastModifedDateTime: string) => {
-  return dayjs(lastModifedDateTime).format(siteConfig.datetimeFormat)
+export const formatModifiedDateTime = (lastModifedDateTime: string, datetimeFormat: string) => {
+  return dayjs(lastModifedDateTime).format(datetimeFormat)
 }

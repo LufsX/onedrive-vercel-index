@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import type { OdFileObject } from '../../types'
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -117,8 +119,9 @@ function PDFEmbed({ url, name }: { url: string; name: string }) {
 }
 
 const PDFEmbedPreview: React.FC<{ file: OdFileObject }> = ({ file }) => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
-  const token = getStoredToken(pathname)
+  const token = getStoredToken(pathname, protectedRoutes)
   const url = rawFileUrl(pathname, { inline: 'true', ...(token ? { odpt: token } : {}) })
   return <PDFEmbed key={url} url={url} name={file.name} />
 }

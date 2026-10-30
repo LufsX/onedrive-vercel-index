@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import type { OdFileObject } from '../../types'
 import { FC, useEffect, useRef, useState } from 'react'
 
@@ -29,6 +31,7 @@ const AudioPlayer: FC<{ file: OdFileObject; audioUrl: string; thumbnail: string 
 }) => {
   const t = useTranslations()
   const audioRef = useRef<HTMLAudioElement>(null)
+  const { datetimeFormat } = useClientConfig().siteConfig
   const [playerStatus, setPlayerStatus] = useState(PlayerState.Loading)
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
 
@@ -76,7 +79,7 @@ const AudioPlayer: FC<{ file: OdFileObject; audioUrl: string; thumbnail: string 
             <div>
               <div className="mb-2 font-medium">{file.name}</div>
               <div className="mb-4 text-sm text-gray-500">
-                {t('Last modified:') + ' ' + formatModifiedDateTime(file.lastModifiedDateTime)}
+                {t('Last modified:') + ' ' + formatModifiedDateTime(file.lastModifiedDateTime, datetimeFormat)}
               </div>
             </div>
 
@@ -115,12 +118,13 @@ const AudioPlayer: FC<{ file: OdFileObject; audioUrl: string; thumbnail: string 
 }
 
 const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
-  const hashedToken = getStoredToken(pathname)
+  const hashedToken = getStoredToken(pathname, protectedRoutes)
   const params = new URLSearchParams({ path: pathname.split('/').map(decodePathSegment).join('/') })
   if (hashedToken) params.set('odpt', hashedToken)
-  const audioUrl = '/api/raw/?' + params
-  const thumbnail = '/api/thumbnail/?' + params + '&size=medium'
+  const audioUrl = '/api/raw?' + params
+  const thumbnail = '/api/thumbnail?' + params + '&size=medium'
 
   return <AudioPlayer key={audioUrl} file={file} audioUrl={audioUrl} thumbnail={thumbnail} />
 }

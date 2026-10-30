@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import type { OdFileObject } from '../../types'
 
 import { FC, useEffect, useRef, useState } from 'react'
@@ -60,15 +62,16 @@ const VideoPlayer: FC<{ src: string }> = ({ src }) => {
 }
 
 const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
+  const { protectedRoutes, datetimeFormat } = useClientConfig().siteConfig
   const pathname = usePathname()
-  const hashedToken = getStoredToken(pathname)
+  const hashedToken = getStoredToken(pathname, protectedRoutes)
   const clipboard = useClipboard()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const t = useTranslations()
   const params = new URLSearchParams({ path: pathname.split('/').map(decodePathSegment).join('/') })
   if (hashedToken) params.set('odpt', hashedToken)
-  const videoUrl = '/api/raw/?' + params
+  const videoUrl = '/api/raw?' + params
   const directUrl = getBaseUrl() + videoUrl
 
   return (
@@ -85,7 +88,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           <div className="flex min-w-0 flex-col gap-2 py-4 md:flex-1">
             <div>
               <div className="py-2 text-xs font-medium uppercase opacity-80">{t('Last modified')}</div>
-              <div>{formatModifiedDateTime(file.lastModifiedDateTime)}</div>
+              <div>{formatModifiedDateTime(file.lastModifiedDateTime, datetimeFormat)}</div>
             </div>
 
             <div>

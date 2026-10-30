@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import type { OdFileObject } from '../../types'
 
 import { FC, useState } from 'react'
@@ -12,9 +14,10 @@ import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 
 const ImagePreview: FC<{ file: OdFileObject }> = ({ file }) => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
   const asPath = pathname
-  const hashedToken = getStoredToken(asPath)
+  const hashedToken = getStoredToken(asPath, protectedRoutes)
   const [failed, setFailed] = useState(false)
   const t = useTranslations()
 

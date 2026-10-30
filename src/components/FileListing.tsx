@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import type { OdFileObject, OdFolderObject } from '../types'
 import type { ParsedUrlQuery } from 'querystring'
 import { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -102,6 +104,7 @@ const queryToPath = (query?: ParsedUrlQuery) => {
 }
 
 const FileListingContent: FC<{ path: string }> = ({ path }) => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const [selection, setSelected] = useState<Record<string, boolean>>({})
   const [totalGenerating, setTotalGenerating] = useState<boolean>(false)
   const [folderGenerating, setFolderGenerating] = useState<{
@@ -113,13 +116,13 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
   const rawSearchParams = useSearchParams()
   const searchParams = new URLSearchParams(rawSearchParams.toString())
   const asPath = searchParams.toString() ? `${pathname}?${searchParams}` : pathname
-  const hashedToken = getStoredToken(asPath)
+  const hashedToken = getStoredToken(asPath, protectedRoutes)
   const [layout, , layoutReady] = useLocalStorage('preferredLayout', layouts[0])
 
   const t = useTranslations()
 
   // Grid cards render preview images, which the listing includes when asked for.
-  const { data, error, size, setSize } = useProtectedSWRInfinite(path, {
+  const { data, error, size, setSize } = useProtectedSWRInfinite(path, protectedRoutes, {
     ...(layout.name === 'Grid' ? { thumbnails: 'medium' as const } : {}),
     enabled: layoutReady,
   })
@@ -176,7 +179,7 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
       .filter(c => selected[c.id])
       .map(c => ({
         name: c.name,
-        url: `/api/raw/?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+        url: `/api/raw?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
       }))
 
     if (files.length == 1) {
@@ -217,7 +220,7 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
         .filter(c => selected[c.id])
         .map(
           c =>
-            `${baseUrl}/api/raw/?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+            `${baseUrl}/api/raw?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
         )
         .join('\n')
     },
@@ -232,7 +235,7 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
         const { DownloadingToast, downloadTreelikeMultipleFiles, traverseFolder } =
           await import('./MultiFileDownloader')
         const files = (async function* () {
-          for await (const { meta: c, path: p, isFolder, error } of traverseFolder(path)) {
+          for await (const { meta: c, path: p, isFolder, error } of traverseFolder(path, protectedRoutes)) {
             if (error) {
               toast.error(
                 t('Failed to download folder {{path}}: {{status}} {{message}} Skipped it to continue.', {
@@ -243,10 +246,10 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
               )
               continue
             }
-            const hashedTokenForPath = getStoredToken(p)
+            const hashedTokenForPath = getStoredToken(p, protectedRoutes)
             yield {
               name: c?.name,
-              url: `/api/raw/?path=${p}${hashedTokenForPath ? `&odpt=${hashedTokenForPath}` : ''}`,
+              url: `/api/raw?path=${p}${hashedTokenForPath ? `&odpt=${hashedTokenForPath}` : ''}`,
               path: p,
               isFolder,
             }
@@ -275,7 +278,7 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
         toast.error(t('Failed to download folder.'))
       }
     },
-    [router, t],
+    [router, t, protectedRoutes],
   )
 
   if (error && (!data || error.status === 401 || error.status === 403)) {

@@ -11,8 +11,9 @@ async function fetchContent([url]: [string]): Promise<string> {
 export default function useFileContent(
   fetchUrl: string,
   path: string,
+  protectedRoutes: readonly string[],
 ): { response: string; error: string; validating: boolean } {
-  const token = getStoredToken(path)
+  const token = getStoredToken(path, protectedRoutes)
   const url = fetchUrl + (token ? `&odpt=${encodeURIComponent(token)}` : '')
   const { data, error, isLoading } = useSWR<string, Error>([url], fetchContent, {
     revalidateIfStale: false,

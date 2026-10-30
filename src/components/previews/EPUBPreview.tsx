@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import { ComponentProps, FC, useEffect, useState } from 'react'
 import { ReactReader } from 'react-reader'
 import { usePathname } from 'next/navigation'
@@ -81,11 +83,12 @@ const EPUBReader: FC<{ url: string }> = ({ url }) => {
 }
 
 const EPUBPreview: FC = () => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
-  const hashedToken = getStoredToken(pathname)
+  const hashedToken = getStoredToken(pathname, protectedRoutes)
   const params = new URLSearchParams({ path: pathname.split('/').map(decodePathSegment).join('/') })
   if (hashedToken) params.set('odpt', hashedToken)
-  const url = '/api/raw/?' + params
+  const url = '/api/raw?' + params
 
   return (
     <div>

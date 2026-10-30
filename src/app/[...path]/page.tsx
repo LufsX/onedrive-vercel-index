@@ -1,15 +1,9 @@
-import type { Metadata } from 'next'
-import siteConfig from '../../../config/site.config'
 import Navbar from '../../components/Navbar'
 import FileListing from '../../components/FileListing'
 import Footer from '../../components/Footer'
 import Breadcrumb from '../../components/Breadcrumb'
 import SwitchLayout from '../../components/SwitchLayout'
 import { decodePathSegments } from '../../utils/pathEncoding'
-
-export const metadata: Metadata = {
-  title: siteConfig.title,
-}
 
 type PageProps = {
   params: Promise<{
@@ -31,7 +25,7 @@ export default async function FoldersPage(props: PageProps) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-white dark:bg-gray-900">
       <main className="flex w-full flex-1 flex-col bg-gray-50 dark:bg-gray-800">
         <Navbar />
-        <div className="mx-auto w-full max-w-5xl p-4">
+        <div className="mx-auto w-full max-w-5xl px-1 py-4 sm:px-4">
           <nav className="mb-4 flex items-center justify-between gap-3 sm:pl-1">
             <Breadcrumb query={query} />
             <SwitchLayout />

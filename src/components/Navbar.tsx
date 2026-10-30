@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import { LogOut, Mail, Search } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 
@@ -10,7 +12,6 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 import { useBrandIcons } from './BrandIconsProvider'
 
-import siteConfig from '../../config/site.config'
 import BrandIcon from './BrandIcon'
 import SwitchLang from './SwitchLang'
 import FeatureBoundary from './FeatureBoundary'
@@ -21,6 +22,7 @@ const SearchModal = dynamic(() => import('./SearchModal'), { ssr: false })
 const NavbarLogoutDialog = dynamic(() => import('./NavbarLogoutDialog'), { ssr: false })
 
 const Navbar = () => {
+  const { siteConfig } = useClientConfig()
   const icons = useBrandIcons()
   const os = useDeviceOS()
 
@@ -64,12 +66,12 @@ const Navbar = () => {
       return false
     }
     setTokenPresent(storedToken())
-  }, [])
+  }, [siteConfig.protectedRoutes])
 
   const t = useTranslations()
 
   return (
-    <div className="sticky top-0 z-[100] border-b border-gray-900/10 bg-white/80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
+    <div className="sticky top-[env(safe-area-inset-top)] z-[100] border-b border-gray-900/10 bg-white/80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
       <Toaster />
 
       {searchOpen && (

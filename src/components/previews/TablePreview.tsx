@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import { usePathname } from 'next/navigation'
 import { useTranslations } from '../ClientProviders'
 
@@ -10,9 +12,10 @@ import { DELIMITED_TEXT_ROW_LIMIT } from '../../utils/delimitedText'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
 const TablePreview = () => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
   const t = useTranslations()
-  const { data, error, validating, retry } = useTablePreview(pathname)
+  const { data, error, validating, retry } = useTablePreview(pathname, protectedRoutes)
   const { rows = [], truncated, truncation, malformed } = data ?? {}
 
   return (

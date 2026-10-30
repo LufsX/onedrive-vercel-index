@@ -23,9 +23,9 @@ async function fetchTable(url: string, delimiter: ',' | '\t', signal: AbortSigna
   return readDelimitedText(response.body, delimiter, signal)
 }
 
-export default function useTablePreview(pathname: string) {
+export default function useTablePreview(pathname: string, protectedRoutes: readonly string[]) {
   // The token lookup needs the encoded application pathname.
-  const token = getStoredToken(pathname)
+  const token = getStoredToken(pathname, protectedRoutes)
   const url = rawFileUrl(pathname) + (token ? '&odpt=' + encodeURIComponent(token) : '')
   const delimiter = decodeURIComponent(pathname).toLowerCase().endsWith('.tsv') ? '\t' : ','
   const [attempt, setAttempt] = useState(0)

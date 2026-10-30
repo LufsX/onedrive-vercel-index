@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import { ArrowRight } from 'lucide-react'
 
 import Image from 'next/image'
@@ -11,7 +13,8 @@ import { matchProtectedRoute } from '../utils/protectedRouteHandler'
 import useLocalStorage from '../utils/useLocalStorage'
 
 const Auth: FC<{ redirect: string }> = ({ redirect }) => {
-  const authTokenPath = matchProtectedRoute(redirect)
+  const { protectedRoutes } = useClientConfig().siteConfig
+  const authTokenPath = matchProtectedRoute(redirect, protectedRoutes)
 
   const router = useRouter()
   const [token, setToken] = useState('')

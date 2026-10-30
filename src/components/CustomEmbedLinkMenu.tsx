@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import { Dispatch, Fragment, SetStateAction, useRef, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 import { Dialog, DialogPanel, DialogTitle, Description, Transition, TransitionChild } from '@headlessui/react'
@@ -39,7 +41,8 @@ export default function CustomEmbedLinkMenu({
 }) {
   const t = useTranslations()
 
-  const hashedToken = getStoredToken(path)
+  const { protectedRoutes } = useClientConfig().siteConfig
+  const hashedToken = getStoredToken(path, protectedRoutes)
 
   // Focus on input automatically when menu modal opens
   const focusInputRef = useRef<HTMLInputElement>(null)
@@ -118,11 +121,11 @@ export default function CustomEmbedLinkMenu({
 
                 <LinkContainer
                   title={t('Default')}
-                  value={`${getBaseUrl()}/api/raw/?path=${readablePath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+                  value={`${getBaseUrl()}/api/raw?path=${readablePath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
                 />
                 <LinkContainer
                   title={t('URL encoded')}
-                  value={`${getBaseUrl()}/api/raw/?path=${path}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+                  value={`${getBaseUrl()}/api/raw?path=${path}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
                 />
                 <LinkContainer
                   title={t('Customised')}

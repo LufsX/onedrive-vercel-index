@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { ExternalLink } from 'lucide-react'
@@ -99,11 +101,12 @@ const URLContent = ({ url }: { url: string }) => {
 }
 
 const URLPreview = () => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
-  const hashedToken = getStoredToken(pathname)
+  const hashedToken = getStoredToken(pathname, protectedRoutes)
   const params = new URLSearchParams({ path: pathname.split('/').map(decodePathSegment).join('/') })
   if (hashedToken) params.set('odpt', hashedToken)
-  const url = '/api/raw/?' + params
+  const url = '/api/raw?' + params
 
   return (
     <div>

@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
@@ -7,9 +9,9 @@ import { KeyRound, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { useTranslations } from './ClientProviders'
-import siteConfig from '../../config/site.config'
 
 export default function NavbarLogoutDialog({ onClose }: { onClose: () => void }) {
+  const { siteConfig } = useClientConfig()
   const [isOpen, setIsOpen] = useState(true)
   const router = useRouter()
   const t = useTranslations()

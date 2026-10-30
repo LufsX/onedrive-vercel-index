@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import { MouseEventHandler, useState } from 'react'
 import { Copy, Download, FileDown, Pencil, type LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -65,9 +67,10 @@ export const DownloadButton = ({
 }
 
 const DownloadButtonGroup = () => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
   const asPath = pathname
-  const hashedToken = getStoredToken(asPath)
+  const hashedToken = getStoredToken(asPath, protectedRoutes)
   const fileUrl = rawFileUrl(asPath, hashedToken ? { odpt: hashedToken } : {})
 
   const clipboard = useClipboard()

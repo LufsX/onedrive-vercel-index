@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import type { OdFileObject } from '../../types'
 import { FC } from 'react'
 
@@ -12,6 +14,7 @@ import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
 const DefaultPreview: FC<{ file: OdFileObject }> = ({ file }) => {
+  const { datetimeFormat } = useClientConfig().siteConfig
   const t = useTranslations()
 
   return (
@@ -26,7 +29,7 @@ const DefaultPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           <div className="flex min-w-0 flex-col gap-2 py-4 md:flex-1">
             <div>
               <div className="py-2 text-xs font-medium uppercase opacity-80">{t('Last modified')}</div>
-              <div>{formatModifiedDateTime(file.lastModifiedDateTime)}</div>
+              <div>{formatModifiedDateTime(file.lastModifiedDateTime, datetimeFormat)}</div>
             </div>
 
             <div>

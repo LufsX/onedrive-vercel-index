@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import type { OdFolderChildren } from '../types'
 
 import Link from 'next/link'
@@ -32,6 +34,7 @@ const actionButton =
 const rowAction = 'cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600'
 
 const FileListItem: FC<{ fileContent: OdFolderChildren }> = memo(function FileListItem({ fileContent: c }) {
+  const { datetimeFormat } = useClientConfig().siteConfig
   return (
     <div className={`${rowShell} py-2.5`}>
       <div className={nameArea} title={c.name}>
@@ -40,8 +43,92 @@ const FileListItem: FC<{ fileContent: OdFolderChildren }> = memo(function FileLi
         </div>
         <ChildName name={c.name} folder={Boolean(c.folder)} />
       </div>
-      <div className={dateCell}>{formatModifiedDateTime(c.lastModifiedDateTime)}</div>
+      <div className={dateCell}>{formatModifiedDateTime(c.lastModifiedDateTime, datetimeFormat)}</div>
       <div className={sizeCell}>{humanFileSize(c.size)}</div>
+    </div>
+  )
+})
+
+const FolderListRow = memo(function FolderListRow({
+  child: c,
+  path,
+  selected,
+  generating,
+  hashedToken,
+  copy,
+  toast,
+  toggleItemSelected,
+  handleFolderDownload,
+}: {
+  child: OdFolderChildren
+  path: string
+  selected: boolean
+  generating: boolean
+  hashedToken: string | null
+  copy: ReturnType<typeof useClipboard>['copy']
+  toast: typeof import('react-hot-toast').default
+  toggleItemSelected: (id: string) => void
+  handleFolderDownload: (path: string, id: string, name?: string) => () => void
+}) {
+  const t = useTranslations()
+  const itemPath = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
+
+  return (
+    <div className="dark:hover:bg-gray-850 flex items-center transition-colors duration-100 hover:bg-gray-100">
+      <Link prefetch={false} href={itemPath} className="min-w-0 flex-1 text-gray-700 dark:text-gray-400">
+        <FileListItem fileContent={c} />
+      </Link>
+
+      <div className={`${rightCell} text-gray-700 dark:text-gray-400`}>
+        {c.folder ? (
+          <>
+            <span
+              title={t('Copy folder permalink')}
+              className={rowAction}
+              onClick={() => {
+                copy(`${getBaseUrl()}${itemPath}`)
+                toast(t('Copied folder permalink.'), { icon: '👌' })
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </span>
+            {generating ? (
+              <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
+            ) : (
+              <span
+                title={t('Download folder')}
+                className={rowAction}
+                onClick={handleFolderDownload(itemPath, c.id, c.name)}
+              >
+                <CircleArrowDown className="h-4 w-4" />
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            <span
+              title={t('Copy raw file permalink')}
+              className={rowAction}
+              onClick={() => {
+                copy(`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
+                toast.success(t('Copied raw file permalink.'))
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </span>
+            <a
+              title={t('Download file')}
+              className={rowAction}
+              href={`/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+            >
+              <CircleArrowDown className="h-4 w-4" />
+            </a>
+          </>
+        )}
+        {!c.folder && !(c.name === '.password') && (
+          <Checkbox checked={selected ? 2 : 0} onChange={() => toggleItemSelected(c.id)} title={t('Select file')} />
+        )}
+      </div>
     </div>
   )
 })
@@ -60,13 +147,11 @@ const FolderListLayout = ({
   handleFolderDownload,
   toast,
 }) => {
-  const clipboard = useClipboard()
-  const hashedToken = getStoredToken(path)
+  const { copy } = useClipboard()
+  const { protectedRoutes } = useClientConfig().siteConfig
+  const hashedToken = getStoredToken(path, protectedRoutes)
 
   const t = useTranslations()
-
-  // Get item path from item name
-  const getItemPath = (name: string) => `${path === '/' ? '' : path}/${encodeURIComponent(name)}`
 
   return (
     <div className="rounded bg-white shadow-xs dark:bg-gray-900 dark:text-gray-100">
@@ -84,7 +169,7 @@ const FolderListLayout = ({
             className={actionButton}
             disabled={totalSelected === 0}
             onClick={() => {
-              clipboard.copy(handleSelectedPermalink(getBaseUrl()))
+              copy(handleSelectedPermalink(getBaseUrl()))
               toast.success(t('Copied selected files permalink.'))
             }}
           >
@@ -112,71 +197,18 @@ const FolderListLayout = ({
       </div>
 
       {folderChildren.map((c: OdFolderChildren) => (
-        <div
-          className="dark:hover:bg-gray-850 flex items-center transition-colors duration-100 hover:bg-gray-100"
+        <FolderListRow
           key={c.id}
-        >
-          <Link prefetch={false} href={getItemPath(c.name)} className="min-w-0 flex-1 text-gray-700 dark:text-gray-400">
-            <FileListItem fileContent={c} />
-          </Link>
-
-          <div className={`${rightCell} text-gray-700 dark:text-gray-400`}>
-            {c.folder ? (
-              <>
-                <span
-                  title={t('Copy folder permalink')}
-                  className={rowAction}
-                  onClick={() => {
-                    clipboard.copy(`${getBaseUrl()}${getItemPath(c.name)}`)
-                    toast(t('Copied folder permalink.'), { icon: '👌' })
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </span>
-                {folderGenerating[c.id] ? (
-                  <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
-                ) : (
-                  <span
-                    title={t('Download folder')}
-                    className={rowAction}
-                    onClick={handleFolderDownload(getItemPath(c.name), c.id, c.name)}
-                  >
-                    <CircleArrowDown className="h-4 w-4" />
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                <span
-                  title={t('Copy raw file permalink')}
-                  className={rowAction}
-                  onClick={() => {
-                    clipboard.copy(
-                      `${getBaseUrl()}/api/raw?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
-                    )
-                    toast.success(t('Copied raw file permalink.'))
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </span>
-                <a
-                  title={t('Download file')}
-                  className={rowAction}
-                  href={`/api/raw?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-                >
-                  <CircleArrowDown className="h-4 w-4" />
-                </a>
-              </>
-            )}
-            {!c.folder && !(c.name === '.password') && (
-              <Checkbox
-                checked={selected[c.id] ? 2 : 0}
-                onChange={() => toggleItemSelected(c.id)}
-                title={t('Select file')}
-              />
-            )}
-          </div>
-        </div>
+          child={c}
+          path={path}
+          selected={Boolean(selected[c.id])}
+          generating={Boolean(folderGenerating[c.id])}
+          hashedToken={c.folder ? null : hashedToken}
+          copy={copy}
+          toast={toast}
+          toggleItemSelected={toggleItemSelected}
+          handleFolderDownload={handleFolderDownload}
+        />
       ))}
     </div>
   )

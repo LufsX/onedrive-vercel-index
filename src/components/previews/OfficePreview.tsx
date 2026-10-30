@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import type { OdFileObject } from '../../types'
 import { FC, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -56,18 +58,19 @@ function isLocalAddress(hostname: string) {
 }
 
 const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
   const asPath = pathname
   const t = useTranslations()
   const filePath = asPath
-  const hashedToken = getStoredToken(filePath)
-  const protectedFile = matchProtectedRoute(filePath) !== ''
+  const hashedToken = getStoredToken(filePath, protectedRoutes)
+  const protectedFile = matchProtectedRoute(filePath, protectedRoutes) !== ''
   const [renderer, setRenderer] = useState<'local' | 'microsoft'>('local')
 
   const rawUrl = rawFileUrl(filePath, hashedToken ? { odpt: hashedToken } : {})
-  const docUrl = getBaseUrl() + rawUrl.replace('/api/raw/', `/api/name/${encodeURIComponent(file.name)}`)
+  const docUrl = getBaseUrl() + rawUrl.replace('/api/raw', `/api/name/${encodeURIComponent(file.name)}`)
   const publicDocUrl =
-    getBaseUrl() + rawFileUrl(filePath).replace('/api/raw/', `/api/name/${encodeURIComponent(file.name)}`)
+    getBaseUrl() + rawFileUrl(filePath).replace('/api/raw', `/api/name/${encodeURIComponent(file.name)}`)
   const microsoftDocUrl = encodeURIComponent(publicDocUrl)
 
   return (

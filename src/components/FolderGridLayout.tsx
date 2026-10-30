@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from './ClientConfigProvider'
+
 import type { OdFolderChildren } from '../types'
 
 import Link from 'next/link'
@@ -14,6 +16,7 @@ import { Checkbox, ChildIcon, ChildName, Downloading } from './folder/ListingIte
 import { getStoredToken } from '../utils/protectedRouteHandler'
 
 const GridItem = memo(function GridItem({ c }: { c: OdFolderChildren }) {
+  const { datetimeFormat } = useClientConfig().siteConfig
   // The listing carries a thumbnail URL for media files; everything else (and any
   // item Graph has no preview for) falls back to the file icon.
   const thumbnailUrl = 'folder' in c ? undefined : (c as { thumbnailUrl?: string }).thumbnailUrl
@@ -51,8 +54,99 @@ const GridItem = memo(function GridItem({ c }: { c: OdFolderChildren }) {
         <ChildName name={c.name} folder={Boolean(c.folder)} />
       </div>
       <div className="truncate text-center font-mono text-xs text-gray-700 dark:text-gray-500">
-        {formatModifiedDateTime(c.lastModifiedDateTime)}
+        {formatModifiedDateTime(c.lastModifiedDateTime, datetimeFormat)}
       </div>
+    </div>
+  )
+})
+
+const FolderGridCard = memo(function FolderGridCard({
+  child: c,
+  path,
+  selected,
+  generating,
+  hashedToken,
+  copy,
+  toast,
+  toggleItemSelected,
+  handleFolderDownload,
+}: {
+  child: OdFolderChildren
+  path: string
+  selected: boolean
+  generating: boolean
+  hashedToken: string | null
+  copy: ReturnType<typeof useClipboard>['copy']
+  toast: typeof import('react-hot-toast').default
+  toggleItemSelected: (id: string) => void
+  handleFolderDownload: (path: string, id: string, name?: string) => () => void
+}) {
+  const t = useTranslations()
+  const itemPath = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
+
+  return (
+    <div className="group dark:hover:bg-gray-850 relative overflow-hidden rounded transition-colors duration-100 hover:bg-gray-100">
+      <div className="absolute top-0 right-0 z-10 m-1 rounded bg-white/50 py-0.5 opacity-0 transition-opacity duration-100 group-hover:opacity-100 dark:bg-gray-900/50">
+        {c.folder ? (
+          <div>
+            <span
+              title={t('Copy folder permalink')}
+              className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+              onClick={() => {
+                copy(`${getBaseUrl()}${itemPath}`)
+                toast(t('Copied folder permalink.'), { icon: '👌' })
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </span>
+            {generating ? (
+              <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
+            ) : (
+              <span
+                title={t('Download folder')}
+                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                onClick={handleFolderDownload(itemPath, c.id, c.name)}
+              >
+                <CircleArrowDown className="h-4 w-4" />
+              </span>
+            )}
+          </div>
+        ) : (
+          <div>
+            <span
+              title={t('Copy raw file permalink')}
+              className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+              onClick={() => {
+                copy(`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
+                toast.success(t('Copied raw file permalink.'))
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </span>
+            <a
+              title={t('Download file')}
+              className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+              href={`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+            >
+              <CircleArrowDown className="h-4 w-4" />
+            </a>
+          </div>
+        )}
+      </div>
+
+      <div
+        className={`${
+          selected ? 'opacity-100' : 'opacity-0'
+        } absolute top-0 left-0 z-10 m-1 rounded bg-white/50 py-0.5 group-hover:opacity-100 dark:bg-gray-900/50`}
+      >
+        {!c.folder && !(c.name === '.password') && (
+          <Checkbox checked={selected ? 2 : 0} onChange={() => toggleItemSelected(c.id)} title={t('Select file')} />
+        )}
+      </div>
+
+      <Link prefetch={false} href={itemPath}>
+        <GridItem c={c} />
+      </Link>
     </div>
   )
 })
@@ -71,13 +165,11 @@ const FolderGridLayout = ({
   handleFolderDownload,
   toast,
 }) => {
-  const clipboard = useClipboard()
-  const hashedToken = getStoredToken(path)
+  const { copy } = useClipboard()
+  const { protectedRoutes } = useClientConfig().siteConfig
+  const hashedToken = getStoredToken(path, protectedRoutes)
 
   const t = useTranslations()
-
-  // Get item path from item name
-  const getItemPath = (name: string) => `${path === '/' ? '' : path}/${encodeURIComponent(name)}`
 
   return (
     <div className="rounded bg-white shadow-xs dark:bg-gray-900 dark:text-gray-100">
@@ -95,7 +187,7 @@ const FolderGridLayout = ({
             className="cursor-pointer rounded p-1.5 hover:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white dark:hover:bg-gray-600 disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900"
             disabled={totalSelected === 0}
             onClick={() => {
-              clipboard.copy(handleSelectedPermalink(getBaseUrl()))
+              copy(handleSelectedPermalink(getBaseUrl()))
               toast.success(t('Copied selected files permalink.'))
             }}
           >
@@ -118,82 +210,18 @@ const FolderGridLayout = ({
 
       <div className="grid grid-cols-2 gap-3 p-3 md:grid-cols-4">
         {folderChildren.map((c: OdFolderChildren) => (
-          <div
+          <FolderGridCard
             key={c.id}
-            className="group dark:hover:bg-gray-850 relative overflow-hidden rounded transition-colors duration-100 hover:bg-gray-100"
-          >
-            <div className="absolute top-0 right-0 z-10 m-1 rounded bg-white/50 py-0.5 opacity-0 transition-opacity duration-100 group-hover:opacity-100 dark:bg-gray-900/50">
-              {c.folder ? (
-                <div>
-                  <span
-                    title={t('Copy folder permalink')}
-                    className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
-                    onClick={() => {
-                      clipboard.copy(`${getBaseUrl()}${getItemPath(c.name)}`)
-                      toast(t('Copied folder permalink.'), { icon: '👌' })
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </span>
-                  {folderGenerating[c.id] ? (
-                    <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
-                  ) : (
-                    <span
-                      title={t('Download folder')}
-                      className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
-                      onClick={handleFolderDownload(getItemPath(c.name), c.id, c.name)}
-                    >
-                      <CircleArrowDown className="h-4 w-4" />
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <span
-                    title={t('Copy raw file permalink')}
-                    className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
-                    onClick={() => {
-                      clipboard.copy(
-                        `${getBaseUrl()}/api/raw/?path=${getItemPath(c.name)}${
-                          hashedToken ? `&odpt=${hashedToken}` : ''
-                        }`,
-                      )
-                      toast.success(t('Copied raw file permalink.'))
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </span>
-                  <a
-                    title={t('Download file')}
-                    className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
-                    href={`${getBaseUrl()}/api/raw/?path=${getItemPath(c.name)}${
-                      hashedToken ? `&odpt=${hashedToken}` : ''
-                    }`}
-                  >
-                    <CircleArrowDown className="h-4 w-4" />
-                  </a>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={`${
-                selected[c.id] ? 'opacity-100' : 'opacity-0'
-              } absolute top-0 left-0 z-10 m-1 rounded bg-white/50 py-0.5 group-hover:opacity-100 dark:bg-gray-900/50`}
-            >
-              {!c.folder && !(c.name === '.password') && (
-                <Checkbox
-                  checked={selected[c.id] ? 2 : 0}
-                  onChange={() => toggleItemSelected(c.id)}
-                  title={t('Select file')}
-                />
-              )}
-            </div>
-
-            <Link prefetch={false} href={getItemPath(c.name)}>
-              <GridItem c={c} />
-            </Link>
-          </div>
+            child={c}
+            path={path}
+            selected={Boolean(selected[c.id])}
+            generating={Boolean(folderGenerating[c.id])}
+            hashedToken={c.folder ? null : hashedToken}
+            copy={copy}
+            toast={toast}
+            toggleItemSelected={toggleItemSelected}
+            handleFolderDownload={handleFolderDownload}
+          />
         ))}
       </div>
     </div>

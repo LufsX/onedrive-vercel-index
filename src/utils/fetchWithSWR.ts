@@ -34,8 +34,8 @@ export async function fetcher([url, token]: [url: string, token?: string]): Prom
  * @param path Current query directory path
  * @returns useSWRInfinite API
  */
-export function useProtectedSWRInfinite(path: string = '', options: { thumbnails?: 'medium'; enabled?: boolean } = {}) {
-  const hashedToken = getStoredToken(path)
+export function useProtectedSWRInfinite(path: string, protectedRoutes: readonly string[], options: { thumbnails?: 'medium'; enabled?: boolean } = {}) {
+  const hashedToken = getStoredToken(path, protectedRoutes)
 
   /**
    * Next page infinite loading for useSWR

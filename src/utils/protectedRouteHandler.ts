@@ -1,5 +1,4 @@
 import { SHA256 } from 'crypto-es'
-import siteConfig from '../../config/site.config'
 import { decodePathSegment } from './pathEncoding'
 import { matchProtectedPath } from './protectedPath'
 
@@ -9,15 +8,15 @@ function encryptToken(token: string): string {
 }
 
 // Fetch stored token from localStorage and encrypt with SHA256
-export function getStoredToken(path: string): string | null {
+export function getStoredToken(path: string, protectedRoutes: readonly string[]): string | null {
   const storedToken =
-    typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(matchProtectedRoute(path)) as string) : ''
+    typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(matchProtectedRoute(path, protectedRoutes)) as string) : ''
   return storedToken ? encryptToken(storedToken) : null
 }
 
 // Store token in localStorage
-export function setStoredToken(path: string, token: string): void {
-  const matchedRoute = matchProtectedRoute(path)
+export function setStoredToken(path: string, token: string, protectedRoutes: readonly string[]): void {
+  const matchedRoute = matchProtectedRoute(path, protectedRoutes)
   if (matchedRoute && typeof window !== 'undefined') {
     localStorage.setItem(matchedRoute, JSON.stringify(token))
   }
@@ -44,6 +43,6 @@ export function compareHashedToken({
  * @param route directory path
  * @returns whether the directory is protected
  */
-export function matchProtectedRoute(route: string): string {
-  return matchProtectedPath(route.split('/').map(decodePathSegment).join('/'), siteConfig.protectedRoutes)
+export function matchProtectedRoute(route: string, protectedRoutes: readonly string[]): string {
+  return matchProtectedPath(route.split('/').map(decodePathSegment).join('/'), protectedRoutes)
 }

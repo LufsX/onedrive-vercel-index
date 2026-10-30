@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import { usePathname } from 'next/navigation'
 import { rawFileUrl } from '../../utils/rawFileUrl'
 import { useTranslations } from '../ClientProviders'
@@ -10,11 +12,12 @@ import useFileContent from '../../utils/fetchOnMount'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
 const TextPreview = () => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
   const asPath = pathname
   const t = useTranslations()
 
-  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath), asPath)
+  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath), asPath, protectedRoutes)
   if (error) {
     return (
       <>

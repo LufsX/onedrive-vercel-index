@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../ClientConfigProvider'
+
 import { FC } from 'react'
 import { useTranslations } from '../ClientProviders'
 import { usePathname } from 'next/navigation'
@@ -16,9 +18,10 @@ import { DownloadBtnContainer, PreviewContainer } from './Containers'
 import CodeBlock from './CodeBlock'
 
 const CodePreview: FC<{ file: any }> = ({ file }) => {
+  const { protectedRoutes } = useClientConfig().siteConfig
   const pathname = usePathname()
   const asPath = pathname
-  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath), asPath)
+  const { response: content, error, validating } = useFileContent(rawFileUrl(asPath), asPath, protectedRoutes)
 
   const theme = useSystemTheme('dark')
   const t = useTranslations()
