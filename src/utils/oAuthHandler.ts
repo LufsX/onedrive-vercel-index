@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { AES, Utf8 } from 'crypto-es'
 
-import apiConfig from '../../config/api.config'
+import type { ClientApiConfig } from '../components/ClientConfigProvider'
 
 // Just a disguise to obfuscate required tokens (including but not limited to client secret,
 // access tokens, and refresh tokens), used along with the following two functions
@@ -18,7 +18,7 @@ export function revealObfuscatedToken(obfuscated: string): string {
 }
 
 // Generate the Microsoft OAuth 2.0 authorization URL, used for requesting the authorisation code
-export function generateAuthorisationUrl(): string {
+export function generateAuthorisationUrl(apiConfig: Pick<ClientApiConfig, 'clientId' | 'redirectUri' | 'authApi' | 'scope'>): string {
   const { clientId, redirectUri, authApi, scope } = apiConfig
   const authUrl = authApi.replace('/token', '/authorize')
 
@@ -35,9 +35,9 @@ export function generateAuthorisationUrl(): string {
 
 // The code returned from the Microsoft OAuth 2.0 authorization URL is a request URL with hostname
 // http://localhost and URL parameter code. This function extracts the code from the request URL
-export function extractAuthCodeFromRedirected(url: string): string {
+export function extractAuthCodeFromRedirected(url: string, redirectUri: string): string {
   // Return empty string if the url is not the defined redirect uri
-  if (!url.startsWith(apiConfig.redirectUri)) {
+  if (!url.startsWith(redirectUri)) {
     return ''
   }
 
@@ -52,52 +52,40 @@ export function extractAuthCodeFromRedirected(url: string): string {
 export async function requestTokenWithAuthCode(
   code: string,
 ): Promise<
-  | { expiryTime: string; accessToken: string; refreshToken: string }
+  | { expiryTime: number; accessToken: string; refreshToken: string }
   | { error: string; errorDescription: string; errorUri: string }
 > {
-  const { clientId, redirectUri, authApi } = apiConfig
-  const clientSecret = revealObfuscatedToken(apiConfig.obfuscatedClientSecret)
-
-  // Construct URL parameters for OAuth2
-  const params = new URLSearchParams()
-  params.append('client_id', clientId)
-  params.append('redirect_uri', redirectUri)
-  params.append('client_secret', clientSecret)
-  params.append('code', code)
-  params.append('grant_type', 'authorization_code')
-
-  // Request access token
   return axios
-    .post(authApi, params, {
+    .post('/api/oauth/token', { code }, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
     })
-    .then(resp => {
-      const { expires_in, access_token, refresh_token } = resp.data
-      return { expiryTime: expires_in, accessToken: access_token, refreshToken: refresh_token }
-    })
+    .then(resp => resp.data)
     .catch(err => {
       // A network failure has no response body; never let the wizard sit on
       // "Requesting tokens..." forever.
       const data = err?.response?.data
-      if (!data || typeof data !== 'object' || !('error' in data)) {
+      if (!data || typeof data !== 'object' || typeof data.error !== 'string' || !data.error) {
         return {
           error: 'network_error',
-          errorDescription: err?.message ?? 'Could not reach the Microsoft token endpoint.',
+          errorDescription: 'Could not reach the token service.',
           errorUri: '',
         }
       }
 
-      const { error, error_description, error_uri } = data
-      return { error, errorDescription: error_description ?? '', errorUri: error_uri ?? '' }
+      return {
+        error: data.error,
+        errorDescription: typeof data.errorDescription === 'string' ? data.errorDescription : '',
+        errorUri: typeof data.errorUri === 'string' ? data.errorUri : '',
+      }
     })
 }
 
 // Verify the identity of the user with the access token and compare it with the userPrincipalName
 // in the Microsoft Graph API. If the userPrincipalName matches, proceed with token storing.
-export async function getAuthPersonInfo(accessToken: string) {
-  const profileApi = apiConfig.driveApi.replace('/drive', '')
+export async function getAuthPersonInfo(accessToken: string, driveApi: string) {
+  const profileApi = driveApi.replace('/drive', '')
 
   try {
     const response = await axios.get(profileApi, {
@@ -112,7 +100,7 @@ export async function getAuthPersonInfo(accessToken: string) {
   }
 }
 
-export async function sendTokenToServer(accessToken: string, refreshToken: string, expiryTime: string) {
+export async function sendTokenToServer(accessToken: string, refreshToken: string, expiryTime: string, setupSecret: string) {
   return await axios.post(
     '/api',
     {
@@ -123,6 +111,7 @@ export async function sendTokenToServer(accessToken: string, refreshToken: strin
     {
       headers: {
         'Content-Type': 'application/json',
+        'x-oauth-setup-secret': setupSecret,
       },
     },
   )

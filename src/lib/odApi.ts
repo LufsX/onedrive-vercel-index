@@ -6,10 +6,14 @@ import siteConfig from '../../config/site.config'
 import { matchProtectedPath } from '../utils/protectedPath'
 import { revealObfuscatedToken } from '../utils/oAuthHandler'
 import { compareHashedToken } from '../utils/protectedRouteHandler'
-import { getOdAuthTokens, storeOdAuthTokens, tokenStoreGeneration } from '../utils/odAuthTokenStore'
+import {
+  acquireOdRefreshLock, commitOdRefresh, getOdAuthTokens, releaseOdRefreshLock,
+  storeOdAuthTokens, tokenStoreGeneration,
+} from '../utils/odAuthTokenStore'
+import { isPasswordFile } from './itemPath'
+import { getOAuthClientSecret } from './oauthServerConfig'
 
 const basePath = pathPosix.resolve('/', siteConfig.baseDirectory)
-const clientSecret = revealObfuscatedToken(apiConfig.obfuscatedClientSecret)
 
 type AuthCheck = { code: 200 | 401 | 404 | 500; message: string }
 
@@ -25,47 +29,71 @@ export function encodePath(path: string): string {
 // Refresh before the token expires so a request never races its own expiry.
 const ACCESS_TOKEN_MIN_TTL_SECONDS = 120
 
-// Microsoft rotates the refresh token on every use, so two concurrent refreshes
-// invalidate each other and leave the site with "no access token" for a moment.
 let refreshInFlight: { generation: number; promise: Promise<string> } | null = null
 
-async function refreshAccessToken(refreshToken: string): Promise<string> {
-  const generation = tokenStoreGeneration()
-  const body = new URLSearchParams()
-  body.append('client_id', apiConfig.clientId)
-  body.append('redirect_uri', apiConfig.redirectUri)
-  body.append('client_secret', clientSecret)
-  body.append('refresh_token', refreshToken)
-  body.append('grant_type', 'refresh_token')
-
+async function refreshAccessToken(): Promise<string> {
+  const deadline = Date.now() + 2000
   try {
-    const resp = await axiosInstance.post(apiConfig.authApi, body, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    })
+    while (Date.now() < deadline) {
+      const current = await getOdAuthTokens(true)
+      if (typeof current.accessToken === 'string' && current.accessToken && current.accessTokenTtl > ACCESS_TOKEN_MIN_TTL_SECONDS) {
+        return current.accessToken
+      }
+      if (typeof current.refreshToken !== 'string' || !current.refreshToken) return ''
+      const refreshToken = current.refreshToken
+      const lease = await acquireOdRefreshLock(refreshToken)
+      if (lease.changed) continue
+      if (!lease.acquired) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        continue
+      }
 
-    // A newer OAuth setup must not be overwritten by an older refresh response.
-    if (generation !== tokenStoreGeneration()) return await getAccessToken()
-
-    if ('access_token' in resp.data && 'refresh_token' in resp.data) {
-      const { expires_in, access_token, refresh_token } = resp.data
-      await storeOdAuthTokens({
-        accessToken: access_token,
-        accessTokenExpiry: parseInt(expires_in),
-        refreshToken: refresh_token,
-      })
-      console.log('Fetch new access token with stored refresh token.')
-      return access_token
+      let released = false
+      try {
+        // A different process may have refreshed between the read and lease acquisition.
+        const latest = await getOdAuthTokens(true)
+        if (latest.refreshToken !== refreshToken || (typeof latest.accessToken === 'string' && latest.accessToken && latest.accessTokenTtl > ACCESS_TOKEN_MIN_TTL_SECONDS)) continue
+        const body = new URLSearchParams({
+          client_id: apiConfig.clientId,
+          redirect_uri: apiConfig.redirectUri,
+          client_secret: getOAuthClientSecret(),
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        })
+        const resp = await axiosInstance.post(apiConfig.authApi, body, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          timeout: 15000,
+        })
+        if (typeof resp.data?.access_token !== 'string' || typeof resp.data?.refresh_token !== 'string') return ''
+        const committed = await commitOdRefresh({
+          accessToken: resp.data.access_token,
+          accessTokenExpiry: parseInt(resp.data.expires_in),
+          refreshToken: resp.data.refresh_token,
+        }, lease.owner, refreshToken)
+        if (committed) {
+          released = true
+          return resp.data.access_token
+        }
+        // Reauthorization or lease expiry won the race; read the authoritative pair.
+      } finally {
+        if (!released) {
+          await releaseOdRefreshLock(lease.owner).catch(error => console.error('Failed to release refresh lock:', error?.message))
+        }
+      }
     }
-
-    return ''
   } catch (error: any) {
-    // A rejected refresh token means the site has to be re-authorised: return an
-    // empty token so callers answer 403 instead of asking for a password.
     console.error('Failed to refresh access token:', error?.response?.data ?? error?.message)
-    return ''
+    // A concurrent setup or an ambiguously acknowledged commit may have succeeded.
+    try {
+      const latest = await getOdAuthTokens(true)
+      if (typeof latest.accessToken === 'string' && latest.accessToken && latest.accessTokenTtl > ACCESS_TOKEN_MIN_TTL_SECONDS) {
+        return latest.accessToken
+      }
+    } catch {
+      // Preserve the existing empty-token contract on refresh failures.
+    }
   }
+  return ''
 }
 
 /**
@@ -91,7 +119,7 @@ export async function getAccessToken(): Promise<string> {
 
   const generation = tokenStoreGeneration()
   if (!refreshInFlight || refreshInFlight.generation !== generation) {
-    const flight = { generation, promise: refreshAccessToken(refreshToken) }
+    const flight = { generation, promise: refreshAccessToken() }
     refreshInFlight = flight
     void flight.promise.finally(() => {
       if (refreshInFlight === flight) refreshInFlight = null
@@ -138,6 +166,8 @@ export async function checkAuthRoute(
   accessToken: string,
   odTokenHeader: string,
 ): Promise<AuthCheck> {
+  if (isPasswordFile(cleanPath)) return { code: 404, message: 'Item not found.' }
+
   const authTokenPath = getAuthTokenPath(cleanPath)
 
   if (authTokenPath === '') {

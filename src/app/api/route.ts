@@ -6,21 +6,34 @@ import apiConfig from '../../../config/api.config'
 import { checkAuthRoute, encodePath, getAccessToken, storeTokensFromRequestBody } from '../../lib/odApi'
 import { getDrivePath, type ThumbnailSize } from '../../lib/driveListing'
 import { hasStoredRefreshToken } from '../../utils/odAuthTokenStore'
+import { revealObfuscatedToken } from '../../utils/oAuthHandler'
+import { authorizeTokenWrite } from '../../lib/oauthSetup'
+import siteConfig from '../../../config/site.config'
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null)
-
-  if (!body) {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  const stored = await storeTokensFromRequestBody(body)
-
-  if (!stored) {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
-
-  return new NextResponse('OK', { status: 200 })
+  const result = await authorizeTokenWrite({
+    secret: process.env.OAUTH_SETUP_SECRET,
+    suppliedSecret: request.headers.get('x-oauth-setup-secret'),
+    owner: siteConfig.userPrincipalName,
+    readBody: () => request.json(),
+    reveal: revealObfuscatedToken,
+    getIdentity: async accessToken => {
+      const response = await fetch(apiConfig.driveApi.replace('/drive', ''), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: 'no-store',
+        redirect: 'error',
+        signal: AbortSignal.timeout(15000),
+      })
+      if (!response.ok) throw new Error('Graph identity request failed')
+      const data = await response.json()
+      return typeof data?.userPrincipalName === 'string' ? data.userPrincipalName : null
+    },
+    store: storeTokensFromRequestBody,
+  })
+  const headers = { 'Cache-Control': 'no-store' }
+  return result.error
+    ? NextResponse.json({ error: result.error }, { status: result.status, headers })
+    : new NextResponse('OK', { status: 200, headers })
 }
 
 export async function GET(request: NextRequest) {

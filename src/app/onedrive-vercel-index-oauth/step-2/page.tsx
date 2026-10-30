@@ -1,5 +1,7 @@
 'use client'
 
+import { useClientConfig } from '../../../components/ClientConfigProvider'
+
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -7,17 +9,21 @@ import { ArrowRight, CircleAlert, ExternalLink } from 'lucide-react'
 
 import Navbar from '../../../components/Navbar'
 import Footer from '../../../components/Footer'
+import { useTranslations } from '../../../components/ClientProviders'
+import { RichText } from '../../../components/RichText'
 import { LoadingIcon } from '../../../components/Loading'
 import { extractAuthCodeFromRedirected, generateAuthorisationUrl } from '../../../utils/oAuthHandler'
 
 export default function OAuthStep2() {
+  const { apiConfig } = useClientConfig()
   const router = useRouter()
+  const t = useTranslations()
 
   const [oAuthRedirectedUrl, setOAuthRedirectedUrl] = useState('')
   const [authCode, setAuthCode] = useState('')
   const [buttonLoading, setButtonLoading] = useState(false)
 
-  const oAuthUrl = generateAuthorisationUrl()
+  const oAuthUrl = generateAuthorisationUrl(apiConfig)
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white dark:bg-gray-900">
@@ -31,17 +37,21 @@ export default function OAuthStep2() {
                 src="/images/fabulous-come-back-later.png"
                 width={912}
                 height={912}
-                alt="fabulous come back later"
+                alt={t('fabulous come back later')}
                 priority
               />
             </div>
-            <h3 className="mb-4 text-center text-xl font-medium">Welcome to your new onedrive-vercel-index 🎉</h3>
+            <h3 className="mb-4 text-center text-xl font-medium">
+              {t('Welcome to your new onedrive-vercel-index 🎉')}
+            </h3>
 
-            <h3 className="mt-4 mb-2 text-lg font-medium">Step 2/3: Get authorisation code</h3>
+            <h3 className="mt-4 mb-2 text-lg font-medium">{t('Step 2/3: Get authorisation code')}</h3>
 
             <p className="py-1 text-sm font-medium text-red-400">
-              <CircleAlert className="mr-1 h-4 w-4" /> If you are not the owner of this website, stop now, as continuing
-              with this process may expose your personal files in OneDrive.
+              <CircleAlert className="mr-1 h-4 w-4" />{' '}
+              {t(
+                'If you are not the owner of this website, stop now, as continuing with this process may expose your personal files in OneDrive.',
+              )}
             </p>
 
             <div
@@ -59,15 +69,19 @@ export default function OAuthStep2() {
             </div>
 
             <p className="py-1">
-              The OAuth link for getting the authorisation code has been created. Click on the link above to get the{' '}
-              <b className="underline decoration-yellow-400 decoration-wavy">authorisation code</b>. Your browser will
-              open a new tab to Microsoft&apos;s account login page. After logging in and authenticating with your
-              Microsoft account, you will be redirected to a blank page on localhost. Paste{' '}
-              <b className="underline decoration-teal-500 decoration-wavy">the entire redirected URL</b> down below.
+              <RichText
+                text={t(
+                  "The OAuth link for getting the authorisation code has been created. Click on the link above to get the <1>authorisation code</1>. Your browser will open a new tab to Microsoft's account login page. After logging in and authenticating with your Microsoft account, you will be redirected to a blank page on localhost. Paste <2>the entire redirected URL</2> down below.",
+                )}
+                tags={{
+                  '1': <b className="underline decoration-yellow-400 decoration-wavy" />,
+                  '2': <b className="underline decoration-teal-500 decoration-wavy" />,
+                }}
+              />
             </p>
 
             <div className="mx-auto my-4 w-2/3 overflow-hidden rounded">
-              <Image src="/images/step-2-screenshot.png" width={1466} height={607} alt="step 2 screenshot" />
+              <Image src="/images/step-2-screenshot.png" width={1466} height={607} alt={t('step 2 screenshot')} />
             </div>
 
             <input
@@ -82,24 +96,26 @@ export default function OAuthStep2() {
               value={oAuthRedirectedUrl}
               onChange={e => {
                 setOAuthRedirectedUrl(e.target.value)
-                setAuthCode(extractAuthCodeFromRedirected(e.target.value))
+                setAuthCode(extractAuthCodeFromRedirected(e.target.value, apiConfig.redirectUri))
               }}
             />
 
-            <p className="py-1">The authorisation code extracted is:</p>
+            <p className="py-1">{t('The authorisation code extracted is:')}</p>
             <p className="my-2 truncate overflow-hidden rounded border border-gray-400/20 bg-gray-50 p-2 font-mono text-sm opacity-80 dark:bg-gray-800">
-              {authCode ?? <span className="animate-pulse">Waiting for code...</span>}
+              {authCode ?? <span className="animate-pulse">{t('Waiting for code...')}</span>}
             </p>
 
             <p>
               {authCode
-                ? '✅ You can now proceed onto the next step: requesting your access token and refresh token.'
-                : '❌ No valid code extracted.'}
+                ? t('✅ You can now proceed onto the next step: requesting your access token and refresh token.')
+                : t('❌ No valid code extracted.')}
             </p>
 
             <p className="py-1 text-sm font-medium text-yellow-600 dark:text-yellow-500">
-              <CircleAlert className="mr-1 h-4 w-4" /> The code can only be used once and expires in about 10 minutes.
-              Paste the redirected URL and press &quot;Get tokens&quot; right away.
+              <CircleAlert className="mr-1 h-4 w-4" />{' '}
+              {t(
+                'The code can only be used once and expires in about 10 minutes. Paste the redirected URL and press "Get tokens" right away.',
+              )}
             </p>
 
             <div className="mt-6 mb-2 text-right">
@@ -113,11 +129,11 @@ export default function OAuthStep2() {
               >
                 {buttonLoading ? (
                   <>
-                    <span>Requesting tokens</span> <LoadingIcon className="ml-1 inline h-4 w-4 animate-spin" />
+                    <span>{t('Requesting tokens')}</span> <LoadingIcon className="ml-1 inline h-4 w-4 animate-spin" />
                   </>
                 ) : (
                   <>
-                    <span>Get tokens</span> <ArrowRight className="h-4 w-4" />
+                    <span>{t('Get tokens')}</span> <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </button>
