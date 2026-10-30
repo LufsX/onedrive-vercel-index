@@ -3,6 +3,7 @@ import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
 import { cacheGeneration, cacheKeyFor, cached, knownKind, rememberKind, rememberKinds } from './cache'
 import { encodePath } from './odApi'
+import { isPasswordFile } from './itemPath'
 
 export const METADATA_CACHE_TTL_MS = 30 * 1000
 
@@ -78,6 +79,12 @@ export async function loadDrivePath(
         ...(sort ? { $orderby: sort } : {}),
       },
     })
+
+    if (Array.isArray(folderData.value)) {
+      folderData.value = folderData.value.filter(
+        (child: any) => typeof child?.name === 'string' && !isPasswordFile(child.name),
+      )
+    }
 
     // URLSearchParams decodes exactly once and does not swallow later parameters.
     const nextLink = folderData['@odata.nextLink']
