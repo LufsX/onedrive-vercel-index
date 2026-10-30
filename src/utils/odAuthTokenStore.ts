@@ -1,4 +1,5 @@
 import siteConfig from '../../config/site.config'
+import { clearCache } from '../lib/cache'
 import { getRedisClient } from './redisClient'
 
 // Persistent key-value store is provided by Redis, hosted on Upstash
@@ -26,28 +27,68 @@ export async function hasStoredRefreshToken(): Promise<boolean> {
   }
 }
 
-export async function getOdAuthTokens(): Promise<{ accessToken: unknown; refreshToken: unknown }> {
-  const kv = getKv()
+type Tokens = { accessToken: unknown; refreshToken: unknown; accessTokenTtl: number }
+let tokenCache: { tokens: Tokens; expires: number; tokenExpires: number } | null = null
+let readInFlight: Promise<Tokens> | null = null
+let generation = 0
+const writesInFlight = new Set<Promise<unknown>>()
 
-  // Use pipeline for parallel reads to reduce round trips
-  const pipeline = kv.pipeline()
-  pipeline.get(accessTokenKey())
-  pipeline.get(refreshTokenKey())
-
-  const results = await pipeline.exec()
-
-  return {
-    accessToken: results?.[0]?.[1] ?? null,
-    refreshToken: results?.[1]?.[1] ?? null,
-  }
+export function tokenStoreGeneration(): number {
+  return generation
 }
 
-/** Remaining lifetime of the stored access token in seconds (-1 when unknown/none). */
-export async function getAccessTokenTtl(): Promise<number> {
+function invalidateTokenCache(): void {
+  generation++
+  tokenCache = null
+  readInFlight = null
+}
+
+/** GET both tokens and TTL in one round trip; only cache usable, successful reads. */
+export async function getOdAuthTokens(): Promise<Tokens> {
+  if (writesInFlight.size) {
+    await Promise.allSettled([...writesInFlight])
+    return getOdAuthTokens()
+  }
+  const now = Date.now()
+  if (tokenCache && tokenCache.expires > now) {
+    return { ...tokenCache.tokens, accessTokenTtl: Math.floor((tokenCache.tokenExpires - now) / 1000) }
+  }
+  if (readInFlight) return readInFlight
+
+  const version = generation
+  const promise = (async () => {
+    const started = Date.now()
+    const pipeline = getKv().pipeline()
+    pipeline.get(accessTokenKey())
+    pipeline.get(refreshTokenKey())
+    pipeline.ttl(accessTokenKey())
+    const results = await pipeline.exec()
+
+    // A write may have completed while this read was in transit. Retry rather
+    // than publishing its old snapshot, even to callers already awaiting it.
+    if (version !== generation) return getOdAuthTokens()
+    if (!results || results.length !== 3) throw new Error('Incomplete token read.')
+    const failed = results.find(([err]) => err)
+    if (failed) throw failed[0]
+
+    const ttl = Number(results[2][1])
+    const tokenExpires = started + (Number.isFinite(ttl) ? ttl : -1) * 1000
+    const tokens = {
+      accessToken: results[0][1] ?? null,
+      refreshToken: results[1][1] ?? null,
+      accessTokenTtl: Math.floor((tokenExpires - Date.now()) / 1000),
+    }
+    const expires = Math.min(started + 30_000, tokenExpires - 120_000)
+    if (typeof tokens.accessToken === 'string' && tokens.accessToken && expires > Date.now()) {
+      tokenCache = { tokens, expires, tokenExpires }
+    }
+    return tokens
+  })()
+  readInFlight = promise
   try {
-    return await getKv().ttl(accessTokenKey())
-  } catch {
-    return -1
+    return await promise
+  } finally {
+    if (readInFlight === promise) readInFlight = null
   }
 }
 
@@ -73,7 +114,18 @@ export async function storeOdAuthTokens({
   pipeline.set(accessTokenKey(), accessToken, 'EX', expiry)
   pipeline.set(refreshTokenKey(), refreshToken)
 
-  const results = await pipeline.exec()
-  const failed = results?.find(([err]) => err)
-  if (failed) throw failed[0]
+  invalidateTokenCache()
+  const write = Promise.resolve().then(() => pipeline.exec())
+  writesInFlight.add(write)
+  try {
+    const results = await write
+    if (!results || results.length !== 2) throw new Error('Incomplete token write.')
+    const failed = results.find(([err]) => err)
+    if (failed) throw failed[0]
+    clearCache()
+  } finally {
+    // Also fence reads started during the write (or a partially failed pipeline).
+    invalidateTokenCache()
+    writesInFlight.delete(write)
+  }
 }

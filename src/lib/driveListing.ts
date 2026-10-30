@@ -1,7 +1,7 @@
 import axiosInstance from '../utils/axiosInstance'
 import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
-import { cacheKeyFor, cached, knownKind, rememberKind, rememberKinds } from './cache'
+import { cacheGeneration, cacheKeyFor, cached, knownKind, rememberKind, rememberKinds } from './cache'
 import { encodePath } from './odApi'
 
 export const METADATA_CACHE_TTL_MS = 30 * 1000
@@ -50,6 +50,7 @@ export async function loadDrivePath(
   cleanPath: string,
   accessToken: string,
   options: { next?: string; sort?: string; thumbnails?: ThumbnailSize } = {},
+  generation = cacheGeneration(),
 ): Promise<OdAPIResult> {
   const { next = '', sort = '', thumbnails } = options
   const requestPath = encodePath(cleanPath)
@@ -78,13 +79,19 @@ export async function loadDrivePath(
       },
     })
 
-    const nextPage = folderData['@odata.nextLink']
-      ? folderData['@odata.nextLink'].match(/&\$skiptoken=(.+)/i)?.[1]
-      : null
+    // URLSearchParams decodes exactly once and does not swallow later parameters.
+    const nextLink = folderData['@odata.nextLink']
+    const params = new URLSearchParams(typeof nextLink === 'string' ? new URL(nextLink, requestUrl).search : '')
+    const nextPage = [...params].find(([key]) => key.toLowerCase() === '$skiptoken')?.[1]
 
-    rememberKinds(cleanPath, folderData.value ?? [], METADATA_CACHE_TTL_MS)
+    if (generation === cacheGeneration()) {
+      rememberKinds(cleanPath, folderData.value ?? [], METADATA_CACHE_TTL_MS)
+    }
 
-    const folder = thumbnails ? flattenThumbnails(folderData, thumbnails) : folderData
+    // nextLink duplicates the public next token; the optional field is unused by the UI.
+    const metadata = { ...folderData }
+    delete metadata['@odata.nextLink']
+    const folder = thumbnails ? flattenThumbnails(metadata, thumbnails) : metadata
 
     return nextPage ? { folder, next: nextPage } : { folder }
   }
@@ -97,12 +104,12 @@ export async function loadDrivePath(
     const item = await fetchItem()
 
     if ('file' in item) {
-      rememberKind(cleanPath, 'file', METADATA_CACHE_TTL_MS)
+      if (generation === cacheGeneration()) rememberKind(cleanPath, 'file', METADATA_CACHE_TTL_MS)
       return { file: item }
     }
 
     // The name fooled us: it is a folder, so list it instead.
-    rememberKind(cleanPath, 'folder', METADATA_CACHE_TTL_MS)
+    if (generation === cacheGeneration()) rememberKind(cleanPath, 'folder', METADATA_CACHE_TTL_MS)
     return fetchChildren()
   }
 
@@ -115,12 +122,12 @@ export async function loadDrivePath(
     const item = await fetchItem()
 
     if ('file' in item) {
-      rememberKind(cleanPath, 'file', METADATA_CACHE_TTL_MS)
+      if (generation === cacheGeneration()) rememberKind(cleanPath, 'file', METADATA_CACHE_TTL_MS)
       return { file: item }
     }
 
-    // A folder we cannot list renders as an empty folder instead of an error.
-    return { folder: { ...item, value: [] } }
+    // A failed directory listing is not evidence that the directory is empty.
+    throw error
   }
 }
 
@@ -137,7 +144,8 @@ export function getDrivePath(
 ): Promise<OdAPIResult> {
   if (!cacheable) return loadDrivePath(cleanPath, accessToken, options)
 
+  const generation = cacheGeneration()
   return cached(cacheKeyFor(cleanPath, options), METADATA_CACHE_TTL_MS, () =>
-    loadDrivePath(cleanPath, accessToken, options),
+    loadDrivePath(cleanPath, accessToken, options, generation),
   )
 }

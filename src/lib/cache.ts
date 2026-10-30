@@ -1,62 +1,74 @@
-type Entry = { expires: number; promise: Promise<unknown> }
+type Entry = { expires: number; pending: boolean; promise: Promise<unknown> }
 
-// Process-local cache for drive metadata. Los Angeles → Microsoft Graph round trips
-// dominate every request, so even a short TTL turns navigation into an instant
-// response and collapsing identical in-flight requests keeps a 100 item folder
-// from firing 100 identical calls.
+const MAX_METADATA_ENTRIES = 500
+const MAX_KIND_ENTRIES = 5000
+
+// Process-local, bounded metadata cache, including in-flight requests.
 const store = new Map<string, Entry>()
+let generation = 0
 
-/**
- * Return the cached value for `key`, or compute it (once, even when called
- * concurrently) and cache it for `ttlMs`.
- *
- * Failures are never cached. Values that resolve to `undefined` or `null` are
- * dropped so a transient miss is retried on the next request.
- */
-export async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
-  const now = Date.now()
-  const hit = store.get(key)
+export function cacheGeneration(): number {
+  return generation
+}
 
-  if (hit && hit.expires > now) {
-    return hit.promise as Promise<T>
+function pruneExpired<T extends { expires: number; pending?: boolean }>(entries: Map<string, T>, now: number): void {
+  for (const [key, entry] of entries) {
+    if (!entry.pending && entry.expires <= now) entries.delete(key)
   }
+}
 
-  const promise = load().then(
-    value => {
-      if (value === undefined || value === null) store.delete(key)
-      return value
-    },
-    error => {
-      store.delete(key)
-      throw error
-    },
-  )
+/** Cache successful values and coalesce concurrent loads, including loads slower than the TTL. */
+export async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
+  pruneExpired(store, Date.now())
+  const hit = store.get(key)
+  if (hit) return hit.promise as Promise<T>
 
-  store.set(key, { expires: now + ttlMs, promise })
-
-  // Keep the map from growing without bound in a long lived process.
-  if (store.size > 500) {
-    for (const [entryKey, entry] of store) {
-      if (entry.expires <= now) store.delete(entryKey)
+  if (store.size >= MAX_METADATA_ENTRIES) {
+    // Evict the oldest settled entry, never a flight another caller may join.
+    const victim = [...store].find(([, entry]) => !entry.pending)
+    if (victim) {
+      store.delete(victim[0])
+    } else {
+      // At saturation, wait for a slot instead of growing a second, unbounded flight map.
+      const version = generation
+      await Promise.race([...store.values()].map(entry => entry.promise.catch(() => undefined)))
+      if (version !== generation) return load()
+      return cached(key, ttlMs, load)
     }
   }
 
-  return promise
+  const entry: Entry = { expires: Infinity, pending: true, promise: Promise.resolve() }
+  entry.promise = Promise.resolve()
+    .then(load)
+    .then(
+      value => {
+        entry.pending = false
+        entry.expires = Date.now() + ttlMs
+        if ((value === undefined || value === null) && store.get(key) === entry) store.delete(key)
+        return value
+      },
+      error => {
+        if (store.get(key) === entry) store.delete(key)
+        throw error
+      },
+    )
+  store.set(key, entry)
+  return entry.promise as Promise<T>
 }
 
 /** Cache key for a drive path (paging and sorting produce distinct entries). */
 export function cacheKeyFor(path: string, options: { next?: string; sort?: string; thumbnails?: string } = {}): string {
-  return `listing:${path}:${options.next ?? ''}:${options.sort ?? ''}:${options.thumbnails ?? ''}`
+  return JSON.stringify(['listing', path, options.next ?? '', options.sort ?? '', options.thumbnails ?? ''])
 }
 
 /** Drop every cached drive response (used after tokens are re-authorised). */
 export function clearCache(): void {
+  generation++
   store.clear()
   kinds.clear()
 }
 
-// Whether a path is a folder or a file, learned from the listings we serve. It
-// lets a file request skip the folder probe that would otherwise 404 first.
+// Path kinds let file requests skip the otherwise wasted folder probe.
 const kinds = new Map<string, { kind: 'file' | 'folder'; expires: number }>()
 
 export function rememberKinds(
@@ -65,24 +77,28 @@ export function rememberKinds(
   ttlMs: number,
 ): void {
   const prefix = parentPath === '/' || parentPath === '' ? '' : parentPath
-  const expires = Date.now() + ttlMs
-
+  const now = Date.now()
+  pruneExpired(kinds, now)
+  if (ttlMs <= 0) return
   for (const item of items) {
     const kind = item.folder ? 'folder' : item.file ? 'file' : undefined
-    if (kind) kinds.set(`${prefix}/${item.name}`, { kind, expires })
+    if (kind) setKind(`${prefix}/${item.name}`, kind, now + ttlMs)
   }
 }
 
 export function rememberKind(path: string, kind: 'file' | 'folder', ttlMs: number): void {
-  kinds.set(path, { kind, expires: Date.now() + ttlMs })
+  const now = Date.now()
+  pruneExpired(kinds, now)
+  if (ttlMs <= 0) return
+  setKind(path, kind, now + ttlMs)
+}
+
+function setKind(path: string, kind: 'file' | 'folder', expires: number): void {
+  if (!kinds.has(path) && kinds.size >= MAX_KIND_ENTRIES) kinds.delete(kinds.keys().next().value!)
+  kinds.set(path, { kind, expires })
 }
 
 export function knownKind(path: string): 'file' | 'folder' | undefined {
-  const hit = kinds.get(path)
-  if (!hit) return undefined
-  if (hit.expires <= Date.now()) {
-    kinds.delete(path)
-    return undefined
-  }
-  return hit.kind
+  pruneExpired(kinds, Date.now())
+  return kinds.get(path)?.kind
 }

@@ -3,9 +3,10 @@ import { posix as pathPosix } from 'path'
 import axiosInstance from '../utils/axiosInstance'
 import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
+import { matchProtectedPath } from '../utils/protectedPath'
 import { revealObfuscatedToken } from '../utils/oAuthHandler'
 import { compareHashedToken } from '../utils/protectedRouteHandler'
-import { getAccessTokenTtl, getOdAuthTokens, storeOdAuthTokens } from '../utils/odAuthTokenStore'
+import { getOdAuthTokens, storeOdAuthTokens, tokenStoreGeneration } from '../utils/odAuthTokenStore'
 
 const basePath = pathPosix.resolve('/', siteConfig.baseDirectory)
 const clientSecret = revealObfuscatedToken(apiConfig.obfuscatedClientSecret)
@@ -26,9 +27,10 @@ const ACCESS_TOKEN_MIN_TTL_SECONDS = 120
 
 // Microsoft rotates the refresh token on every use, so two concurrent refreshes
 // invalidate each other and leave the site with "no access token" for a moment.
-let refreshInFlight: Promise<string> | null = null
+let refreshInFlight: { generation: number; promise: Promise<string> } | null = null
 
 async function refreshAccessToken(refreshToken: string): Promise<string> {
+  const generation = tokenStoreGeneration()
   const body = new URLSearchParams()
   body.append('client_id', apiConfig.clientId)
   body.append('redirect_uri', apiConfig.redirectUri)
@@ -42,6 +44,9 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     })
+
+    // A newer OAuth setup must not be overwritten by an older refresh response.
+    if (generation !== tokenStoreGeneration()) return await getAccessToken()
 
     if ('access_token' in resp.data && 'refresh_token' in resp.data) {
       const { expires_in, access_token, refresh_token } = resp.data
@@ -69,9 +74,10 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
  * which callers surface as a 403 instead of asking the user for a password.
  */
 export async function getAccessToken(): Promise<string> {
-  const { accessToken, refreshToken } = await getOdAuthTokens()
+  const version = tokenStoreGeneration()
+  const { accessToken, refreshToken, accessTokenTtl: ttl } = await getOdAuthTokens()
+  if (version !== tokenStoreGeneration()) return getAccessToken()
   const hasAccessToken = typeof accessToken === 'string' && accessToken !== ''
-  const ttl = hasAccessToken ? await getAccessTokenTtl() : -1
 
   if (hasAccessToken && ttl > ACCESS_TOKEN_MIN_TTL_SECONDS) {
     console.log('Fetch access token from storage.')
@@ -83,11 +89,16 @@ export async function getAccessToken(): Promise<string> {
     return ''
   }
 
-  refreshInFlight ??= refreshAccessToken(refreshToken).finally(() => {
-    refreshInFlight = null
-  })
+  const generation = tokenStoreGeneration()
+  if (!refreshInFlight || refreshInFlight.generation !== generation) {
+    const flight = { generation, promise: refreshAccessToken(refreshToken) }
+    refreshInFlight = flight
+    void flight.promise.finally(() => {
+      if (refreshInFlight === flight) refreshInFlight = null
+    })
+  }
 
-  return refreshInFlight
+  return refreshInFlight.promise
 }
 
 /**
@@ -118,18 +129,8 @@ export async function storeTokensFromRequestBody(body: unknown): Promise<boolean
 }
 
 export function getAuthTokenPath(path: string): string {
-  path = path.toLowerCase() + '/'
-  const protectedRoutes = siteConfig.protectedRoutes as string[]
-  let authTokenPath = ''
-  for (let r of protectedRoutes) {
-    if (typeof r !== 'string') continue
-    r = r.toLowerCase().replace(/\/$/, '') + '/'
-    if (path.startsWith(r)) {
-      authTokenPath = `${r}.password`
-      break
-    }
-  }
-  return authTokenPath
+  const route = matchProtectedPath(path, siteConfig.protectedRoutes)
+  return route ? route.toLowerCase().replace(/\/+$/, '') + '/.password' : ''
 }
 
 export async function checkAuthRoute(

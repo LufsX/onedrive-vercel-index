@@ -1,5 +1,7 @@
 import { SHA256 } from 'crypto-es'
 import siteConfig from '../../config/site.config'
+import { decodePathSegment } from './pathEncoding'
+import { matchProtectedPath } from './protectedPath'
 
 // Hash password token with SHA256
 function encryptToken(token: string): string {
@@ -43,24 +45,5 @@ export function compareHashedToken({
  * @returns whether the directory is protected
  */
 export function matchProtectedRoute(route: string): string {
-  const protectedRoutes: string[] = siteConfig.protectedRoutes
-  let authTokenPath = ''
-
-  for (const r of protectedRoutes) {
-    // protected route array could be empty
-    if (r) {
-      if (
-        route.startsWith(
-          r
-            .split('/')
-            .map(p => encodeURIComponent(p))
-            .join('/'),
-        )
-      ) {
-        authTokenPath = r
-        break
-      }
-    }
-  }
-  return authTokenPath
+  return matchProtectedPath(route.split('/').map(decodePathSegment).join('/'), siteConfig.protectedRoutes)
 }
