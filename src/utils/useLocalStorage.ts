@@ -1,78 +1,69 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react'
+import { Dispatch, SetStateAction, useCallback, useMemo, useSyncExternalStore } from 'react'
 
 type SetValue<T> = Dispatch<SetStateAction<T>>
+const serverSnapshot = () => undefined
 
-function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
-  // Get from local storage then
-  // parse stored json or return initialValue
-  const readValue = (): T => {
-    // Prevent build error "window is undefined" but keep keep working
-    if (typeof window === 'undefined') {
+function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>, boolean] {
+  const getSnapshot = useCallback(() => {
+    try {
+      return window.localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  }, [key])
+
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      const onStorage = (event: StorageEvent) => {
+        if (event.key === null || event.key === key) notify()
+      }
+      const onLocalStorage = (event: Event) => {
+        if ((event as CustomEvent<string>).detail === key) notify()
+      }
+      window.addEventListener('storage', onStorage)
+      window.addEventListener('local-storage', onLocalStorage)
+      return () => {
+        window.removeEventListener('storage', onStorage)
+        window.removeEventListener('local-storage', onLocalStorage)
+      }
+    },
+    [key],
+  )
+
+  // Hydration uses the same default as the server. Keep the serialized snapshot
+  // stable so unchanged storage does not trigger another render or JSON parse.
+  const serialized = useSyncExternalStore(subscribe, getSnapshot, serverSnapshot)
+  const storedValue = useMemo(() => {
+    try {
+      return serialized ? (JSON.parse(serialized) as T) : initialValue
+    } catch {
       return initialValue
     }
+  }, [serialized, initialValue])
 
-    try {
-      const item = window.localStorage.getItem(key)
-      return item ? (JSON.parse(item) as T) : initialValue
-    } catch (error) {
-      console.warn(`Error reading localStorage key “${key}”:`, error)
-      return initialValue
-    }
-  }
+  const setValue: SetValue<T> = useCallback(
+    value => {
+      try {
+        let current = initialValue
+        const raw = getSnapshot()
+        if (raw) {
+          try {
+            current = JSON.parse(raw) as T
+          } catch {
+            /* Use the default for malformed storage. */
+          }
+        }
+        const next = value instanceof Function ? value(current) : value
+        window.localStorage.setItem(key, JSON.stringify(next))
+        window.dispatchEvent(new CustomEvent('local-storage', { detail: key }))
+      } catch (error) {
+        console.warn(`Error setting localStorage key “${key}”: `, error)
+      }
+    },
+    [getSnapshot, initialValue, key],
+  )
 
-  // State to store our value
-  // Pass initial state function to useState so logic is only executed once
-  const [storedValue, setStoredValue] = useState<T>(readValue)
-
-  // Return a wrapped version of useState's setter function that ...
-  // ... persists the new value to localStorage.
-  const setValue: SetValue<T> = value => {
-    // Prevent build error "window is undefined" but keeps working
-    if (typeof window == 'undefined') {
-      console.warn(`Tried setting localStorage key “${key}” even though environment is not a client`)
-    }
-
-    try {
-      // Allow value to be a function so we have the same API as useState
-      const newValue = value instanceof Function ? value(storedValue) : value
-
-      // Save to local storage
-      window.localStorage.setItem(key, JSON.stringify(newValue))
-
-      // Save state
-      setStoredValue(newValue)
-
-      // We dispatch a custom event so every useLocalStorage hook are notified
-      window.dispatchEvent(new Event('local-storage'))
-    } catch (error) {
-      console.warn(`Error setting localStorage key “${key}”:`, error)
-    }
-  }
-
-  useEffect(() => {
-    setStoredValue(readValue())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setStoredValue(readValue())
-    }
-
-    // this only works for other documents, not the current one
-    window.addEventListener('storage', handleStorageChange)
-
-    // this is a custom event, triggered in writeValueToLocalStorage
-    window.addEventListener('local-storage', handleStorageChange)
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('local-storage', handleStorageChange)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  return [storedValue, setValue]
+  return [storedValue, setValue, serialized !== undefined]
 }
 
 export default useLocalStorage

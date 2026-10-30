@@ -1,26 +1,32 @@
-import axios from 'axios'
 import useSWRInfinite from 'swr/infinite'
+import { useEffect } from 'react'
 
 import type { OdAPIResponse } from '../types'
 
 import { getStoredToken } from './protectedRouteHandler'
 
-// Common axios fetch function for use with useSWR
+// Keep the API error shape shared by listings, search and recursive downloads.
 export async function fetcher([url, token]: [url: string, token?: string]): Promise<any> {
+  let response: Response
   try {
-    return (
-      await (token
-        ? axios.get(url, {
-            headers: { 'od-protected-token': token },
-          })
-        : axios.get(url))
-    ).data
-  } catch (err: any) {
-    throw {
-      status: err.response?.status ?? 0,
-      message: err.response?.data ?? { error: err.message ?? 'Network error' },
-    }
+    response = await fetch(url, { headers: token ? { 'od-protected-token': token } : undefined })
+  } catch (error: any) {
+    throw { status: 0, message: { error: error.message ?? 'Network error' } }
   }
+  let text: string
+  try {
+    text = await response.text()
+  } catch (error: any) {
+    throw { status: response.status, message: { error: error.message ?? 'Network error' } }
+  }
+  let data: any = text
+  try {
+    data = JSON.parse(text)
+  } catch {
+    /* Error pages can return plain text. */
+  }
+  if (!response.ok) throw { status: response.status, message: data }
+  return data
 }
 
 /**
@@ -28,10 +34,8 @@ export async function fetcher([url, token]: [url: string, token?: string]): Prom
  * @param path Current query directory path
  * @returns useSWRInfinite API
  */
-export function useProtectedSWRInfinite(path: string = '', options: { thumbnails?: 'medium' } = {}) {
+export function useProtectedSWRInfinite(path: string = '', options: { thumbnails?: 'medium'; enabled?: boolean } = {}) {
   const hashedToken = getStoredToken(path)
-  // Grid cards need preview images; they come from the same listing request.
-  const thumbnailsParam = options.thumbnails ? `&thumbnails=${options.thumbnails}` : ''
 
   /**
    * Next page infinite loading for useSWR
@@ -41,22 +45,37 @@ export function useProtectedSWRInfinite(path: string = '', options: { thumbnails
    * @returns API to the next page
    */
   function getNextKey(pageIndex: number, previousPageData: OdAPIResponse): (string | null)[] | null {
+    if (options.enabled === false) return null
     // Reached the end of the collection
-    if (previousPageData && !previousPageData.folder) return null
+    if (pageIndex > 0 && !previousPageData?.next) return null
 
-    // First page with no prevPageData
-    if (pageIndex === 0) return [`/api?path=${path}${thumbnailsParam}`, hashedToken]
-
-    // Add nextPage token to API endpoint
-    return [`/api?path=${path}&next=${previousPageData.next}${thumbnailsParam}`, hashedToken]
+    // `path` already contains encoded segments; keep that encoding for the API's
+    // single URL decode. Graph cursors, however, must be encoded as query values.
+    const params = new URLSearchParams()
+    if (pageIndex > 0) params.set('next', previousPageData.next!)
+    if (options.thumbnails) params.set('thumbnails', options.thumbnails)
+    const suffix = params.size ? `&${params}` : ''
+    return [`/api?path=${path}${suffix}`, hashedToken]
   }
 
   // Disable auto-revalidate, these options are equivalent to useSWRImmutable
   // https://swr.vercel.app/docs/revalidation#disable-automatic-revalidations
   const revalidationOptions = {
+    revalidateFirstPage: false,
     revalidateIfStale: false,
     revalidateOnFocus: false,
-    revalidateOnReconnect: true,
+    revalidateOnReconnect: false,
   }
-  return useSWRInfinite(getNextKey, fetcher, revalidationOptions)
+  const result = useSWRInfinite(getNextKey, fetcher, revalidationOptions)
+  const { mutate } = result
+  // Explicit mutation refreshes cached pages on reconnect, while setSize only
+  // fetches new pages. SWR's implicit reconnect skips cached pages in this mode.
+  useEffect(() => {
+    const onOnline = () => {
+      void mutate().catch(() => undefined)
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [mutate])
+  return result
 }
