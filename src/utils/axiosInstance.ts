@@ -61,16 +61,16 @@ axiosInstance.interceptors.response.use(
     // Calculate request duration
     const duration = Date.now() - (response.config.metadata?.startTime || 0)
     if (duration > 2000) {
-      console.warn(`Slow request: ${response.config.url} took ${duration}ms`)
+      console.warn(`Slow upstream request: ${duration}ms`)
     }
     return response
   },
   error => {
     // Enhanced error logging
     if (error.response) {
-      console.error(`API Error: ${error.response.status} - ${error.config?.url}`)
+      console.error(`Upstream API error: ${error.response.status}`)
     } else if (error.request) {
-      console.error(`Network Error: No response received - ${error.config?.url}`)
+      console.error('Network error: No upstream response received')
     }
     return Promise.reject(error)
   },

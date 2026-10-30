@@ -129,13 +129,15 @@ export async function handleRawFile(request: NextRequest): Promise<NextResponse>
           if (typeof value === 'string') responseHeaders.set(key, value)
         }
 
+        responseHeaders.set('X-Content-Type-Options', 'nosniff')
+        if (!inline) responseHeaders.set('Content-Disposition', 'attachment')
+
         if (inline) {
           responseHeaders.set('Content-Type', 'application/pdf')
           responseHeaders.set(
             'Content-Disposition',
             `inline; filename*=UTF-8''${encodeURIComponent(pathPosix.basename(cleanPath)).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16))}`,
           )
-          responseHeaders.set('X-Content-Type-Options', 'nosniff')
           for (const key of ['accept-ranges', 'content-range', 'content-length', 'etag']) {
             const value = response.headers[key]
             if (typeof value === 'string') responseHeaders.set(key, value)
