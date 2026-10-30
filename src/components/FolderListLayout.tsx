@@ -5,8 +5,7 @@ import type { OdFolderChildren } from '../types'
 import Link from 'next/link'
 import { FC, memo } from 'react'
 import { useClipboard } from 'use-clipboard-copy'
-import { FontAwesomeIcon } from './Icon'
-import { faArrowAltCircleDown, faCopy } from '@fortawesome/free-regular-svg-icons'
+import { CircleArrowDown, Copy } from 'lucide-react'
 import { useTranslations } from './ClientProviders'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
@@ -89,7 +88,7 @@ const FolderListLayout = ({
               toast.success(t('Copied selected files permalink.'))
             }}
           >
-            <FontAwesomeIcon icon={faCopy} size="lg" />
+            <Copy className="h-5 w-5" />
           </button>
           {totalGenerating ? (
             <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
@@ -100,7 +99,7 @@ const FolderListLayout = ({
               disabled={totalSelected === 0}
               onClick={handleSelectedDownload}
             >
-              <FontAwesomeIcon icon={faArrowAltCircleDown} size="lg" />
+              <CircleArrowDown className="h-5 w-5" />
             </button>
           )}
           <Checkbox
@@ -132,7 +131,7 @@ const FolderListLayout = ({
                     toast(t('Copied folder permalink.'), { icon: '👌' })
                   }}
                 >
-                  <FontAwesomeIcon icon={faCopy} />
+                  <Copy className="h-4 w-4" />
                 </span>
                 {folderGenerating[c.id] ? (
                   <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
@@ -142,7 +141,7 @@ const FolderListLayout = ({
                     className={rowAction}
                     onClick={handleFolderDownload(getItemPath(c.name), c.id, c.name)}
                   >
-                    <FontAwesomeIcon icon={faArrowAltCircleDown} />
+                    <CircleArrowDown className="h-4 w-4" />
                   </span>
                 )}
               </>
@@ -158,14 +157,14 @@ const FolderListLayout = ({
                     toast.success(t('Copied raw file permalink.'))
                   }}
                 >
-                  <FontAwesomeIcon icon={faCopy} />
+                  <Copy className="h-4 w-4" />
                 </span>
                 <a
                   title={t('Download file')}
                   className={rowAction}
                   href={`/api/raw?path=${getItemPath(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
                 >
-                  <FontAwesomeIcon icon={faArrowAltCircleDown} />
+                  <CircleArrowDown className="h-4 w-4" />
                 </a>
               </>
             )}

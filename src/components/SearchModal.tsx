@@ -5,15 +5,13 @@ import { Dispatch, Fragment, SetStateAction, useEffect, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 
 import Link from 'next/link'
-import { FontAwesomeIcon } from './Icon'
-import { faFolder } from '@fortawesome/free-regular-svg-icons'
-import { faSearch } from '@fortawesome/free-solid-svg-icons'
+import { Search } from 'lucide-react'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 
 import type { OdDriveItem, OdSearchResult } from '../types'
 import { LoadingIcon } from './Loading'
 
-import { getFileIcon } from '../utils/getFileIcon'
+import FileIcon from './FileIcon'
 import { fetcher } from '../utils/fetchWithSWR'
 import siteConfig from '../../config/site.config'
 
@@ -97,6 +95,10 @@ function useDriveItemSearch() {
   }
 }
 
+const SearchResultIcon = ({ driveItem }: { driveItem: OdSearchResult[number] }) => (
+  <FileIcon name={driveItem.name} folder={!driveItem.file} className="h-4 w-4 shrink-0" />
+)
+
 function SearchResultItemTemplate({
   driveItem,
   driveItemPath,
@@ -117,7 +119,7 @@ function SearchResultItemTemplate({
         disabled ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
       }`}
     >
-      <FontAwesomeIcon icon={driveItem.file ? getFileIcon(driveItem.name) : faFolder} />
+      <SearchResultIcon driveItem={driveItem} />
       <div>
         <div className="text-sm leading-8 font-medium">{driveItem.name}</div>
         <div
@@ -236,7 +238,7 @@ export default function SearchModal({
                 as="h3"
                 className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white"
               >
-                <FontAwesomeIcon icon={faSearch} className="h-4 w-4" />
+                <Search className="h-4 w-4" />
                 <input
                   type="text"
                   id="search-box"
@@ -255,7 +257,7 @@ export default function SearchModal({
               <div className="max-h-[80vh] overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 dark:text-white">
                 {results.loading && (
                   <div className="px-4 py-12 text-center text-sm font-medium">
-                    <LoadingIcon className="svg-inline--fa mr-2 inline-block h-4 w-4 animate-spin" />
+                    <LoadingIcon className="mr-2 inline-block h-4 w-4 animate-spin align-middle" />
                     <span>{t('Loading ...')}</span>
                   </div>
                 )}

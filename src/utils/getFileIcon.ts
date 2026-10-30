@@ -1,38 +1,36 @@
-import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import {
-  faFile,
-  faFileAlt,
-  faFileArchive,
-  faFileAudio,
-  faFileCode,
-  faFileExcel,
-  faFileImage,
-  faFilePdf,
-  faFilePowerpoint,
-  faFileVideo,
-  faFileWord,
-} from '@fortawesome/free-regular-svg-icons'
-import { faMarkdown } from '@fortawesome/free-brands-svg-icons/faMarkdown'
-import { faBook, faLink } from '@fortawesome/free-solid-svg-icons'
+  BookOpen,
+  File,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  FileVideo,
+  Link,
+  Presentation,
+  type LucideIcon,
+} from 'lucide-react'
 
-const icons: Record<string, IconDefinition> = {
-  image: faFileImage,
-  pdf: faFilePdf,
-  word: faFileWord,
-  powerpoint: faFilePowerpoint,
-  excel: faFileExcel,
-  audio: faFileAudio,
-  video: faFileVideo,
-  archive: faFileArchive,
-  code: faFileCode,
-  text: faFileAlt,
-  file: faFile,
-  markdown: faMarkdown,
-  book: faBook,
-  link: faLink,
+const icons: Record<string, LucideIcon> = {
+  image: FileImage,
+  pdf: FileText,
+  word: FileText,
+  powerpoint: Presentation,
+  excel: FileSpreadsheet,
+  audio: FileAudio,
+  video: FileVideo,
+  archive: FileArchive,
+  code: FileCode,
+  text: FileText,
+  file: File,
+  markdown: FileText,
+  book: BookOpen,
+  link: Link,
 }
 
-const extensions = {
+const extensions: Record<string, LucideIcon> = {
   gif: icons.image,
   jpeg: icons.image,
   jpg: icons.image,
@@ -122,37 +120,22 @@ const extensions = {
   url: icons.link,
 }
 
-/**
- * To stop TypeScript complaining about indexing the object with a non-existent key
- * https://dev.to/mapleleaf/indexing-objects-in-typescript-1cgi
- *
- * Fixed by ChatGPT with the upgrade of TypeScript 4.9
- *
- * @param obj Object with keys to index
- * @param key The index key
- * @returns Whether or not the key exists inside the object
- */
-export function hasKey(obj: Record<string, any>, key: string): boolean {
-  return key in obj
-}
-
 export function getRawExtension(fileName: string): string {
   return fileName.slice(((fileName.lastIndexOf('.') - 1) >>> 0) + 2)
 }
+
 export function getExtension(fileName: string): string {
   return getRawExtension(fileName).toLowerCase()
 }
 
-export function getFileIcon(fileName: string, flags?: { video?: boolean }): IconDefinition {
+export function getFileIcon(fileName: string, flags?: { video?: boolean }): LucideIcon {
   const extension = getExtension(fileName)
-  let icon = hasKey(extensions, extension) ? extensions[extension] : icons.file
+  let icon = extension in extensions ? extensions[extension] : icons.file
 
   // Files with '.ts' extensions may be TypeScript files or TS Video files, we check for the flag 'video'
   // to determine which icon to render for '.ts' files.
-  if (extension === 'ts') {
-    if (flags?.video) {
-      icon = icons.video
-    }
+  if (extension === 'ts' && flags?.video) {
+    icon = icons.video
   }
 
   return icon

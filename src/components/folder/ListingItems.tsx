@@ -2,10 +2,9 @@
 
 import type { OdFolderChildren } from '../../types'
 import { FC, MouseEventHandler, useEffect, useRef } from 'react'
-import { FontAwesomeIcon } from '../Icon'
-import { faFolder } from '@fortawesome/free-regular-svg-icons'
 import emojiRegex from 'emoji-regex'
-import { getRawExtension, getFileIcon } from '../../utils/getFileIcon'
+import { getRawExtension } from '../../utils/getFileIcon'
+import FileIcon from '../FileIcon'
 import { LoadingIcon } from '../Loading'
 
 // Render the icon of a folder child (may be a file or a folder), use emoji if the name of the child contains emoji
@@ -32,7 +31,7 @@ export const ChildIcon: FC<{ child: OdFolderChildren }> = ({ child }) => {
   return render ? (
     <span>{emoji ? emoji[0] : '📁'}</span>
   ) : (
-    <FontAwesomeIcon icon={child.file ? getFileIcon(child.name, { video: Boolean(child.video) }) : faFolder} />
+    <FileIcon name={child.name} folder={Boolean(child.folder)} video={Boolean(child.video)} className="h-4 w-4" />
   )
 }
 
@@ -83,11 +82,7 @@ export const Checkbox: FC<{
 export const Downloading: FC<{ title: string; style: string }> = ({ title, style }) => {
   return (
     <span title={title} className={`${style} rounded`} role="status">
-      <LoadingIcon
-        // Use fontawesome far theme via class `svg-inline--fa` to get style `vertical-align` only
-        // for consistent icon alignment, as class `align-*` cannot satisfy it
-        className="svg-inline--fa inline-block h-4 w-4 animate-spin"
-      />
+      <LoadingIcon className="inline-block h-4 w-4 animate-spin align-middle" />
     </span>
   )
 }

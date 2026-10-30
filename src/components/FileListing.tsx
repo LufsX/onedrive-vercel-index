@@ -3,8 +3,7 @@
 import type { OdFileObject, OdFolderObject } from '../types'
 import type { ParsedUrlQuery } from 'querystring'
 import { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FontAwesomeIcon } from './Icon'
-import { faChevronCircleDown } from '@fortawesome/free-solid-svg-icons'
+import { CircleChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import dynamic from 'next/dynamic'
@@ -331,13 +330,16 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
 
     return (
       <>
-        {layout.name === 'Grid' ? (
-          <FeatureBoundary>
-            <FolderGridLayout {...folderProps} />
-          </FeatureBoundary>
-        ) : (
-          <FolderListLayout {...folderProps} />
-        )}
+        {/* Keyed so switching layouts cross-fades instead of snapping. */}
+        <div key={layout.name} className="fade-in">
+          {layout.name === 'Grid' ? (
+            <FeatureBoundary>
+              <FolderGridLayout {...folderProps} />
+            </FeatureBoundary>
+          ) : (
+            <FolderListLayout {...folderProps} />
+          )}
+        </div>
 
         {!onlyOnePage && (
           <div className="rounded-b bg-white dark:bg-gray-900 dark:text-gray-100">
@@ -372,7 +374,7 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
               ) : (
                 <>
                   <span>{t('Load more')}</span>
-                  <FontAwesomeIcon icon={faChevronCircleDown} />
+                  <CircleChevronDown className="h-4 w-4" />
                 </>
               )}
             </button>

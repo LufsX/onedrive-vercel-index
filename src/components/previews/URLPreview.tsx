@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { ExternalLink } from 'lucide-react'
 import { useTranslations } from '../ClientProviders'
-import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons'
 
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
@@ -88,7 +88,7 @@ const URLContent = ({ url }: { url: string }) => {
               onClickCallback={() => window.open(target, '_blank', 'noopener,noreferrer')}
               btnColor="blue"
               btnText={t('Open URL')}
-              btnIcon={faExternalLinkAlt}
+              btnIcon={ExternalLink}
               btnTitle={t('Open URL{{url}}', { url: ' ' + target })}
             />
           </div>

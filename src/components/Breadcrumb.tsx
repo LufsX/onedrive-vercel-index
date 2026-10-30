@@ -3,9 +3,7 @@
 import type { ParsedUrlQuery } from 'querystring'
 
 import Link from 'next/link'
-import { FontAwesomeIcon } from './Icon'
-import { faFlag } from '@fortawesome/free-regular-svg-icons'
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons'
+import { ChevronRight, Flag } from 'lucide-react'
 import { useTranslations } from './ClientProviders'
 
 const HomeCrumb = () => {
@@ -13,7 +11,7 @@ const HomeCrumb = () => {
 
   return (
     <Link href="/" className="flex items-center">
-      <FontAwesomeIcon className="h-3 w-3" icon={faFlag} />
+      <Flag className="h-3 w-3" />
       <span className="ml-2 font-medium">{t('Home')}</span>
     </Link>
   )
@@ -32,7 +30,7 @@ const Breadcrumb: React.FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
             .reverse()
             .map((p: string, i: number) => (
               <li key={i} className="flex shrink-0 items-center">
-                <FontAwesomeIcon className="h-3 w-3" icon={faAngleRight} />
+                <ChevronRight className="h-3 w-3" />
                 <Link
                   href={`/${path
                     .slice(0, path.length - i)

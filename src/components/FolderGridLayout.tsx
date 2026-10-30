@@ -4,8 +4,7 @@ import type { OdFolderChildren } from '../types'
 
 import Link from 'next/link'
 import { memo, useState } from 'react'
-import { FontAwesomeIcon } from './Icon'
-import { faArrowAltCircleDown, faCopy } from '@fortawesome/free-regular-svg-icons'
+import { CircleArrowDown, Copy } from 'lucide-react'
 import { useClipboard } from 'use-clipboard-copy'
 import { useTranslations } from './ClientProviders'
 
@@ -36,7 +35,7 @@ const GridItem = memo(function GridItem({ c }: { c: OdFolderChildren }) {
             onError={() => setBrokenThumbnail(true)}
           />
         ) : (
-          <div className="relative flex h-full w-full items-center justify-center rounded-lg">
+          <div className="relative flex h-full w-full items-center justify-center rounded">
             <ChildIcon child={c} />
             <span className="absolute right-0 bottom-0 m-1 font-medium text-gray-700 dark:text-gray-500">
               {c.folder?.childCount}
@@ -100,7 +99,7 @@ const FolderGridLayout = ({
               toast.success(t('Copied selected files permalink.'))
             }}
           >
-            <FontAwesomeIcon icon={faCopy} size="lg" />
+            <Copy className="h-5 w-5" />
           </button>
           {totalGenerating ? (
             <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
@@ -111,7 +110,7 @@ const FolderGridLayout = ({
               disabled={totalSelected === 0}
               onClick={handleSelectedDownload}
             >
-              <FontAwesomeIcon icon={faArrowAltCircleDown} size="lg" />
+              <CircleArrowDown className="h-5 w-5" />
             </button>
           )}
         </div>
@@ -134,7 +133,7 @@ const FolderGridLayout = ({
                       toast(t('Copied folder permalink.'), { icon: '👌' })
                     }}
                   >
-                    <FontAwesomeIcon icon={faCopy} />
+                    <Copy className="h-4 w-4" />
                   </span>
                   {folderGenerating[c.id] ? (
                     <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
@@ -144,7 +143,7 @@ const FolderGridLayout = ({
                       className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
                       onClick={handleFolderDownload(getItemPath(c.name), c.id, c.name)}
                     >
-                      <FontAwesomeIcon icon={faArrowAltCircleDown} />
+                      <CircleArrowDown className="h-4 w-4" />
                     </span>
                   )}
                 </div>
@@ -162,7 +161,7 @@ const FolderGridLayout = ({
                       toast.success(t('Copied raw file permalink.'))
                     }}
                   >
-                    <FontAwesomeIcon icon={faCopy} />
+                    <Copy className="h-4 w-4" />
                   </span>
                   <a
                     title={t('Download file')}
@@ -171,7 +170,7 @@ const FolderGridLayout = ({
                       hashedToken ? `&odpt=${hashedToken}` : ''
                     }`}
                   >
-                    <FontAwesomeIcon icon={faArrowAltCircleDown} />
+                    <CircleArrowDown className="h-4 w-4" />
                   </a>
                 </div>
               )}

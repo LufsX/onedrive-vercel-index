@@ -11,16 +11,69 @@
   scrollbar-width: none; /* Firefox */
 }
 
+/* Tailwind's preflight makes every SVG a block box. Icons that sit in a line of
+   text or inside a centred wrapper need the inline box they used to have. */
+@layer base {
+  svg.lucide {
+    display: inline-block;
+    vertical-align: -0.125em;
+  }
+}
+
+/* Dropdown panels and layout switches animate on mount; nothing moves when the
+   visitor asked for reduced motion. */
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dropdown-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.98);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dropdown-panel {
+    transform-origin: top right;
+  }
+
+  .dropdown-panel[data-state='open'] {
+    animation: dropdown-in 130ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dropdown-panel[data-state='closing'] {
+    animation: dropdown-out 90ms ease-in forwards;
+    pointer-events: none;
+  }
+
+  .fade-in {
+    animation: fade-in 140ms ease-out;
+  }
+}
+
 /* Custom utilities for enhanced styling */
 @layer utilities {
-  .dark .dark\:bg-gray-750 {
-    background-color: rgb(55 65 81 / 0.85);
-  }
-
-  .dark .dark\:hover\:bg-gray-750:hover {
-    background-color: rgb(55 65 81 / 0.85);
-  }
-
   .dark .dark\:bg-gray-850 {
     background-color: rgb(32 36 42);
   }
@@ -45,6 +98,13 @@
 @media (prefers-reduced-motion: no-preference) {
   * {
     scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-panel,
+  .fade-in {
+    animation: none;
   }
 }
 

@@ -3,9 +3,7 @@
 import { Dispatch, Fragment, SetStateAction, useRef, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 import { Dialog, DialogPanel, DialogTitle, Description, Transition, TransitionChild } from '@headlessui/react'
-import { FontAwesomeIcon } from './Icon'
-import { faCopy } from '@fortawesome/free-regular-svg-icons'
-import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { Check, Copy, X } from 'lucide-react'
 import { useClipboard } from 'use-clipboard-copy'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
@@ -23,7 +21,7 @@ function LinkContainer({ title, value }: { title: string; value: string }) {
           onClick={() => clipboard.copy(value)}
           className="dark:bg-gray-850 absolute top-[0.2rem] right-[0.2rem] w-8 rounded border border-gray-400/40 bg-gray-100 py-1.5 opacity-0 transition-all duration-100 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-700"
         >
-          {clipboard.copied ? <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faCopy} />}
+          {clipboard.copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </button>
       </div>
     </>
@@ -91,7 +89,7 @@ export default function CustomEmbedLinkMenu({
                   className="mt-2 cursor-pointer rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
                   onClick={closeMenu}
                 >
-                  <FontAwesomeIcon icon={faXmark} />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               <Description as="p" className="py-2 opacity-80">

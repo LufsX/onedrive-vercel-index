@@ -3,11 +3,9 @@
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
-import { faTrashAlt } from '@fortawesome/free-regular-svg-icons'
-import { faKey } from '@fortawesome/free-solid-svg-icons'
+import { KeyRound, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-import { FontAwesomeIcon } from './Icon'
 import { useTranslations } from './ClientProviders'
 import siteConfig from '../../config/site.config'
 
@@ -72,7 +70,7 @@ export default function NavbarLogoutDialog({ onClose }: { onClose: () => void })
               <div className="mt-4 max-h-32 overflow-y-scroll font-mono text-sm dark:text-gray-100">
                 {siteConfig.protectedRoutes.map((r, i) => (
                   <div key={i} className="flex items-center gap-1">
-                    <FontAwesomeIcon icon={faKey} />
+                    <KeyRound className="h-4 w-4" />
                     <span className="truncate">{r}</span>
                   </div>
                 ))}
@@ -89,7 +87,7 @@ export default function NavbarLogoutDialog({ onClose }: { onClose: () => void })
                   className="inline-flex items-center justify-center gap-2 rounded bg-red-500 px-4 py-2 text-white hover:bg-red-400 focus:ring focus:ring-red-300 focus:outline-hidden"
                   onClick={() => clearTokens()}
                 >
-                  <FontAwesomeIcon icon={faTrashAlt} />
+                  <Trash2 className="h-4 w-4" />
                   <span>{t('Clear all')}</span>
                 </button>
               </div>

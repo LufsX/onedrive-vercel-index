@@ -3,9 +3,7 @@
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState, Suspense } from 'react'
-import { FontAwesomeIcon } from '../../../components/Icon'
-import { faCheckCircle } from '@fortawesome/free-regular-svg-icons'
-import { faArrowLeft, faCheck, faExclamationCircle, faKey } from '@fortawesome/free-solid-svg-icons'
+import { ArrowLeft, Check, CircleAlert, CircleCheck, KeyRound } from 'lucide-react'
 
 import siteConfig from '../../../../config/site.config'
 import Navbar from '../../../components/Navbar'
@@ -35,7 +33,7 @@ function OAuthStep3Content() {
   const [expiryTimeLeft, setExpiryTimeLeft] = useState<number>(0)
   const [buttonContent, setButtonContent] = useState(
     <div>
-      <span>Store tokens</span> <FontAwesomeIcon icon={faKey} />
+      <span>Store tokens</span> <KeyRound className="h-4 w-4" />
     </div>,
   )
   const [buttonError, setButtonError] = useState(false)
@@ -84,7 +82,7 @@ function OAuthStep3Content() {
       setButtonError(true)
       setButtonContent(
         <div>
-          <span>Error validating identify, restart</span> <FontAwesomeIcon icon={faExclamationCircle} />
+          <span>Error validating identify, restart</span> <CircleAlert className="h-4 w-4" />
         </div>,
       )
       return
@@ -93,7 +91,7 @@ function OAuthStep3Content() {
       setButtonError(true)
       setButtonContent(
         <div>
-          <span>Do not pretend to be the site owner</span> <FontAwesomeIcon icon={faExclamationCircle} />
+          <span>Do not pretend to be the site owner</span> <CircleAlert className="h-4 w-4" />
         </div>,
       )
       return
@@ -108,7 +106,7 @@ function OAuthStep3Content() {
         setButtonError(false)
         setButtonContent(
           <div>
-            <span>Stored! Going home...</span> <FontAwesomeIcon icon={faCheck} />
+            <span>Stored! Going home...</span> <Check className="h-4 w-4" />
           </div>,
         )
         setTimeout(() => {
@@ -119,7 +117,7 @@ function OAuthStep3Content() {
         setButtonError(true)
         setButtonContent(
           <div>
-            <span>Error storing the token</span> <FontAwesomeIcon icon={faExclamationCircle} />
+            <span>Error storing the token</span> <CircleAlert className="h-4 w-4" />
           </div>,
         )
       })
@@ -148,8 +146,7 @@ function OAuthStep3Content() {
                 <h3 className="mt-4 mb-2 text-lg font-medium">Step 3/3: Error getting access tokens ❌</h3>
 
                 <p className="py-1 text-sm font-medium text-red-400">
-                  <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" /> {tokenResponse.error}:{' '}
-                  {tokenResponse.errorDescription}
+                  <CircleAlert className="mr-1 h-4 w-4" /> {tokenResponse.error}: {tokenResponse.errorDescription}
                 </p>
 
                 {tokenResponse.errorUri && (
@@ -178,13 +175,13 @@ function OAuthStep3Content() {
                     className="rounded-lg border border-gray-500/30 px-4 py-2.5 text-center text-sm font-medium hover:opacity-80"
                     onClick={() => router.push('/onedrive-vercel-index-oauth/step-1')}
                   >
-                    <FontAwesomeIcon icon={faArrowLeft} /> <span>Start over</span>
+                    <ArrowLeft className="h-4 w-4" /> <span>Start over</span>
                   </button>
                   <button
                     className="rounded-lg bg-gradient-to-br from-red-400 to-pink-500 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 focus:ring-red-200 dark:focus:ring-red-800"
                     onClick={() => router.push('/onedrive-vercel-index-oauth/step-2')}
                   >
-                    <FontAwesomeIcon icon={faArrowLeft} /> <span>Get a new code</span>
+                    <ArrowLeft className="h-4 w-4" /> <span>Get a new code</span>
                   </button>
                 </div>
               </>
@@ -202,11 +199,11 @@ function OAuthStep3Content() {
                 <h3 className="mb-4 text-center text-xl font-medium">Welcome to your new onedrive-vercel-index 🎉</h3>
 
                 <h3 className="mt-4 mb-2 text-lg font-medium">
-                  Step 3/3: Store access tokens <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />
+                  Step 3/3: Store access tokens <CircleCheck className="h-4 w-4 text-green-500" />
                 </h3>
 
                 <p className="py-1">
-                  <FontAwesomeIcon icon={faCheckCircle} className="mr-1 text-green-500" />
+                  <CircleCheck className="mr-1 h-4 w-4 text-green-500" />
                   You have successfully requested the access tokens. Please copy and store the tokens for use later.
                   These tokens are used by onedrive-vercel-index to read files from your OneDrive account.
                 </p>
@@ -281,7 +278,7 @@ function OAuthStep3Content() {
                     className="rounded-lg bg-gradient-to-br from-green-500 to-cyan-400 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-gradient-to-bl focus:ring-4 focus:ring-green-200 dark:focus:ring-green-800"
                     onClick={() => router.push('/onedrive-vercel-index-oauth/step-2')}
                   >
-                    <FontAwesomeIcon icon={faArrowLeft} /> <span>Get an authorisation code</span>
+                    <ArrowLeft className="h-4 w-4" /> <span>Get an authorisation code</span>
                   </button>
                 </div>
               </>

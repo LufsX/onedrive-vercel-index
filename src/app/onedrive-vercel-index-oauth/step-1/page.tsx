@@ -2,8 +2,7 @@
 
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { FontAwesomeIcon } from '../../../components/Icon'
-import { faArrowRight, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
+import { ArrowRight, TriangleAlert } from 'lucide-react'
 
 import apiConfig from '../../../../config/api.config'
 import Navbar from '../../../components/Navbar'
@@ -27,8 +26,8 @@ export default function OAuthStep1() {
             <h3 className="mt-4 mb-2 text-lg font-medium">Step 1/3: Preparations</h3>
 
             <p className="py-1 text-sm font-medium text-yellow-400">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" /> If you have not specified a REDIS_URL
-              inside your Vercel env variable, go initialise one at{' '}
+              <TriangleAlert className="mr-1 h-4 w-4" /> If you have not specified a REDIS_URL inside your Vercel env
+              variable, go initialise one at{' '}
               <a href="https://upstash.com/" target="_blank" rel="noopener noreferrer" className="underline">
                 Upstash
               </a>
@@ -108,9 +107,9 @@ export default function OAuthStep1() {
             </div>
 
             <p className="py-1 text-sm font-medium">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1 text-yellow-400" /> If you see anything
-              missing or incorrect, you need to reconfigure{' '}
-              <code className="font-mono text-xs">/config/api.config.js</code> and redeploy this instance.
+              <TriangleAlert className="mr-1 h-4 w-4 text-yellow-400" /> If you see anything missing or incorrect, you
+              need to reconfigure <code className="font-mono text-xs">/config/api.config.js</code> and redeploy this
+              instance.
             </p>
 
             <div className="mt-6 mb-2 text-right">
@@ -120,7 +119,7 @@ export default function OAuthStep1() {
                   router.push('/onedrive-vercel-index-oauth/step-2')
                 }}
               >
-                <span>Proceed to OAuth</span> <FontAwesomeIcon icon={faArrowRight} />
+                <span>Proceed to OAuth</span> <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>

@@ -1,8 +1,6 @@
 'use client'
 
-import { FontAwesomeIcon } from './Icon'
-import { faEnvelope } from '@fortawesome/free-regular-svg-icons'
-import { faSearch, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
+import { LogOut, Mail, Search } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 
 import Link from 'next/link'
@@ -13,6 +11,7 @@ import { useTranslations } from './ClientProviders'
 import { useBrandIcons } from './BrandIconsProvider'
 
 import siteConfig from '../../config/site.config'
+import BrandIcon from './BrandIcon'
 import SwitchLang from './SwitchLang'
 import FeatureBoundary from './FeatureBoundary'
 import useDeviceOS from '../utils/useDeviceOS'
@@ -80,18 +79,21 @@ const Navbar = () => {
       )}
 
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-4 py-1">
-        <Link href="/" className="flex items-center gap-2 py-2 hover:opacity-80 md:p-2 dark:text-white">
+        <Link
+          href="/"
+          className="flex items-center gap-2 py-2 transition-opacity duration-150 hover:opacity-80 md:p-2 dark:text-white"
+        >
           <Image src={siteConfig.icon} alt="icon" width="25" height="25" preload />
           <span className="hidden font-bold sm:block">{siteConfig.title}</span>
         </Link>
 
         <div className="flex flex-1 items-center gap-4 text-gray-700 md:flex-initial">
           <button
-            className="flex flex-1 items-center justify-between rounded-lg bg-gray-100 px-2.5 py-1.5 hover:opacity-80 md:w-48 dark:bg-gray-800 dark:text-white"
+            className="flex flex-1 cursor-pointer items-center justify-between rounded-lg bg-gray-100 px-2.5 py-1.5 transition-colors duration-150 hover:bg-gray-200 md:w-48 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
             onClick={openSearchBox}
           >
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon className="h-4 w-4" icon={faSearch} />
+              <Search className="h-4 w-4" />
               <span className="truncate text-sm font-medium">{t('Search ...')}</span>
             </div>
 
@@ -114,10 +116,10 @@ const Navbar = () => {
                   href={l.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 hover:opacity-80 dark:text-white"
+                  className="flex items-center gap-2 transition-opacity duration-150 hover:opacity-80 dark:text-white"
                 >
                   <span className="flex h-4 w-4 items-center justify-center">
-                    {brandIcon && <FontAwesomeIcon icon={brandIcon} />}
+                    {brandIcon && <BrandIcon mark={brandIcon} className="h-4 w-4" />}
                   </span>
                   <span className="hidden text-sm font-medium md:inline-block">
                     {
@@ -131,19 +133,22 @@ const Navbar = () => {
             })}
 
           {siteConfig.email && (
-            <a href={siteConfig.email} className="flex items-center gap-2 hover:opacity-80 dark:text-white">
-              <FontAwesomeIcon icon={faEnvelope} />
+            <a
+              href={siteConfig.email}
+              className="flex items-center gap-2 transition-opacity duration-150 hover:opacity-80 dark:text-white"
+            >
+              <Mail className="h-4 w-4" />
               <span className="hidden text-sm font-medium md:inline-block">{t('Email')}</span>
             </a>
           )}
 
           {tokenPresent && (
             <button
-              className="flex items-center gap-2 hover:opacity-80 dark:text-white"
+              className="flex cursor-pointer items-center gap-2 transition-opacity duration-150 hover:opacity-80 dark:text-white"
               onClick={() => setIsOpen(true)}
             >
               <span className="hidden text-sm font-medium md:inline-block">{t('Logout')}</span>
-              <FontAwesomeIcon icon={faSignOutAlt} />
+              <LogOut className="h-4 w-4" />
             </button>
           )}
         </div>

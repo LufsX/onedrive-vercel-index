@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
-// Shared keyboard and dismissal behavior for the two single-choice switches.
+// The panel stays mounted while it fades out, so this matches the leave animation in globals.css.
+const CLOSE_MS = 90
+
+// Shared keyboard, dismissal and animation behavior for the two single-choice switches.
 export default function Dropdown<T>({
   role,
   items,
@@ -26,22 +29,36 @@ export default function Dropdown<T>({
   itemClassName: (item: T) => string
   renderItem: (item: T) => ReactNode
 }) {
-  const [open, setOpen] = useState(false)
+  const [state, setState] = useState<'closed' | 'open' | 'closing'>('closed')
   const id = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const openingFocus = useRef<'first' | 'last' | null>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const close = () => {
-    setOpen(false)
-    triggerRef.current?.focus({ preventScroll: true })
-  }
+  const open = state === 'open'
+
+  const openPanel = useCallback(() => {
+    clearTimeout(closeTimer.current)
+    setState('open')
+  }, [])
+
+  // A click that lands outside the panel must not pull focus back out of whatever was clicked.
+  const close = useCallback((restoreFocus = true) => {
+    clearTimeout(closeTimer.current)
+    setState(current => (current === 'closed' ? current : 'closing'))
+    closeTimer.current = setTimeout(() => {
+      setState('closed')
+      if (restoreFocus) triggerRef.current?.focus({ preventScroll: true })
+    }, CLOSE_MS)
+  }, [])
+
+  useEffect(() => () => clearTimeout(closeTimer.current), [])
 
   useEffect(() => {
-    if (!open) return
+    if (state !== 'open') return
 
-    const panel = panelRef.current
-    const options = panel?.querySelectorAll<HTMLButtonElement>('[role="option"], [role="menuitem"]')
+    const options = panelRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"], [role="menuitem"]')
     const focusIndex =
       openingFocus.current === 'first'
         ? 0
@@ -50,14 +67,18 @@ export default function Dropdown<T>({
           : Math.max(0, selectedIndex)
     options?.[focusIndex]?.focus({ preventScroll: true })
     openingFocus.current = null
+  }, [state, selectedIndex])
+
+  useEffect(() => {
+    if (state === 'closed') return
 
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node
-      if (!panel?.contains(target) && !triggerRef.current?.contains(target)) close()
+      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) close(false)
     }
     document.addEventListener('pointerdown', onPointerDown, true)
     return () => document.removeEventListener('pointerdown', onPointerDown, true)
-  }, [open, selectedIndex])
+  }, [state, close])
 
   return (
     <>
@@ -65,18 +86,18 @@ export default function Dropdown<T>({
         ref={triggerRef}
         id={id}
         type="button"
-        className={triggerClassName}
+        className={`group ${triggerClassName}`}
         aria-label={triggerLabel}
         aria-haspopup={role}
         aria-expanded={open}
-        aria-controls={open ? id + '-panel' : undefined}
-        onClick={() => (open ? close() : setOpen(true))}
+        aria-controls={state === 'closed' ? undefined : id + '-panel'}
+        onClick={() => (open ? close() : openPanel())}
         onKeyDown={event => {
           if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
             event.preventDefault()
             openingFocus.current = event.key === 'Home' ? 'first' : event.key === 'End' ? 'last' : null
-            setOpen(true)
-          } else if (event.key === 'Escape' && open) {
+            openPanel()
+          } else if (event.key === 'Escape' && state !== 'closed') {
             event.preventDefault()
             event.stopPropagation()
             close()
@@ -85,13 +106,14 @@ export default function Dropdown<T>({
       >
         {trigger}
       </button>
-      {open && (
+      {state !== 'closed' && (
         <div
           ref={panelRef}
           id={id + '-panel'}
           role={role}
           aria-labelledby={id}
-          className={panelClassName}
+          data-state={state}
+          className={`dropdown-panel ${panelClassName}`}
           onKeyDown={event => {
             if (event.key === 'Escape') {
               event.preventDefault()

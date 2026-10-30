@@ -6,9 +6,7 @@ import toast from 'react-hot-toast'
 import { usePathname } from 'next/navigation'
 import { rawFileUrl } from '../../utils/rawFileUrl'
 import dynamic from 'next/dynamic'
-import { FontAwesomeIcon } from '../Icon'
-import { faMicrosoft } from '@fortawesome/free-brands-svg-icons/faMicrosoft'
-import { faFile } from '@fortawesome/free-regular-svg-icons'
+import { File } from 'lucide-react'
 import { useTranslations } from '../ClientProviders'
 import Loading from '../Loading'
 
@@ -16,6 +14,16 @@ const OfficeFileViewer = dynamic(() => import('office-file-viewer').then(module 
   ssr: false,
   loading: () => <OfficeLoading />,
 })
+
+// Simple Icons and Lucide carry no Microsoft mark; four squares keep the brand recognisable.
+const MicrosoftLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 23 23" className={className} fill="currentColor" aria-hidden="true">
+    <rect x="1" y="1" width="10" height="10" />
+    <rect x="12" y="1" width="10" height="10" />
+    <rect x="1" y="12" width="10" height="10" />
+    <rect x="12" y="12" width="10" height="10" />
+  </svg>
+)
 
 function OfficeLoading() {
   const t = useTranslations()
@@ -83,7 +91,7 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
             title={t('Preview locally')}
             type="button"
           >
-            <FontAwesomeIcon className="h-3.5 w-3.5" icon={faFile} />
+            <File className="h-3.5 w-3.5" />
             {t('Local preview')}
           </button>
           <button
@@ -107,7 +115,7 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
             title={t('Preview with Microsoft Office Online')}
             type="button"
           >
-            <FontAwesomeIcon className="h-3.5 w-3.5" icon={faMicrosoft} />
+            <MicrosoftLogo className="h-3.5 w-3.5" />
             {t('Microsoft')}
           </button>
         </div>

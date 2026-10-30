@@ -1,7 +1,6 @@
 'use client'
 
-import { FontAwesomeIcon } from './Icon'
-import { faArrowRight } from '@fortawesome/free-solid-svg-icons'
+import { ArrowRight } from 'lucide-react'
 
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -57,7 +56,7 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
           }}
           title="Enter"
         >
-          <FontAwesomeIcon icon={faArrowRight} />
+          <ArrowRight className="h-4 w-4" />
         </button>
       </div>
     </div>

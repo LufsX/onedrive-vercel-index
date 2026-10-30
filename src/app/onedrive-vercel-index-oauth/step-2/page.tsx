@@ -3,8 +3,7 @@
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { FontAwesomeIcon } from '../../../components/Icon'
-import { faArrowRight, faExclamationCircle, faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons'
+import { ArrowRight, CircleAlert, ExternalLink } from 'lucide-react'
 
 import Navbar from '../../../components/Navbar'
 import Footer from '../../../components/Footer'
@@ -41,8 +40,8 @@ export default function OAuthStep2() {
             <h3 className="mt-4 mb-2 text-lg font-medium">Step 2/3: Get authorisation code</h3>
 
             <p className="py-1 text-sm font-medium text-red-400">
-              <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" /> If you are not the owner of this website,
-              stop now, as continuing with this process may expose your personal files in OneDrive.
+              <CircleAlert className="mr-1 h-4 w-4" /> If you are not the owner of this website, stop now, as continuing
+              with this process may expose your personal files in OneDrive.
             </p>
 
             <div
@@ -52,7 +51,7 @@ export default function OAuthStep2() {
               }}
             >
               <div className="absolute top-0 right-0 p-1 opacity-60">
-                <FontAwesomeIcon icon={faExternalLinkAlt} />
+                <ExternalLink className="h-4 w-4" />
               </div>
               <pre className="overflow-x-auto p-2 whitespace-pre-wrap">
                 <code>{oAuthUrl}</code>
@@ -99,8 +98,8 @@ export default function OAuthStep2() {
             </p>
 
             <p className="py-1 text-sm font-medium text-yellow-600 dark:text-yellow-500">
-              <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" /> The code can only be used once and expires
-              in about 10 minutes. Paste the redirected URL and press &quot;Get tokens&quot; right away.
+              <CircleAlert className="mr-1 h-4 w-4" /> The code can only be used once and expires in about 10 minutes.
+              Paste the redirected URL and press &quot;Get tokens&quot; right away.
             </p>
 
             <div className="mt-6 mb-2 text-right">
@@ -118,7 +117,7 @@ export default function OAuthStep2() {
                   </>
                 ) : (
                   <>
-                    <span>Get tokens</span> <FontAwesomeIcon icon={faArrowRight} />
+                    <span>Get tokens</span> <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </button>

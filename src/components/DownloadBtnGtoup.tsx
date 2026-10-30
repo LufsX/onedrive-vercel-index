@@ -1,10 +1,7 @@
 'use client'
 
 import { MouseEventHandler, useState } from 'react'
-import { FontAwesomeIcon } from './Icon'
-import type { IconDefinition as IconProp } from '@fortawesome/fontawesome-svg-core'
-import { faCopy } from '@fortawesome/free-regular-svg-icons'
-import { faDownload, faFileDownload, faPen } from '@fortawesome/free-solid-svg-icons'
+import { Copy, Download, FileDown, Pencil, type LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useClipboard } from 'use-clipboard-copy'
 import { useTranslations } from './ClientProviders'
@@ -41,14 +38,14 @@ export const DownloadButton = ({
   onClickCallback,
   btnColor,
   btnText,
-  btnIcon,
+  btnIcon: BtnIcon,
   btnImage,
   btnTitle,
 }: {
   onClickCallback: MouseEventHandler<HTMLButtonElement>
   btnColor?: string
   btnText: string
-  btnIcon?: IconProp
+  btnIcon?: LucideIcon
   btnImage?: string
   btnTitle?: string
 }) => {
@@ -60,7 +57,7 @@ export const DownloadButton = ({
       title={btnTitle}
       onClick={onClickCallback}
     >
-      {btnIcon && <FontAwesomeIcon icon={btnIcon} />}
+      {BtnIcon && <BtnIcon className="h-4 w-4" />}
       {btnImage && <Image src={btnImage} alt={btnImage} width={20} height={20} preload />}
       <span>{btnText}</span>
     </button>
@@ -86,14 +83,14 @@ const DownloadButtonGroup = () => {
           onClickCallback={() => window.open(fileUrl)}
           btnColor="blue"
           btnText={t('Download')}
-          btnIcon={faFileDownload}
+          btnIcon={FileDown}
           btnTitle={t('Download the file directly through OneDrive')}
         />
         <DownloadButton
           onClickCallback={() => window.open(`https://cors.isteed.cc/${getBaseUrl()}${fileUrl}`)}
           btnColor="teal"
           btnText={t('Proxy download')}
-          btnIcon={faDownload}
+          btnIcon={Download}
           btnTitle={t('Download the file through Cloudflare Serverless proxy.')}
         />
         <DownloadButton
@@ -103,14 +100,14 @@ const DownloadButtonGroup = () => {
           }}
           btnColor="pink"
           btnText={t('Copy direct link')}
-          btnIcon={faCopy}
+          btnIcon={Copy}
           btnTitle={t('Copy the permalink to the file to the clipboard')}
         />
         <DownloadButton
           onClickCallback={() => setMenuOpen(true)}
           btnColor="teal"
           btnText={t('Customise link')}
-          btnIcon={faPen}
+          btnIcon={Pencil}
         />
       </div>
     </>

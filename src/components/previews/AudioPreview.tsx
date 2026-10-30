@@ -3,8 +3,7 @@
 import type { OdFileObject } from '../../types'
 import { FC, useEffect, useRef, useState } from 'react'
 
-import { FontAwesomeIcon } from '../Icon'
-import { faMusic } from '@fortawesome/free-solid-svg-icons'
+import { Music } from 'lucide-react'
 import { useTranslations } from '../ClientProviders'
 import { usePathname } from 'next/navigation'
 
@@ -69,11 +68,7 @@ const AudioPlayer: FC<{ file: OdFileObject; audioUrl: string; thumbnail: string 
                 />
               </div>
             ) : (
-              <FontAwesomeIcon
-                className={`z-10 h-5 w-5 ${playerStatus === PlayerState.Playing ? 'animate-spin' : ''}`}
-                icon={faMusic}
-                size="2x"
-              />
+              <Music className={`z-10 h-8 w-8 ${playerStatus === PlayerState.Playing ? 'animate-spin' : ''}`} />
             )}
           </div>
 
