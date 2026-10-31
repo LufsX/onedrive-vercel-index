@@ -14,6 +14,13 @@ import { getBaseUrl } from '../utils/getBaseUrl'
 import { formatModifiedDateTime } from '../utils/fileDetails'
 import { Checkbox, ChildIcon, ChildName, Downloading } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
+import HoverSurface from './HoverSurface'
+import { uiIconButton } from './uiStyles'
+import { FileDeleteButton } from './FileManager'
+import DirectoryBody, { Skeleton } from './folder/DirectoryBody'
+
+const rowAction =
+  'cursor-pointer rounded p-1 transition-colors duration-150 hover:bg-gray-300 motion-reduce:transition-none dark:hover:bg-gray-600'
 
 const GridItem = memo(function GridItem({ c }: { c: OdFolderChildren }) {
   const { datetimeFormat } = useClientConfig().siteConfig
@@ -85,13 +92,13 @@ const FolderGridCard = memo(function FolderGridCard({
   const itemPath = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
 
   return (
-    <div className="group dark:hover:bg-gray-850 relative overflow-hidden rounded transition-colors duration-100 hover:bg-gray-100">
-      <div className="absolute top-0 right-0 z-10 m-1 rounded bg-white/50 py-0.5 opacity-0 transition-opacity duration-100 group-hover:opacity-100 dark:bg-gray-900/50">
+    <div data-hover-item className="group relative overflow-hidden rounded">
+      <div className="absolute top-0 right-0 z-10 m-1 rounded bg-white/50 py-0.5 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none dark:bg-gray-900/50 [@media(hover:none)]:opacity-100">
         {c.folder ? (
           <div>
             <span
               title={t('Copy folder permalink')}
-              className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+              className={rowAction}
               onClick={() => {
                 copy(`${getBaseUrl()}${itemPath}`)
                 toast(t('Copied folder permalink.'), { icon: '👌' })
@@ -104,7 +111,7 @@ const FolderGridCard = memo(function FolderGridCard({
             ) : (
               <span
                 title={t('Download folder')}
-                className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className={rowAction}
                 onClick={handleFolderDownload(itemPath, c.id, c.name)}
               >
                 <CircleArrowDown className="h-4 w-4" />
@@ -115,7 +122,7 @@ const FolderGridCard = memo(function FolderGridCard({
           <div>
             <span
               title={t('Copy raw file permalink')}
-              className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+              className={rowAction}
               onClick={() => {
                 copy(`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
                 toast.success(t('Copied raw file permalink.'))
@@ -125,11 +132,12 @@ const FolderGridCard = memo(function FolderGridCard({
             </span>
             <a
               title={t('Download file')}
-              className="cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+              className={rowAction}
               href={`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
             >
               <CircleArrowDown className="h-4 w-4" />
             </a>
+            <FileDeleteButton item={c} />
           </div>
         )}
       </div>
@@ -137,7 +145,7 @@ const FolderGridCard = memo(function FolderGridCard({
       <div
         className={`${
           selected ? 'opacity-100' : 'opacity-0'
-        } absolute top-0 left-0 z-10 m-1 rounded bg-white/50 py-0.5 group-hover:opacity-100 dark:bg-gray-900/50`}
+        } absolute top-0 left-0 z-10 m-1 rounded bg-white/50 py-0.5 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none dark:bg-gray-900/50 [@media(hover:none)]:opacity-100`}
       >
         {!c.folder && !(c.name === '.password') && (
           <Checkbox checked={selected ? 2 : 0} onChange={() => toggleItemSelected(c.id)} title={t('Select file')} />
@@ -152,6 +160,7 @@ const FolderGridCard = memo(function FolderGridCard({
 })
 
 const FolderGridLayout = ({
+  loading = false,
   path,
   folderChildren,
   selected,
@@ -174,56 +183,81 @@ const FolderGridLayout = ({
   return (
     <div className="rounded bg-white shadow-xs dark:bg-gray-900 dark:text-gray-100">
       <div className="flex items-center border-b border-gray-900/10 pl-3 text-xs font-bold tracking-widest text-gray-600 uppercase dark:border-gray-500/30 dark:text-gray-400">
-        <div className="min-w-0 flex-1 py-2">{t('{{count}} item(s)', { count: folderChildren.length })}</div>
+        <div className="min-w-0 flex-1 py-2">
+          {loading ? t('Loading ...') : t('{{count}} item(s)', { count: folderChildren.length })}
+        </div>
         <div className="flex shrink-0 items-center gap-1 pr-3 text-gray-700 dark:text-gray-400">
           <Checkbox
             checked={totalSelected}
+            disabled={loading}
             onChange={toggleTotalSelected}
             indeterminate={true}
             title={t('Select all files')}
           />
           <button
             title={t('Copy selected files permalink')}
-            className="cursor-pointer rounded p-1.5 hover:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white dark:hover:bg-gray-600 disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900"
+            className={uiIconButton}
             disabled={totalSelected === 0}
             onClick={() => {
               copy(handleSelectedPermalink(getBaseUrl()))
               toast.success(t('Copied selected files permalink.'))
             }}
           >
-            <Copy className="h-5 w-5" />
+            <Copy className="h-4 w-4" />
           </button>
           {totalGenerating ? (
             <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
           ) : (
             <button
               title={t('Download selected files')}
-              className="cursor-pointer rounded p-1.5 hover:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white dark:hover:bg-gray-600 disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900"
+              className={uiIconButton}
               disabled={totalSelected === 0}
               onClick={handleSelectedDownload}
             >
-              <CircleArrowDown className="h-5 w-5" />
+              <CircleArrowDown className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 p-3 md:grid-cols-4">
-        {folderChildren.map((c: OdFolderChildren) => (
-          <FolderGridCard
-            key={c.id}
-            child={c}
-            path={path}
-            selected={Boolean(selected[c.id])}
-            generating={Boolean(folderGenerating[c.id])}
-            hashedToken={c.folder ? null : hashedToken}
-            copy={copy}
-            toast={toast}
-            toggleItemSelected={toggleItemSelected}
-            handleFolderDownload={handleFolderDownload}
-          />
-        ))}
-      </div>
+      <DirectoryBody
+        key={path}
+        loading={loading}
+        placeholder={
+          <div aria-hidden="true" className="grid grid-cols-2 gap-3 p-3 md:grid-cols-4">
+            {Array.from({ length: 8 }, (_, index) => (
+              <div key={index} className="flex min-w-0 flex-col items-center gap-2">
+                <div className="h-32 w-full rounded border border-gray-900/10 dark:border-gray-500/30">
+                  <Skeleton className="h-full w-full" />
+                </div>
+                <div className="flex h-6 items-center">
+                  <Skeleton className="h-3 w-24 max-w-full" />
+                </div>
+                <div className="flex h-4 items-center">
+                  <Skeleton className="h-2.5 w-28 max-w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        }
+      >
+        <HoverSurface className="grid grid-cols-2 gap-3 p-3 md:grid-cols-4">
+          {folderChildren.map((c: OdFolderChildren) => (
+            <FolderGridCard
+              key={c.id}
+              child={c}
+              path={path}
+              selected={Boolean(selected[c.id])}
+              generating={Boolean(folderGenerating[c.id])}
+              hashedToken={c.folder ? null : hashedToken}
+              copy={copy}
+              toast={toast}
+              toggleItemSelected={toggleItemSelected}
+              handleFolderDownload={handleFolderDownload}
+            />
+          ))}
+        </HoverSurface>
+      </DirectoryBody>
     </div>
   )
 }

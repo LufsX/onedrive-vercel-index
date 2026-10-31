@@ -27,8 +27,13 @@ export default async function FoldersPage(props: PageProps) {
         <Navbar />
         <div className="mx-auto w-full max-w-5xl px-1 py-4 sm:px-4">
           <nav className="mb-4 flex items-center justify-between gap-3 sm:pl-1">
-            <Breadcrumb query={query} />
-            <SwitchLayout />
+            <div className="min-w-0 flex-1">
+              <Breadcrumb query={query} />
+            </div>
+            <div className="relative flex shrink-0 items-center gap-1">
+              <div data-upload-actions className="flex items-center gap-1 empty:hidden" />
+              <SwitchLayout />
+            </div>
           </nav>
           <FileListing query={query} />
         </div>

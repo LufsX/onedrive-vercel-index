@@ -2,9 +2,10 @@
 
 import { useClientConfig } from './ClientConfigProvider'
 
-import type { OdFileObject, OdFolderObject } from '../types'
+import type { OdFileObject, OdFolderChildren, OdFolderObject } from '../types'
 import type { ParsedUrlQuery } from 'querystring'
 import { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CircleChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -16,13 +17,17 @@ import useLocalStorage from '../utils/useLocalStorage'
 import { getPreviewType, preview } from '../utils/getPreviewType'
 import { useProtectedSWRInfinite } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
+import { navigationTargets } from '../utils/navigationTarget'
 
 import { layouts } from './SwitchLayout'
 import Loading, { LoadingIcon } from './Loading'
 import { PreviewContainer } from './previews/Containers'
 
 import FolderListLayout from './FolderListLayout'
+import FolderGridLayout from './FolderGridLayout'
 import FeatureBoundary from './FeatureBoundary'
+import UploadControls from './UploadControls'
+import { CreateFolderButton, FileManagerProvider } from './FileManager'
 const PreviewLoading = () => {
   const t = useTranslations()
 
@@ -33,7 +38,6 @@ const PreviewLoading = () => {
   )
 }
 
-const FolderGridLayout = dynamic(() => import('./FolderGridLayout'), { loading: PreviewLoading })
 const Auth = dynamic(() => import('./Auth'), { loading: PreviewLoading })
 const FourOhFour = dynamic(() => import('./FourOhFour'), { loading: PreviewLoading })
 
@@ -103,7 +107,10 @@ const queryToPath = (query?: ParsedUrlQuery) => {
   return '/'
 }
 
-const FileListingContent: FC<{ path: string }> = ({ path }) => {
+const FileListingContent: FC<{
+  path: string
+  onFolderChange: (path: string, isFolder: boolean | null, refresh: (removedId?: string) => Promise<unknown>) => void
+}> = ({ path, onFolderChange }) => {
   const { protectedRoutes } = useClientConfig().siteConfig
   const [selection, setSelected] = useState<Record<string, boolean>>({})
   const [totalGenerating, setTotalGenerating] = useState<boolean>(false)
@@ -122,27 +129,59 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
   const t = useTranslations()
 
   // Grid cards render preview images, which the listing includes when asked for.
-  const { data, error, size, setSize } = useProtectedSWRInfinite(path, protectedRoutes, {
+  const { data, error, size, setSize, mutate } = useProtectedSWRInfinite(path, protectedRoutes, {
     ...(layout.name === 'Grid' ? { thumbnails: 'medium' as const } : {}),
     enabled: layoutReady,
   })
 
-  // 403 with setupRequired means the site has no stored credentials yet: run setup.
+  // 403 with setupRequired means the site has no stored credentials yet: require admin setup.
   // Any other failure stays on the page, so a token refresh hiccup cannot throw the
   // visitor out to the OAuth wizard mid-browse.
   const setupRequired = error?.status === 403 && Boolean(error?.message?.setupRequired)
 
   useEffect(() => {
     if (setupRequired) {
-      router.replace('/onedrive-vercel-index-oauth/step-1')
+      router.replace('/onedrive-vercel-index-oauth/step-0')
     }
   }, [setupRequired, router])
 
   const responses: any[] = useMemo(() => (data ? [].concat(...data) : []), [data])
+  useEffect(() => {
+    const isFolder = data ? Boolean(responses[0] && 'folder' in responses[0]) : error ? false : null
+    onFolderChange(path, isFolder, async removedId => {
+      if (removedId) {
+        await mutate(
+          pages =>
+            pages?.map(page =>
+              page?.folder
+                ? {
+                    ...page,
+                    folder: {
+                      ...page.folder,
+                      value: page.folder.value.filter((child: OdFolderChildren) => child.id !== removedId),
+                    },
+                  }
+                : page,
+            ),
+          { revalidate: false },
+        )
+      }
+      return mutate()
+    })
+  }, [data, error, mutate, onFolderChange, path, responses])
+
   const folderChildren = useMemo<OdFolderObject['value']>(
     () => responses.flatMap(response => response?.folder?.value ?? []),
     [responses],
   )
+  useEffect(() => {
+    if (responses[0] && 'folder' in responses[0]) {
+      navigationTargets.rememberFolder(path, folderChildren)
+    } else if (responses[0] && 'file' in responses[0]) {
+      navigationTargets.remember(path, 'file')
+    }
+  }, [path, responses, folderChildren])
+
   const readmeFile = useMemo(() => folderChildren.find(c => c.name.toLowerCase() === 'readme.md'), [folderChildren])
   const selectableFiles = useMemo(
     () => folderChildren.filter(c => !c.folder && c.name !== '.password'),
@@ -298,25 +337,22 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
       </PreviewContainer>
     )
   }
-  if (!data) {
-    return (
-      <PreviewContainer>
-        <Loading loadingText={t('Loading ...')} />
-      </PreviewContainer>
-    )
-  }
-
   const isLoadingInitialData = !data && !error
   const pageError = Boolean(error && data)
   const isLoadingMore =
     !pageError && (isLoadingInitialData || (size > 0 && data && typeof data[size - 1] === 'undefined'))
   const isEmpty = data?.[0]?.length === 0
   const isReachingEnd = isEmpty || (data && typeof data[data.length - 1]?.next === 'undefined')
-  const onlyOnePage = data && typeof data[0].next === 'undefined'
+  const onlyOnePage = !data || typeof data[0]?.next === 'undefined'
 
-  if ('folder' in responses[0]) {
+  if (!data && navigationTargets.get(path) !== 'folder') {
+    return <PreviewLoading />
+  }
+
+  if (!data || (responses[0] && 'folder' in responses[0])) {
     // Folder layout component props
     const folderProps = {
+      loading: !data,
       toast,
       path,
       folderChildren,
@@ -333,16 +369,13 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
 
     return (
       <>
-        {/* Keyed so switching layouts cross-fades instead of snapping. */}
-        <div key={layout.name} className="fade-in">
-          {layout.name === 'Grid' ? (
-            <FeatureBoundary>
-              <FolderGridLayout {...folderProps} />
-            </FeatureBoundary>
-          ) : (
-            <FolderListLayout {...folderProps} />
-          )}
-        </div>
+        {layout.name === 'Grid' ? (
+          <FeatureBoundary>
+            <FolderGridLayout {...folderProps} />
+          </FeatureBoundary>
+        ) : (
+          <FolderListLayout {...folderProps} />
+        )}
 
         {!onlyOnePage && (
           <div className="rounded-b bg-white dark:bg-gray-900 dark:text-gray-100">
@@ -393,7 +426,7 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
     )
   }
 
-  if ('file' in responses[0] && responses.length === 1) {
+  if (responses[0] && 'file' in responses[0] && responses.length === 1) {
     const file = responses[0].file as OdFileObject
     const previewType = getPreviewType(file.name, { video: Boolean(file.video) })
 
@@ -448,10 +481,40 @@ const FileListingContent: FC<{ path: string }> = ({ path }) => {
 }
 const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
   const path = queryToPath(query)
+  const container = useRef<HTMLDivElement>(null)
+  const [toolbar, setToolbar] = useState<HTMLElement | null>(null)
+  const [folderPath, setFolderPath] = useState<string | null>(null)
+  const refreshFolder = useRef<(removedId?: string) => Promise<unknown>>(async () => undefined)
+  const onFolderChange = useCallback(
+    (folder: string, isFolder: boolean | null, refresh: (removedId?: string) => Promise<unknown>) => {
+      refreshFolder.current = refresh
+      if (isFolder !== null) setFolderPath(isFolder ? folder : null)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const actions = container.current?.parentElement?.querySelector<HTMLElement>('[data-upload-actions]')
+    if (actions) setToolbar(actions)
+  }, [])
+
   return (
-    <FeatureBoundary key={path}>
-      <FileListingContent path={path} />
-    </FeatureBoundary>
+    <FileManagerProvider key={path} path={path} onRefresh={removedId => refreshFolder.current(removedId)}>
+      <div ref={container}>
+        {toolbar &&
+          folderPath === path &&
+          createPortal(
+            <>
+              <CreateFolderButton />
+              <UploadControls key={path} path={path} onComplete={() => refreshFolder.current()} />
+            </>,
+            toolbar,
+          )}
+        <FeatureBoundary key={path}>
+          <FileListingContent path={path} onFolderChange={onFolderChange} />
+        </FeatureBoundary>
+      </div>
+    </FileManagerProvider>
   )
 }
 

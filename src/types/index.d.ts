@@ -10,6 +10,8 @@ export type OdFolderObject = {
   value: Array<{
     id: string
     name: string
+    eTag?: string
+    remoteItem?: unknown
     size: number
     lastModifiedDateTime: string
     file?: { mimeType: string; hashes: { quickXorHash?: string; sha1Hash?: string; sha256Hash?: string } }

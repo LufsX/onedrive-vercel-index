@@ -15,6 +15,10 @@ import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
 
 import { Downloading, Checkbox, ChildIcon, ChildName } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
+import HoverSurface from './HoverSurface'
+import { uiIconButton } from './uiStyles'
+import { FileDeleteButton, useFileManager } from './FileManager'
+import DirectoryBody, { Skeleton } from './folder/DirectoryBody'
 
 /**
  * The name/date/size block and the right hand action block use fixed widths, so
@@ -28,10 +32,10 @@ const dateWidth = 'hidden w-44 shrink-0 overflow-hidden text-ellipsis whitespace
 const sizeWidth = 'hidden w-20 shrink-0 truncate md:block'
 const dateCell = `${dateWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
 const sizeCell = `${sizeWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
-const rightCell = 'hidden shrink-0 items-center justify-end gap-1 pr-3 md:flex md:w-[136px] 2xl:w-[200px]'
-const actionButton =
-  'cursor-pointer rounded p-1.5 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white disabled:dark:text-gray-600 disabled:hover:dark:bg-gray-900'
-const rowAction = 'cursor-pointer rounded px-1.5 py-1 hover:bg-gray-300 dark:hover:bg-gray-600'
+const rightCell = 'hidden shrink-0 items-center justify-end gap-0.5 pr-2 md:flex md:w-[100px]'
+const actionButton = uiIconButton
+const rowAction =
+  'cursor-pointer rounded p-1 transition-colors duration-150 motion-reduce:transition-none hover:bg-gray-300 dark:hover:bg-gray-600'
 
 const FileListItem: FC<{ fileContent: OdFolderChildren }> = memo(function FileListItem({ fileContent: c }) {
   const { datetimeFormat } = useClientConfig().siteConfig
@@ -71,10 +75,11 @@ const FolderListRow = memo(function FolderListRow({
   handleFolderDownload: (path: string, id: string, name?: string) => () => void
 }) {
   const t = useTranslations()
+  const manager = useFileManager()
   const itemPath = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
 
   return (
-    <div className="dark:hover:bg-gray-850 flex items-center transition-colors duration-100 hover:bg-gray-100">
+    <div data-hover-item className="flex items-center">
       <Link prefetch={false} href={itemPath} className="min-w-0 flex-1 text-gray-700 dark:text-gray-400">
         <FileListItem fileContent={c} />
       </Link>
@@ -126,14 +131,23 @@ const FolderListRow = memo(function FolderListRow({
           </>
         )}
         {!c.folder && !(c.name === '.password') && (
-          <Checkbox checked={selected ? 2 : 0} onChange={() => toggleItemSelected(c.id)} title={t('Select file')} />
+          <>
+            <FileDeleteButton item={c} />
+            <Checkbox checked={selected ? 2 : 0} onChange={() => toggleItemSelected(c.id)} title={t('Select file')} />
+          </>
         )}
       </div>
+      {!c.folder && manager?.available && (
+        <div className="flex shrink-0 pr-2 md:hidden">
+          <FileDeleteButton item={c} />
+        </div>
+      )}
     </div>
   )
 })
 
 const FolderListLayout = ({
+  loading = false,
   path,
   folderChildren,
   selected,
@@ -162,8 +176,6 @@ const FolderListLayout = ({
           <div className={sizeWidth}>{t('Size')}</div>
         </div>
         <div className={`${rightCell} text-gray-700 dark:text-gray-400`}>
-          {/* The label can shrink, so it truncates instead of pushing the buttons out. */}
-          <span className="mr-auto hidden min-w-0 truncate 2xl:inline">{t('Actions')}</span>
           <button
             title={t('Copy selected files permalink')}
             className={actionButton}
@@ -173,7 +185,7 @@ const FolderListLayout = ({
               toast.success(t('Copied selected files permalink.'))
             }}
           >
-            <Copy className="h-5 w-5" />
+            <Copy className="h-4 w-4" />
           </button>
           {totalGenerating ? (
             <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
@@ -184,11 +196,12 @@ const FolderListLayout = ({
               disabled={totalSelected === 0}
               onClick={handleSelectedDownload}
             >
-              <CircleArrowDown className="h-5 w-5" />
+              <CircleArrowDown className="h-4 w-4" />
             </button>
           )}
           <Checkbox
             checked={totalSelected}
+            disabled={loading}
             onChange={toggleTotalSelected}
             indeterminate={true}
             title={t('Select files')}
@@ -196,20 +209,50 @@ const FolderListLayout = ({
         </div>
       </div>
 
-      {folderChildren.map((c: OdFolderChildren) => (
-        <FolderListRow
-          key={c.id}
-          child={c}
-          path={path}
-          selected={Boolean(selected[c.id])}
-          generating={Boolean(folderGenerating[c.id])}
-          hashedToken={c.folder ? null : hashedToken}
-          copy={copy}
-          toast={toast}
-          toggleItemSelected={toggleItemSelected}
-          handleFolderDownload={handleFolderDownload}
-        />
-      ))}
+      <DirectoryBody
+        key={path}
+        loading={loading}
+        placeholder={
+          <div aria-hidden="true">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className={`${rowShell} h-11`}>
+                <div className={nameArea}>
+                  <div className="w-5 shrink-0">
+                    <Skeleton className="h-4 w-4" />
+                  </div>
+                  <Skeleton className={`h-3 ${index % 2 ? 'w-32' : 'w-44'} max-w-[65%]`} />
+                </div>
+                <div className={dateWidth}>
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <div className={sizeWidth}>
+                  <Skeleton className="h-3 w-12" />
+                </div>
+                <div className={rightCell}>
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        }
+      >
+        <HoverSurface>
+          {folderChildren.map((c: OdFolderChildren) => (
+            <FolderListRow
+              key={c.id}
+              child={c}
+              path={path}
+              selected={Boolean(selected[c.id])}
+              generating={Boolean(folderGenerating[c.id])}
+              hashedToken={c.folder ? null : hashedToken}
+              copy={copy}
+              toast={toast}
+              toggleItemSelected={toggleItemSelected}
+              handleFolderDownload={handleFolderDownload}
+            />
+          ))}
+        </HoverSurface>
+      </DirectoryBody>
     </div>
   )
 }
