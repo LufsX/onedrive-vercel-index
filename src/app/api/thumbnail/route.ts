@@ -4,7 +4,6 @@ import axiosInstance from '../../../utils/axiosInstance'
 import type { OdThumbnail } from '../../../types'
 import { checkAuthRoute, encodePath, getAccessToken } from '../../../lib/odApi'
 import apiConfig from '../../../../config/api.config'
-import { cached } from '../../../lib/cache'
 
 export async function GET(request: NextRequest) {
   const headers = new Headers({ 'Cache-Control': 'private, no-store' })
@@ -35,10 +34,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: code, headers })
   }
 
-  if (message === '') {
-    headers.set('Cache-Control', apiConfig.cacheControlHeader)
-  }
-
   const requestPath = encodePath(cleanPath)
   const requestUrl = `${apiConfig.driveApi}/root${requestPath}`
   const isRoot = requestPath === ''
@@ -50,8 +45,7 @@ export async function GET(request: NextRequest) {
       })
       return data.value?.length > 0 ? ((data.value[0] as OdThumbnail)[size]?.url ?? null) : null
     }
-    const thumbnailUrl =
-      message === '' ? await cached(JSON.stringify(['thumbnail', cleanPath, size]), 30_000, load) : await load()
+    const thumbnailUrl = await load()
 
     if (thumbnailUrl) {
       return NextResponse.redirect(thumbnailUrl, { headers })

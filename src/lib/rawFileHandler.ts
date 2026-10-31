@@ -3,9 +3,8 @@ import { posix as pathPosix } from 'path'
 import { Readable, Transform, pipeline } from 'stream'
 
 import axiosInstance from '../utils/axiosInstance'
-import { driveApi, cacheControlHeader } from '../../config/api.config'
+import { driveApi } from '../../config/api.config'
 import { checkAuthRoute, encodePath, getAccessToken } from './odApi'
-import { cached } from './cache'
 
 const MAX_PROXY_BYTES = 4 * 1024 * 1024
 
@@ -55,11 +54,8 @@ export async function handleRawFile(request: NextRequest): Promise<NextResponse>
   }
 
   const headers = new Headers(corsHeaders)
-  if (message !== '') {
-    headers.set('Cache-Control', 'private, no-store')
-  } else {
-    headers.set('Cache-Control', cacheControlHeader)
-  }
+  // Managed files can be replaced or deleted from another instance.
+  headers.set('Cache-Control', 'private, no-store')
 
   // Inline delivery is restricted to PDF so arbitrary HTML/SVG cannot run on this origin.
   if (inline && pathPosix.extname(cleanPath).toLowerCase() !== '.pdf') {
@@ -80,7 +76,7 @@ export async function handleRawFile(request: NextRequest): Promise<NextResponse>
       })
       return data
     }
-    const data = message === '' ? await cached(JSON.stringify(['raw', cleanPath]), 30_000, load) : await load()
+    const data = await load()
 
     if (!('@microsoft.graph.downloadUrl' in data)) {
       return NextResponse.json({ error: 'No download url found.' }, { status: 404, headers })
