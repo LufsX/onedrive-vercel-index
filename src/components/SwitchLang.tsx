@@ -60,7 +60,7 @@ const SwitchLang = () => {
         }
         panelClassName="absolute top-full right-0 z-20 mt-1 w-44 overflow-hidden rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900 dark:text-white"
         itemClassName={locale =>
-          `flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-sm font-medium whitespace-nowrap transition-colors duration-100 outline-hidden focus:bg-blue-50 focus:text-blue-700 dark:focus:bg-blue-600/10 dark:focus:text-blue-400 ${locale === currentLocale ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'}`
+          `flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-sm font-medium whitespace-nowrap transition-colors duration-100 outline-hidden data-focus:text-blue-700 dark:data-focus:text-blue-400 ${locale === currentLocale ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'}`
         }
         renderItem={locale => (
           <>

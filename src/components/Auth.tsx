@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { FC, useState } from 'react'
 import { useTranslations } from './ClientProviders'
+import { uiInput, uiPrimaryButton } from './uiStyles'
 
 import { matchProtectedRoute } from '../utils/protectedRouteHandler'
 import useLocalStorage from '../utils/useLocalStorage'
@@ -23,7 +24,7 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
   const t = useTranslations()
 
   return (
-    <div className="mx-auto flex max-w-sm flex-col gap-4 md:my-10">
+    <div className="fade-in mx-auto flex max-w-sm flex-col gap-4 md:my-10">
       <div className="mx-auto w-3/4 md:w-5/6">
         <Image src={'/images/fabulous-wapmire-weekdays.png'} alt="authenticate" width={912} height={912} preload />
       </div>
@@ -36,7 +37,7 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
 
       <div className="flex items-center gap-2">
         <input
-          className="flex-1 rounded border border-gray-600/10 p-2 font-mono focus:ring focus:ring-blue-300 focus:outline-hidden dark:bg-gray-600 dark:text-white dark:focus:ring-blue-700"
+          className={`${uiInput} flex-1`}
           autoFocus
           type="password"
           placeholder="************"
@@ -52,7 +53,7 @@ const Auth: FC<{ redirect: string }> = ({ redirect }) => {
           }}
         />
         <button
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-500 focus:ring focus:ring-blue-400 focus:outline-hidden"
+          className={uiPrimaryButton}
           onClick={() => {
             setPersistedToken(token)
             router.refresh()

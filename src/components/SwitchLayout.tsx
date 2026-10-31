@@ -49,11 +49,9 @@ const SwitchLayout = () => {
             <ChevronDown className="h-3 w-3 shrink-0 transition-transform duration-200 group-aria-expanded:rotate-180" />
           </>
         }
-        panelClassName="absolute top-full right-0 z-20 mt-1 w-32 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-800"
+        panelClassName="absolute top-full right-0 z-20 mt-1 w-32 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900"
         itemClassName={layout =>
-          `${
-            layout.name === preferredLayout.name && 'bg-blue-50 text-blue-700 dark:bg-blue-600/10 dark:text-blue-400'
-          } relative flex w-full cursor-pointer items-center py-1.5 pl-3 text-left text-gray-600 transition-colors duration-100 select-none hover:opacity-80 focus:outline-hidden focus:opacity-80 dark:text-gray-300`
+          `flex w-full cursor-pointer items-center py-1.5 pr-8 pl-3 text-left transition-colors duration-100 outline-hidden select-none data-focus:text-blue-700 dark:data-focus:text-blue-400 ${layout.name === preferredLayout.name ? 'text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'}`
         }
         renderItem={layout => (
           <>

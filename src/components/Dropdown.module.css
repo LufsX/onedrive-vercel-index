@@ -1,0 +1,51 @@
+.panel {
+  isolation: isolate;
+  transform-origin: top right;
+  transition:
+    opacity 140ms ease-out,
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel[data-closed] {
+  opacity: 0;
+  transform: translateY(-3px) scale(0.98);
+  pointer-events: none;
+}
+
+.panel[data-leave] {
+  transition-duration: 100ms;
+  pointer-events: none;
+}
+
+.highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.highlight[data-ready] {
+  opacity: 1;
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    width 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.item {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .highlight[data-ready],
+  .trigger,
+  .trigger *,
+  .item {
+    transition: none;
+  }
+}

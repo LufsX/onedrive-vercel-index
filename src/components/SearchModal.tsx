@@ -3,12 +3,13 @@
 import { useClientConfig } from './ClientConfigProvider'
 
 import useSWR, { SWRResponse } from 'swr'
-import { Dispatch, Fragment, SetStateAction, useEffect, useState } from 'react'
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 
 import Link from 'next/link'
 import { Search } from 'lucide-react'
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
+import AppDialog from './AppDialog'
+import { uiButton, uiInput } from './uiStyles'
 
 import type { OdDriveItem, OdSearchResult } from '../types'
 import { LoadingIcon } from './Loading'
@@ -206,83 +207,56 @@ export default function SearchModal({
 
   const t = useTranslations()
 
-  const closeSearchBox = () => {
-    setSearchOpen(false)
-    setQuery('')
-  }
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const closeSearchBox = () => setSearchOpen(false)
 
   return (
-    <Transition appear show={searchOpen} as={Fragment}>
-      <Dialog as="div" className="fixed inset-0 z-[200] overflow-y-auto" onClose={closeSearchBox}>
-        <div className="min-h-screen px-4 text-center">
-          <TransitionChild
-            as={Fragment}
-            enter="ease-out duration-100"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-100"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-gray-900/30 backdrop-blur-xs dark:bg-gray-900/70" />
-          </TransitionChild>
-
-          <TransitionChild
-            as={Fragment}
-            enter="ease-out duration-100"
-            enterFrom="opacity-0 scale-95"
-            enterTo="opacity-100 scale-100"
-            leave="ease-in duration-100"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-95"
-          >
-            <DialogPanel className="relative z-10 my-12 inline-block w-full max-w-3xl transform overflow-hidden rounded border border-gray-400/30 text-left shadow-2xl ring-1 ring-black/5 transition-all">
-              <DialogTitle
-                as="h3"
-                className="flex items-center gap-4 border-b border-gray-400/30 bg-gray-50 p-4 dark:bg-gray-800 dark:text-white"
-              >
-                <Search className="h-4 w-4" />
-                <input
-                  type="text"
-                  id="search-box"
-                  className="w-full bg-transparent focus:outline-hidden focus-visible:outline-hidden"
-                  placeholder={t('Search ...')}
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                />
-                <div
-                  className="rounded-lg bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-700"
-                  onClick={closeSearchBox}
-                >
-                  ESC
-                </div>
-              </DialogTitle>
-              <div className="max-h-[80vh] overflow-x-hidden overflow-y-auto bg-white dark:bg-gray-900 dark:text-white">
-                {results.loading && (
-                  <div className="px-4 py-12 text-center text-sm font-medium">
-                    <LoadingIcon className="mr-2 inline-block h-4 w-4 animate-spin align-middle" />
-                    <span>{t('Loading ...')}</span>
-                  </div>
-                )}
-                {results.error && (
-                  <div className="px-4 py-12 text-center text-sm font-medium">
-                    {t('Error: {{message}}', { message: results.error.message })}
-                  </div>
-                )}
-                {results.result && (
-                  <>
-                    {results.result.length === 0 ? (
-                      <div className="px-4 py-12 text-center text-sm font-medium">{t('Nothing here.')}</div>
-                    ) : (
-                      results.result.map(result => <SearchResultItem key={result.id} result={result} />)
-                    )}
-                  </>
-                )}
-              </div>
-            </DialogPanel>
-          </TransitionChild>
-        </div>
-      </Dialog>
-    </Transition>
+    <AppDialog
+      open={searchOpen}
+      onClose={closeSearchBox}
+      title={t('Search ...')}
+      size="lg"
+      initialFocus={searchInputRef}
+      afterLeave={() => setQuery('')}
+    >
+      <div className="mb-3 flex items-center gap-2">
+        <Search className="h-4 w-4 shrink-0 text-gray-500" />
+        <input
+          ref={searchInputRef}
+          type="text"
+          id="search-box"
+          aria-label={t('Search ...')}
+          className={`${uiInput} min-w-0 flex-1`}
+          placeholder={t('Search ...')}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        <button type="button" className={`${uiButton} text-xs`} aria-label={t('Close')} onClick={closeSearchBox}>
+          ESC
+        </button>
+      </div>
+      <div className="-mx-4 -mb-3 overflow-x-hidden">
+        {results.loading && (
+          <div className="px-4 py-6 text-center text-sm font-medium">
+            <LoadingIcon className="mr-2 inline-block h-4 w-4 animate-spin align-middle motion-reduce:animate-none" />
+            <span>{t('Loading ...')}</span>
+          </div>
+        )}
+        {results.error && (
+          <div className="px-4 py-6 text-center text-sm font-medium">
+            {t('Error: {{message}}', { message: results.error.message })}
+          </div>
+        )}
+        {results.result && (
+          <>
+            {results.result.length === 0 ? (
+              <div className="px-4 py-6 text-center text-sm font-medium">{t('Nothing here.')}</div>
+            ) : (
+              results.result.map(result => <SearchResultItem key={result.id} result={result} />)
+            )}
+          </>
+        )}
+      </div>
+    </AppDialog>
   )
 }

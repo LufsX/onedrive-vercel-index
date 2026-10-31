@@ -1,11 +1,65 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+} from '@headlessui/react'
+import { useLayoutEffect, useRef, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
+import styles from './Dropdown.module.css'
 
-// The panel stays mounted while it fades out, so this matches the leave animation in globals.css.
-const CLOSE_MS = 90
+// Follow the accessible active descendant without moving DOM focus or adding a background to every row.
+function ActiveHighlight({ selectedIndex }: { selectedIndex: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
 
-// Shared keyboard, dismissal and animation behavior for the two single-choice switches.
+  useLayoutEffect(() => {
+    const highlight = ref.current
+    const panel = highlight?.parentElement
+    if (!highlight || !panel) return
+
+    const update = () => {
+      const activeId = panel.getAttribute('aria-activedescendant')
+      const active = activeId ? panel.ownerDocument.getElementById(activeId) : null
+      const item =
+        active && panel.contains(active)
+          ? active
+          : panel.querySelector<HTMLElement>(`[data-dropdown-index="${selectedIndex}"]`)
+
+      if (!item || !panel.clientWidth) {
+        highlight.removeAttribute('data-ready')
+        return
+      }
+
+      // Offsets stay in the panel's coordinate space while the panel itself scales on entry/exit.
+      highlight.style.width = `${Math.max(0, item.offsetWidth - 8)}px`
+      highlight.style.height = `${item.offsetHeight}px`
+      highlight.style.transform = `translate3d(${item.offsetLeft + 4 - panel.scrollLeft}px, ${item.offsetTop - panel.scrollTop}px, 0)`
+      highlight.setAttribute('data-ready', '')
+    }
+
+    update()
+    const activeObserver = new MutationObserver(update)
+    activeObserver.observe(panel, { attributes: true, attributeFilter: ['aria-activedescendant'] })
+    const sizeObserver = new ResizeObserver(update)
+    sizeObserver.observe(panel)
+    panel.querySelectorAll<HTMLElement>('[data-dropdown-index]').forEach(item => sizeObserver.observe(item))
+    panel.addEventListener('scroll', update, { passive: true })
+    return () => {
+      activeObserver.disconnect()
+      sizeObserver.disconnect()
+      panel.removeEventListener('scroll', update)
+    }
+  }, [selectedIndex])
+
+  return <span ref={ref} aria-hidden="true" className={`${styles.highlight} bg-blue-50 dark:bg-blue-600/10`} />
+}
+
+// Headless UI owns keyboard navigation, outside dismissal, focus restoration and transition cleanup.
 export default function Dropdown<T>({
   role,
   items,
@@ -29,146 +83,82 @@ export default function Dropdown<T>({
   itemClassName: (item: T) => string
   renderItem: (item: T) => ReactNode
 }) {
-  const [state, setState] = useState<'closed' | 'open' | 'closing'>('closed')
-  const id = useId()
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const openingFocus = useRef<'first' | 'last' | null>(null)
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const pointerType = useRef('mouse')
+  const pointerPosition = useRef<{ x: number; y: number } | null>(null)
+  const Button = role === 'menu' ? MenuButton : ListboxButton
+  const Panel = role === 'menu' ? MenuItems : ListboxOptions
 
-  const open = state === 'open'
-
-  const openPanel = useCallback(() => {
-    clearTimeout(closeTimer.current)
-    setState('open')
-  }, [])
-
-  // A click that lands outside the panel must not pull focus back out of whatever was clicked.
-  const close = useCallback((restoreFocus = true) => {
-    clearTimeout(closeTimer.current)
-    setState(current => (current === 'closed' ? current : 'closing'))
-    closeTimer.current = setTimeout(() => {
-      setState('closed')
-      if (restoreFocus) triggerRef.current?.focus({ preventScroll: true })
-    }, CLOSE_MS)
-  }, [])
-
-  useEffect(() => () => clearTimeout(closeTimer.current), [])
-
-  useEffect(() => {
-    if (state !== 'open') return
-
-    const options = panelRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"], [role="menuitem"]')
-    const focusIndex =
-      openingFocus.current === 'first'
-        ? 0
-        : openingFocus.current === 'last'
-          ? (options?.length ?? 1) - 1
-          : Math.max(0, selectedIndex)
-    options?.[focusIndex]?.focus({ preventScroll: true })
-    openingFocus.current = null
-  }, [state, selectedIndex])
-
-  useEffect(() => {
-    if (state === 'closed') return
-
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node
-      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) close(false)
+  // Keep coordinates across rows and keyboard navigation; per-row pointer-enter events can reset them.
+  const trackMouse = (event: MouseEvent<HTMLElement>) => {
+    // Compatibility MouseEvents truncate the subpixel coordinates reported by PointerEvents.
+    const x = Math.trunc(event.screenX)
+    const y = Math.trunc(event.screenY)
+    const previous = pointerPosition.current
+    if (pointerType.current !== 'mouse' || (previous?.x === x && previous.y === y)) {
+      event.preventDefault()
+      return
     }
-    document.addEventListener('pointerdown', onPointerDown, true)
-    return () => document.removeEventListener('pointerdown', onPointerDown, true)
-  }, [state, close])
+    pointerPosition.current = { x, y }
+  }
+  const mousePointerOnly = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType !== 'mouse') event.preventDefault()
+  }
+  const mouseOnly = (event: MouseEvent<HTMLElement>) => {
+    if (pointerType.current !== 'mouse') event.preventDefault()
+  }
 
-  return (
+  const content = (
     <>
-      <button
-        ref={triggerRef}
-        id={id}
-        type="button"
-        className={`group ${triggerClassName}`}
-        aria-label={triggerLabel}
-        aria-haspopup={role}
-        aria-expanded={open}
-        aria-controls={state === 'closed' ? undefined : id + '-panel'}
-        onClick={() => (open ? close() : openPanel())}
-        onKeyDown={event => {
-          if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-            event.preventDefault()
-            openingFocus.current = event.key === 'Home' ? 'first' : event.key === 'End' ? 'last' : null
-            openPanel()
-          } else if (event.key === 'Escape' && state !== 'closed') {
-            event.preventDefault()
-            event.stopPropagation()
-            close()
-          }
+      <Button type="button" aria-label={triggerLabel} className={`group ${styles.trigger} ${triggerClassName}`}>
+        {trigger}
+      </Button>
+      <Panel
+        transition
+        modal={false}
+        className={`${styles.panel} ${panelClassName}`}
+        onPointerDownCapture={event => {
+          pointerType.current = event.pointerType
+        }}
+        onPointerMoveCapture={event => {
+          pointerType.current = event.pointerType
         }}
       >
-        {trigger}
-      </button>
-      {state !== 'closed' && (
-        <div
-          ref={panelRef}
-          id={id + '-panel'}
-          role={role}
-          aria-labelledby={id}
-          data-state={state}
-          className={`dropdown-panel ${panelClassName}`}
-          onKeyDown={event => {
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              event.stopPropagation()
-              close()
-              return
-            }
-            if (event.key === 'Tab') {
-              close()
-              return
-            }
-            const options = Array.from(
-              event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"], [role="menuitem"]'),
-            )
-            const index = options.indexOf(document.activeElement as HTMLButtonElement)
-            let next: number
-            switch (event.key) {
-              case 'ArrowDown':
-                next = (index + 1) % options.length
-                break
-              case 'ArrowUp':
-                next = (index - 1 + options.length) % options.length
-                break
-              case 'Home':
-                next = 0
-                break
-              case 'End':
-                next = options.length - 1
-                break
-              default:
-                return
-            }
-            event.preventDefault()
-            options[next]?.focus()
-          }}
-        >
-          {items.map((item, index) => (
-            <button
-              key={index}
+        <ActiveHighlight selectedIndex={selectedIndex} />
+        {items.map((item, index) => {
+          const props = {
+            'data-dropdown-index': index,
+            className: `${styles.item} ${itemClassName(item)}`,
+            onPointerMove: trackMouse,
+            onPointerLeave: mousePointerOnly,
+            onMouseMove: trackMouse,
+            onMouseLeave: mouseOnly,
+          }
+          return role === 'menu' ? (
+            <MenuItem
+              as="button"
               type="button"
-              role={role === 'listbox' ? 'option' : 'menuitem'}
-              aria-selected={role === 'listbox' ? index === selectedIndex : undefined}
-              tabIndex={-1}
-              className={itemClassName(item)}
-              onPointerMove={event => event.currentTarget.focus({ preventScroll: true })}
-              onClick={() => {
-                close()
-                onSelect(item)
-              }}
+              key={index}
+              {...props}
+              aria-current={index === selectedIndex ? 'true' : undefined}
+              onClick={() => onSelect(item)}
             >
               {renderItem(item)}
-            </button>
-          ))}
-        </div>
-      )}
+            </MenuItem>
+          ) : (
+            <ListboxOption as="button" type="button" key={index} {...props} value={index}>
+              {renderItem(item)}
+            </ListboxOption>
+          )
+        })}
+      </Panel>
     </>
+  )
+
+  return role === 'menu' ? (
+    <Menu>{content}</Menu>
+  ) : (
+    <Listbox value={selectedIndex} onChange={index => onSelect(items[index])}>
+      {content}
+    </Listbox>
   )
 }

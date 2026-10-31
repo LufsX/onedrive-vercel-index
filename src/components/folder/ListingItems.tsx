@@ -1,7 +1,8 @@
 'use client'
 
 import type { OdFolderChildren } from '../../types'
-import { FC, MouseEventHandler, useEffect, useRef } from 'react'
+import { FC, useEffect, useRef } from 'react'
+import { Check, Minus } from 'lucide-react'
 import emojiRegex from 'emoji-regex'
 import { getRawExtension } from '../../utils/getFileIcon'
 import FileIcon from '../FileIcon'
@@ -40,42 +41,41 @@ export const Checkbox: FC<{
   onChange: () => void
   title: string
   indeterminate?: boolean
-}> = ({ checked, onChange, title, indeterminate }) => {
+  disabled?: boolean
+}> = ({ checked, onChange, title, indeterminate, disabled = false }) => {
   const ref = useRef<HTMLInputElement>(null)
+  const mixed = Boolean(indeterminate && checked === 1)
 
   useEffect(() => {
-    if (ref.current) {
-      if (indeterminate) {
-        ref.current.indeterminate = checked == 1
-      }
-    }
-  }, [ref, checked, indeterminate])
-
-  const handleClick: MouseEventHandler = e => {
-    if (ref.current) {
-      if (e.target === ref.current) {
-        e.stopPropagation()
-      } else {
-        ref.current.click()
-      }
-    }
-  }
+    if (ref.current) ref.current.indeterminate = mixed
+  }, [checked, mixed])
 
   return (
-    <span
+    <label
       title={title}
-      className="inline-flex cursor-pointer items-center rounded p-1.5 hover:bg-gray-300 dark:hover:bg-gray-600"
-      onClick={handleClick}
+      className="relative inline-flex cursor-pointer items-center justify-center rounded p-1.5 text-white transition-colors duration-150 hover:bg-gray-100 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-disabled:hover:bg-transparent motion-reduce:transition-none dark:hover:bg-gray-800"
+      onClick={event => event.stopPropagation()}
     >
       <input
-        className="form-check-input cursor-pointer"
+        className="m-0 h-3.5 w-3.5 shrink-0 cursor-pointer appearance-none rounded-[3px] border border-gray-400/70 bg-white transition-colors duration-150 checked:border-blue-600 checked:bg-blue-600 indeterminate:border-blue-600 indeterminate:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed motion-reduce:transition-none dark:border-gray-500 dark:bg-gray-900 dark:checked:border-blue-500 dark:checked:bg-blue-500 dark:indeterminate:border-blue-500 dark:indeterminate:bg-blue-500 dark:focus-visible:ring-offset-gray-900 forced-colors:appearance-auto"
         type="checkbox"
         checked={Boolean(checked)}
+        disabled={disabled}
         ref={ref}
         aria-label={title}
         onChange={onChange}
       />
-    </span>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center forced-colors:hidden"
+      >
+        {mixed ? (
+          <Minus className="h-2.5 w-2.5" strokeWidth={3} />
+        ) : checked !== 0 ? (
+          <Check className="h-2.5 w-2.5" strokeWidth={3} />
+        ) : null}
+      </span>
+    </label>
   )
 }
 
