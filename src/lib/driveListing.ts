@@ -9,7 +9,7 @@ export const METADATA_CACHE_TTL_MS = 30 * 1000
 
 export type ThumbnailSize = 'large' | 'medium' | 'small'
 
-const SELECT = 'name,size,id,lastModifiedDateTime,folder,file,video,image'
+const SELECT = 'name,size,id,lastModifiedDateTime,folder,file,video,image,eTag,remoteItem'
 
 export type OdAPIResult = { file?: any; folder?: any; next?: string }
 
