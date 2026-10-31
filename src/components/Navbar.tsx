@@ -2,20 +2,24 @@
 
 import { useClientConfig } from './ClientConfigProvider'
 
-import { LogOut, Mail, Search } from 'lucide-react'
+import { LogIn, LogOut, Mail, Search } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 
 import Link from 'next/link'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 import { useBrandIcons } from './BrandIconsProvider'
 
 import BrandIcon from './BrandIcon'
 import SwitchLang from './SwitchLang'
 import FeatureBoundary from './FeatureBoundary'
+import AppDialog from './AppDialog'
+import { LoadingIcon } from './Loading'
+import { uiButton, uiFieldLabel, uiInput, uiPrimaryButton } from './uiStyles'
 import useDeviceOS from '../utils/useDeviceOS'
+import useAdminSession from '../utils/useAdminSession'
 
 const SearchModal = dynamic(() => import('./SearchModal'), { ssr: false })
 
@@ -25,12 +29,23 @@ const Navbar = () => {
   const { siteConfig } = useClientConfig()
   const icons = useBrandIcons()
   const os = useDeviceOS()
+  const admin = useAdminSession()
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState(false)
+  const loginFormId = useId()
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   const [tokenPresent, setTokenPresent] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [logoutMounted, setLogoutMounted] = useState(false)
 
   const [searchOpen, setSearchOpen] = useState(false)
-  const openSearchBox = () => setSearchOpen(true)
+  const [searchMounted, setSearchMounted] = useState(false)
+  const openSearchBox = useCallback(() => {
+    setSearchMounted(true)
+    setSearchOpen(true)
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -49,12 +64,12 @@ const Navbar = () => {
       }
 
       event.preventDefault()
-      setSearchOpen(true)
+      openSearchBox()
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [os])
+  }, [os, openSearchBox])
 
   useEffect(() => {
     const storedToken = () => {
@@ -65,16 +80,42 @@ const Navbar = () => {
       }
       return false
     }
-    setTokenPresent(storedToken())
+    const update = () => setTokenPresent(storedToken())
+    update()
+    window.addEventListener('storage', update)
+    window.addEventListener('local-storage', update)
+    return () => {
+      window.removeEventListener('storage', update)
+      window.removeEventListener('local-storage', update)
+    }
   }, [siteConfig.protectedRoutes])
 
   const t = useTranslations()
+  const closeLogin = () => {
+    if (admin.busy) return
+    setLoginOpen(false)
+  }
+  const login = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (admin.busy) return
+    setLoginError(false)
+    try {
+      await admin.login(password)
+      setLoginOpen(false)
+    } catch {
+      setLoginError(true)
+    }
+  }
 
   return (
-    <div className="sticky top-[env(safe-area-inset-top)] z-[100] border-b border-gray-900/10 bg-white/80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900">
+    <div className="sticky top-0 isolate z-[100] pt-[env(safe-area-inset-top)]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 border-b border-gray-900/10 bg-white/80 backdrop-blur-md dark:border-gray-500/30 dark:bg-gray-900/80"
+      />
       <Toaster />
 
-      {searchOpen && (
+      {searchMounted && (
         <FeatureBoundary onDismiss={() => setSearchOpen(false)}>
           <SearchModal searchOpen={searchOpen} setSearchOpen={setSearchOpen} />
         </FeatureBoundary>
@@ -144,10 +185,44 @@ const Navbar = () => {
             </a>
           )}
 
-          {tokenPresent && (
+          {admin.status === 'uninitialized' && (
+            <Link
+              href="/onedrive-vercel-index-oauth/step-0"
+              title={t('Set up administrator')}
+              aria-label={t('Set up administrator')}
+              className="dark:text-white"
+            >
+              <LogIn className="h-4 w-4" />
+            </Link>
+          )}
+          {admin.status === 'anonymous' && (
+            <button
+              title={t('Administrator login')}
+              aria-label={t('Administrator login')}
+              className="dark:text-white"
+              onClick={() => setLoginOpen(true)}
+            >
+              <LogIn className="h-4 w-4" />
+            </button>
+          )}
+          {admin.status === 'error' && (
+            <button
+              title={t('Unable to check administrator session.')}
+              className="text-sm text-red-500"
+              onClick={() => void admin.refresh()}
+            >
+              {t('Retry')}
+            </button>
+          )}
+          {(tokenPresent || admin.status === 'authenticated') && (
             <button
               className="flex cursor-pointer items-center gap-2 transition-opacity duration-150 hover:opacity-80 dark:text-white"
-              onClick={() => setIsOpen(true)}
+              onClick={() => {
+                setLogoutMounted(true)
+                setIsOpen(true)
+              }}
+              title={t('Logout')}
+              aria-label={t('Logout')}
             >
               <span className="hidden text-sm font-medium md:inline-block">{t('Logout')}</span>
               <LogOut className="h-4 w-4" />
@@ -156,9 +231,54 @@ const Navbar = () => {
         </div>
       </div>
 
-      {isOpen && (
+      <AppDialog
+        open={loginOpen}
+        onClose={closeLogin}
+        title={t('Administrator login')}
+        size="sm"
+        initialFocus={passwordRef}
+        closeDisabled={admin.busy}
+        afterLeave={() => {
+          setPassword('')
+          setLoginError(false)
+        }}
+        footer={
+          <>
+            <button type="button" disabled={admin.busy} onClick={closeLogin} className={uiButton}>
+              {t('Cancel')}
+            </button>
+            <button type="submit" form={loginFormId} disabled={admin.busy} className={uiPrimaryButton}>
+              {admin.busy && <LoadingIcon className="h-4 w-4 motion-safe:animate-spin" />}
+              {t(admin.busy ? 'Loading...' : 'Login')}
+            </button>
+          </>
+        }
+      >
+        <form id={loginFormId} onSubmit={login} className="space-y-3" aria-busy={admin.busy}>
+          <label className={uiFieldLabel}>
+            {t('Enter Password')}
+            <input
+              ref={passwordRef}
+              type="password"
+              autoComplete="current-password"
+              required
+              disabled={admin.busy}
+              value={password}
+              placeholder="************"
+              onChange={e => setPassword(e.target.value)}
+              className={`${uiInput} mt-1 w-full font-mono`}
+            />
+          </label>
+          {loginError && (
+            <p role="alert" className="text-sm text-red-500">
+              {t('Administrator login failed.')}
+            </p>
+          )}
+        </form>
+      </AppDialog>
+      {logoutMounted && (
         <FeatureBoundary onDismiss={() => setIsOpen(false)}>
-          <NavbarLogoutDialog onClose={() => setIsOpen(false)} />
+          <NavbarLogoutDialog open={isOpen} onClose={() => setIsOpen(false)} tokenPresent={tokenPresent} />
         </FeatureBoundary>
       )}
     </div>

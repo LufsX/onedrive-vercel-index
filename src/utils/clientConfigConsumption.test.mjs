@@ -65,6 +65,8 @@ test('date and OAuth helpers use supplied runtime values', async () => {
   }))
   assert.equal(url.toString().startsWith('https://example.com/authorize?'), true)
   assert.equal(url.searchParams.get('client_id'), 'runtime-id')
+  assert.equal(url.searchParams.get('scope'), 'scope-a')
+  assert.equal(url.searchParams.get('prompt'), 'consent')
   assert.equal(extractAuthCodeFromRedirected('http://runtime.local/?code=abc', 'http://runtime.local'), 'abc')
   assert.equal(extractAuthCodeFromRedirected('http://runtime.local/?code=abc', 'http://other.local'), '')
   await getAuthPersonInfo('access', 'https://example.com/me/drive')

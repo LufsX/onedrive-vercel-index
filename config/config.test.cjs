@@ -39,6 +39,7 @@ test('defaults and all runtime overrides', () => {
     NEXT_PUBLIC_DRIVE_API: 'https://example.com/drive', NEXT_PUBLIC_SCOPE: 'scope', NEXT_PUBLIC_CACHE_CONTROL_HEADER: 'cache',
   }), { clientId: 'id', redirectUri: 'http://localhost', authApi: 'https://example.com/auth', driveApi: 'https://example.com/drive', scope: 'scope', cacheControlHeader: 'cache' })
   assert.equal(config('api').clientId, '6280202a-1acd-47d6-b311-7a6367163699')
+  assert.equal(config('api').scope, 'user.read files.readwrite offline_access')
 })
 
 test('rejects invalid structured values', () => {

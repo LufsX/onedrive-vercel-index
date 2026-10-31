@@ -29,6 +29,7 @@ export function generateAuthorisationUrl(apiConfig: Pick<ClientApiConfig, 'clien
   params.append('response_type', 'code')
   params.append('scope', scope)
   params.append('response_mode', 'query')
+  params.append('prompt', 'consent')
 
   return `${authUrl}?${params.toString()}`
 }
@@ -36,14 +37,14 @@ export function generateAuthorisationUrl(apiConfig: Pick<ClientApiConfig, 'clien
 // The code returned from the Microsoft OAuth 2.0 authorization URL is a request URL with hostname
 // http://localhost and URL parameter code. This function extracts the code from the request URL
 export function extractAuthCodeFromRedirected(url: string, redirectUri: string): string {
-  // Return empty string if the url is not the defined redirect uri
-  if (!url.startsWith(redirectUri)) {
+  try {
+    const actual = new URL(url)
+    const expected = new URL(redirectUri)
+    if (actual.origin !== expected.origin || actual.pathname !== expected.pathname || actual.username || actual.password) return ''
+    return actual.searchParams.get('code') ?? ''
+  } catch {
     return ''
   }
-
-  // New URL search parameter
-  const params = new URLSearchParams(url.split('?')[1])
-  return params.get('code') ?? ''
 }
 
 // After a successful authorisation, the code returned from the Microsoft OAuth 2.0 authorization URL
@@ -52,13 +53,14 @@ export function extractAuthCodeFromRedirected(url: string, redirectUri: string):
 export async function requestTokenWithAuthCode(
   code: string,
 ): Promise<
-  | { expiryTime: number; accessToken: string; refreshToken: string }
+  | { stored: true }
   | { error: string; errorDescription: string; errorUri: string }
 > {
   return axios
     .post('/api/oauth/token', { code }, {
       headers: {
         'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
       },
     })
     .then(resp => resp.data)
@@ -100,7 +102,7 @@ export async function getAuthPersonInfo(accessToken: string, driveApi: string) {
   }
 }
 
-export async function sendTokenToServer(accessToken: string, refreshToken: string, expiryTime: string, setupSecret: string) {
+export async function sendTokenToServer(accessToken: string, refreshToken: string, expiryTime: string) {
   return await axios.post(
     '/api',
     {
@@ -111,7 +113,7 @@ export async function sendTokenToServer(accessToken: string, refreshToken: strin
     {
       headers: {
         'Content-Type': 'application/json',
-        'x-oauth-setup-secret': setupSecret,
+        'X-Requested-With': 'XMLHttpRequest',
       },
     },
   )

@@ -9,8 +9,6 @@ function fixture() {
   let reads = 0
   let identities = 0
   const deps = {
-    secret: 'secret',
-    suppliedSecret: 'secret',
     owner: 'owner@example.com',
     readBody: async () => { reads++; return body },
     reveal: (value) => value,
@@ -20,33 +18,7 @@ function fixture() {
   return { deps, counts: () => ({ writes, reads, identities }) }
 }
 
-test('configured secret rejects missing or incorrect supplied secret before reading or contacting Graph', async () => {
-  for (const [secret, suppliedSecret, status] of [
-    ['secret', null, 401],
-    ['secret', '', 401],
-    ['secret', 'wrong', 401],
-  ]) {
-    const f = fixture()
-    f.deps.secret = secret
-    f.deps.suppliedSecret = suppliedSecret
-    assert.equal((await authorizeTokenWrite(f.deps)).status, status)
-    assert.deepEqual(f.counts(), { writes: 0, reads: 0, identities: 0 })
-  }
-})
-
-test('unconfigured secret skips secret validation but still verifies identity before storing', async () => {
-  for (const secret of [undefined, '']) {
-    for (const suppliedSecret of [null, '', 'wrong']) {
-      const f = fixture()
-      f.deps.secret = secret
-      f.deps.suppliedSecret = suppliedSecret
-      assert.equal((await authorizeTokenWrite(f.deps)).status, 200)
-      assert.deepEqual(f.counts(), { writes: 1, reads: 1, identities: 1 })
-    }
-  }
-})
-
-test('unconfigured secret does not bypass payload or Microsoft account validation', async () => {
+test('payload and Microsoft account validation are required', async () => {
   for (const [change, status] of [
     [(f) => { f.deps.readBody = async () => null }, 400],
     [(f) => { f.deps.getIdentity = async () => null }, 403],
@@ -55,8 +27,6 @@ test('unconfigured secret does not bypass payload or Microsoft account validatio
     [(f) => { f.deps.getIdentity = async () => { throw new Error('Graph unavailable') } }, 502],
   ]) {
     const f = fixture()
-    f.deps.secret = undefined
-    f.deps.suppliedSecret = null
     change(f)
     assert.equal((await authorizeTokenWrite(f.deps)).status, status)
     assert.equal(f.counts().writes, 0)

@@ -1,8 +1,4 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
-
 type Dependencies = {
-  secret: string | undefined
-  suppliedSecret: string | null
   owner: string
   readBody: () => Promise<unknown>
   reveal: (value: string) => string
@@ -11,11 +7,6 @@ type Dependencies = {
 }
 
 export async function authorizeTokenWrite(deps: Dependencies): Promise<{ status: number; error?: string }> {
-  const digest = (value: string) => createHash('sha256').update(value).digest()
-  if (deps.secret && (!deps.suppliedSecret || !timingSafeEqual(digest(deps.secret), digest(deps.suppliedSecret)))) {
-    return { status: 401, error: 'invalid_setup_secret' }
-  }
-
   const body = await deps.readBody().catch(() => null)
   if (!body || typeof body !== 'object' || Array.isArray(body)) return { status: 400, error: 'invalid_request' }
   const { obfuscatedAccessToken, obfuscatedRefreshToken, accessTokenExpiry } = body as Record<string, unknown>
