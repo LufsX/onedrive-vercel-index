@@ -3,8 +3,20 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 function load(name, mocks = {}) {
-  const compiled = ts.transpileModule(readFileSync(new URL(name, import.meta.url), 'utf8'), {
+  const compiled = compileOnce(readFileSync(new URL(name, import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText
   const loaded = { exports: {} }

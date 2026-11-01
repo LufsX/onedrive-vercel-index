@@ -5,6 +5,18 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 const readOnlyScope = 'user.read files.read offline_access'
 function fixture(options = {}) {
@@ -13,7 +25,7 @@ function fixture(options = {}) {
   let rejectWrite = false, rejectAuth = false, identity = 'owner@example.com', calls = [], stored = null
   let rateAllowed = true, rateError = false
   const checks = []
-  const code = ts.transpileModule(readFileSync(new URL('./route.ts', import.meta.url), 'utf8'), {
+  const code = compileOnce(readFileSync(new URL('./route.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
   }).outputText
   const oauth = require('../../../../lib/oauthSetup.ts')

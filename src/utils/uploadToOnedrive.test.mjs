@@ -4,11 +4,34 @@ import { createRequire } from 'node:module'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
+// Transpiling is the expensive part of these fixtures; compile each file once per test file.
+const compiledSources = new Map()
+function compile(filename) {
+  let compiled = compiledSources.get(filename)
+  if (compiled === undefined) {
+    const source = readFileSync(new URL(filename, import.meta.url), 'utf8')
+    compiled = compileOnce(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText
+    compiledSources.set(filename, compiled)
+  }
+  return compiled
+}
+
 function load(filename, imports = {}, globals = {}) {
-  const source = readFileSync(new URL(filename, import.meta.url), 'utf8')
-  const compiled = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText
+  const compiled = compile(filename)
   const loaded = { exports: {} }
   new Function('require', 'module', 'exports', ...Object.keys(globals), compiled)(
     id => { assert.ok(Object.hasOwn(imports, id), 'Unexpected import ' + id); return imports[id] },

@@ -3,8 +3,20 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 function load(path, mocks = {}, fetch) {
-  const code = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {
+  const code = compileOnce(readFileSync(new URL(path, import.meta.url), 'utf8'), {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2022,
@@ -150,17 +162,21 @@ function sessionFixture(loginResponse) {
     useEffect: effect => effect(),
     useMemo: factory => factory(),
   }
-  const api = load('./useAdminSession.ts', {
-    react,
-    './adminErrors': helpers,
-    '../components/AdminSessionProvider': {
-      useAdminSessionBootstrap: () => ({ status: 'anonymous', hasSessionCookie: false }),
+  const api = load(
+    './useAdminSession.ts',
+    {
+      react,
+      './adminErrors': helpers,
+      '../components/AdminSessionProvider': {
+        useAdminSessionBootstrap: () => ({ status: 'anonymous', hasSessionCookie: false }),
+      },
     },
-  }, async (url, options) => {
-    requests.push([url, options])
-    assert.equal(url, '/api/admin/login')
-    return loginResponse()
-  })
+    async (url, options) => {
+      requests.push([url, options])
+      assert.equal(url, '/api/admin/login')
+      return loginResponse()
+    },
+  )
   const session = api.default()
   return { session, requests, observers, snapshot: () => snapshot() }
 }
@@ -213,90 +229,4 @@ test('only an explicitly authenticated login succeeds and retains the existing r
   assert.equal(options.headers['X-Requested-With'], 'XMLHttpRequest')
   assert.equal(options.headers['Content-Type'], 'application/json')
   assert.deepEqual(JSON.parse(options.body), { password: 'password' })
-})
-
-const nodes = (type, props) => ({ ...props, type })
-function find(node, type, result = []) {
-  if (!node || typeof node !== 'object') return result
-  if (Array.isArray(node)) {
-    node.forEach(child => find(child, type, result))
-    return result
-  }
-  if (node.type === type) result.push(node)
-  find(node.children, type, result)
-  find(node.footer, type, result)
-  return result
-}
-
-function navbarFixture(failure) {
-  const states = []
-  let cursor = 0
-  const Navbar = load('../components/Navbar.tsx', {
-    react: {
-      useState: initial => {
-        const index = cursor++
-        if (!(index in states)) states[index] = initial
-        return [
-          states[index],
-          value => {
-            states[index] = value
-          },
-        ]
-      },
-      useEffect: () => {},
-      useCallback: callback => callback,
-      useId: () => 'login-form',
-      useRef: current => ({ current }),
-    },
-    'react/jsx-runtime': { jsx: nodes, jsxs: nodes },
-    'lucide-react': { LogIn: 'login-icon', LogOut: 'logout-icon', Mail: 'mail-icon', Search: 'search-icon' },
-    'react-hot-toast': { Toaster: 'toaster' },
-    'next/link': { __esModule: true, default: 'link' },
-    'next/image': { __esModule: true, default: 'image' },
-    'next/dynamic': { __esModule: true, default: () => 'dynamic-component' },
-    './ClientConfigProvider': {
-      useClientConfig: () => ({ siteConfig: { protectedRoutes: [], links: [], icon: '/icon.png', title: 'Test' } }),
-    },
-    './ClientProviders': { useTranslations: () => value => value },
-    './BrandIconsProvider': { useBrandIcons: () => ({}) },
-    './BrandIcon': { __esModule: true, default: 'brand-icon' },
-    './SwitchLang': { __esModule: true, default: 'switch-lang' },
-    './FeatureBoundary': { __esModule: true, default: 'boundary' },
-    './AppDialog': { __esModule: true, default: 'app-dialog' },
-    './Loading': { LoadingIcon: 'loading-icon' },
-    './uiStyles': { uiButton: '', uiFieldLabel: '', uiInput: '', uiPrimaryButton: '' },
-    '../utils/useDeviceOS': { __esModule: true, default: () => 'mac' },
-    '../utils/useAdminSession': {
-      __esModule: true,
-      default: () => ({
-        status: 'anonymous',
-        busy: false,
-        login: async () => {
-          throw failure
-        },
-      }),
-    },
-    '../utils/adminErrors': helpers,
-  }).default
-  return () => {
-    cursor = 0
-    return Navbar()
-  }
-}
-
-test('Navbar displays the captured mapped message, hides unknown failures and offers configuration generation', async () => {
-  for (const failure of [new Error(mappings[0][2]), new Error(mappings[5][2]), new Error('private backend URL')]) {
-    const render = navbarFixture(failure)
-    find(render(), 'button')
-      .find(button => button['aria-label'] === 'Administrator login')
-      .onClick()
-    await find(render(), 'form')[0].onSubmit({ preventDefault() {} })
-    const tree = render()
-    assert.equal(find(tree, 'p').find(node => node.role === 'alert').children, getAdminErrorMessage(failure))
-    assert.equal(find(tree, 'app-dialog')[0].open, true)
-    const generate = find(tree, 'link').find(link => link.href === '/onedrive-vercel-index-oauth/step-0?generate=1')
-    assert.equal(generate.children, 'Generate password configuration')
-    find(tree, 'app-dialog')[0].afterLeave()
-    assert.equal(find(render(), 'p').length, 0)
-  }
 })

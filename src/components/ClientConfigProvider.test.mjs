@@ -6,9 +6,21 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 const source = readFileSync(new URL('./ClientConfigProvider.tsx', import.meta.url), 'utf8')
-const compiled = ts.transpileModule(source, {
+const compiled = compileOnce(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
 }).outputText
 const loaded = { exports: {} }

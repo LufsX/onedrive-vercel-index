@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  require, admin, od, axios, NextResponse, setup, request, itemId, responseError,
+  require, admin, od, upstream, NextResponse, setup, request, itemId, responseError,
 } from '../../../../lib/driveMutation.test.mjs'
 
 const { POST } = require('../app/api/manage/inspect/route.ts')
@@ -83,6 +83,6 @@ test('upstream errors expose only stable codes, including unavailable access tok
   od.getAccessToken = async () => ''
   await responseError(await POST(request('inspect', input)), 'upstream_unavailable', 503)
   od.getAccessToken = async () => 'test-secret-token'
-  axios.get = async () => { throw { response: { status: 500, data: 'test-secret-token https://upstream/private' } } }
+  upstream.get = async () => { throw { response: { status: 500, data: 'test-secret-token https://upstream/private' } } }
   await responseError(await POST(request('inspect', input)), 'upstream_unavailable', 502)
 })

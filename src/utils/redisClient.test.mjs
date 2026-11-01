@@ -6,7 +6,19 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 
-const code = ts.transpileModule(readFileSync(new URL('./redisClient.ts', import.meta.url), 'utf8'), {
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
+const code = compileOnce(readFileSync(new URL('./redisClient.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
 }).outputText
 

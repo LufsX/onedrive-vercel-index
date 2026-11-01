@@ -5,7 +5,19 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const ts = require('typescript')
-const code = ts.transpileModule(readFileSync(new URL('./navigationTarget.ts', import.meta.url), 'utf8'), {
+
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+const code = compileOnce(readFileSync(new URL('./navigationTarget.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText
 const loaded = { exports: {} }

@@ -3,9 +3,21 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 function load(filename, imports = {}, globals = {}) {
   const source = readFileSync(new URL(filename, import.meta.url), 'utf8')
-  const compiled = ts.transpileModule(source, {
+  const compiled = compileOnce(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText
   const loaded = { exports: {} }

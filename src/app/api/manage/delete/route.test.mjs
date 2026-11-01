@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  require, admin, axios, cache, NextResponse, setup, request, itemId, responseError,
+  require, admin, upstream, cache, NextResponse, setup, request, itemId, responseError,
 } from '../../../../lib/driveMutation.test.mjs'
 
 const { POST } = require('../app/api/manage/delete/route.ts')
@@ -19,7 +19,7 @@ test('single-file deletion verifies once and sends the actual strong If-Match', 
   assert.equal(write.method, 'delete')
   assert.ok(write.url.endsWith('/items/' + encodeURIComponent(input.id)))
   assert.equal(write.config.headers['If-Match'], input.eTag)
-  assert.equal(write.config.maxRedirects, 0)
+  assert.equal(write.config.redirect, 'manual')
   assert.equal(cache.knownKind('/old'), undefined)
   assert.deepEqual(state.rates, [['manage', 120]])
 })
@@ -97,7 +97,7 @@ test('fresh moves, cross-share IDs and parent replacement cannot delete', async 
 
 test('Graph 412 stays a strong version conflict and cache is cleared for attempted writes', async t => {
   setup(t)
-  axios.delete = async (_url, config) => {
+  upstream.delete = async (_url, config) => {
     assert.equal(config.headers['If-Match'], input.eTag)
     throw { response: { status: 412 } }
   }
@@ -114,7 +114,7 @@ test('ambiguous write failures and unexpected success statuses never return dele
     { status: 200 }, { status: 202 }, { status: 201 },
   ]) {
     let attempts = 0
-    axios.delete = async () => {
+    upstream.delete = async () => {
       attempts++
       if (outcome instanceof Error || outcome.response) throw outcome
       return outcome
@@ -129,16 +129,16 @@ test('ambiguous write failures and unexpected success statuses never return dele
 test('definitive write errors preserve stable codes without leaking Graph payloads', async t => {
   setup(t)
   for (const [status, code] of [[404, 'item_not_found'], [409, 'conflict'], [403, 'write_failed'], [429, 'rate_limited']]) {
-    axios.delete = async () => { throw { response: { status, data: 'test-secret-token upstream/private' } } }
+    upstream.delete = async () => { throw { response: { status, data: 'test-secret-token upstream/private' } } }
     await responseError(await POST(request('delete', input)), code, status)
   }
 })
 
 test('all delete safety reads run concurrently and the write waits for every validated response', async t => {
   const state = setup(t)
-  const get = axios.get
+  const get = upstream.get
   const pending = []
-  axios.get = (url, config) => new Promise((resolve, reject) => {
+  upstream.get = (url, config) => new Promise((resolve, reject) => {
     pending.push({ url, finish: () => get(url, config).then(resolve, reject) })
   })
   const result = POST(request('delete', input))

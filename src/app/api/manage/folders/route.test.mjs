@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  require, admin, axios, cache, NextResponse, setup, request, itemId, responseError,
+  require, admin, upstream, cache, NextResponse, setup, request, itemId, responseError,
 } from '../../../../lib/driveMutation.test.mjs'
 
 const { POST } = require('../app/api/manage/folders/route.ts')
@@ -22,7 +22,7 @@ test('folder creation verifies parent once and uses fail without rename or repla
   assert.equal(write.method, 'post')
   assert.ok(write.url.endsWith('/items/' + encodeURIComponent(itemId('/Corp/Share')) + '/children'))
   assert.deepEqual(write.body, { name: input.name, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' })
-  assert.equal(write.config.maxRedirects, 0)
+  assert.equal(write.config.redirect, 'manual')
   assert.equal(write.config.headers.Authorization, 'Bearer test-secret-token')
   assert.equal(cache.knownKind('/old'), undefined)
   assert.deepEqual(state.rates, [['manage', 120]])
@@ -67,7 +67,7 @@ test('fresh parent shortcuts and ancestor replacement prohibit creation', async 
 test('same-name conflict makes exactly one attempt and invalidates cache', async t => {
   setup(t)
   let attempts = 0
-  axios.post = async (_url, body) => {
+  upstream.post = async (_url, body) => {
     attempts++
     assert.equal(body['@microsoft.graph.conflictBehavior'], 'fail')
     throw { response: { status: 409 } }
@@ -86,7 +86,7 @@ test('lost responses and server errors are uncertain, while conditional conflict
     [{ response: { status: 412 } }, 'item_changed', 412],
     [{ response: { status: 403 } }, 'write_failed', 403],
   ]) {
-    axios.post = async () => { throw failure }
+    upstream.post = async () => { throw failure }
     cache.rememberKind('/old', 'file', 30000)
     await responseError(await POST(request('folders', input)), code, status)
     assert.equal(cache.knownKind('/old'), undefined)
@@ -95,7 +95,7 @@ test('lost responses and server errors are uncertain, while conditional conflict
 
 test('unexpected create statuses and malformed created-item responses never report success', async t => {
   setup(t)
-  const post = axios.post
+  const post = upstream.post
   const mutations = [
     response => ({ ...response, status: 200 }),
     response => ({ ...response, status: 204 }),
@@ -113,7 +113,7 @@ test('unexpected create statuses and malformed created-item responses never repo
     response => ({ ...response, data: { ...response.data, parentReference: { ...response.data.parentReference, path: '/drive/root:/Other' } } }),
   ]
   for (const mutate of mutations) {
-    axios.post = async (...args) => mutate(await post(...args))
+    upstream.post = async (...args) => mutate(await post(...args))
     cache.rememberKind('/old', 'file', 30000)
     await responseError(await POST(request('folders', input)), 'write_uncertain', 502)
     assert.equal(cache.knownKind('/old'), undefined)
@@ -122,9 +122,9 @@ test('unexpected create statuses and malformed created-item responses never repo
 
 test('folder creation starts all ancestor reads concurrently and waits for boundary validation', async t => {
   const state = setup(t)
-  const get = axios.get
+  const get = upstream.get
   const pending = []
-  axios.get = (url, config) => new Promise((resolve, reject) => {
+  upstream.get = (url, config) => new Promise((resolve, reject) => {
     pending.push({ finish: () => get(url, config).then(resolve, reject) })
   })
   const result = POST(request('folders', input))

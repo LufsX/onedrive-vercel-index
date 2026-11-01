@@ -2,6 +2,18 @@ import { strict as assert } from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import ts from 'typescript'
+
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
 import * as React from 'react'
 import * as jsxRuntime from 'react/jsx-runtime'
 import { renderToString } from 'react-dom/server'
@@ -9,7 +21,7 @@ import * as adminErrors from './adminErrors.ts'
 
 function setup(fetch, initialBootstrap = { status: 'anonymous', hasSessionCookie: false }) {
   const source = readFileSync(new URL('./useAdminSession.ts', import.meta.url), 'utf8')
-  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
+  const compiled = compileOnce(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
   const observers = []
   let snapshot
   let bootstrap = initialBootstrap
@@ -21,8 +33,12 @@ function setup(fetch, initialBootstrap = { status: 'anonymous', hasSessionCookie
       subscribe(() => observers.forEach(observer => observer(getSnapshot())))
       return getSnapshot()
     },
-    useEffect(effect) { if (!server) effect() },
-    useMemo(factory) { return factory() },
+    useEffect(effect) {
+      if (!server) effect()
+    },
+    useMemo(factory) {
+      return factory()
+    },
   }
   const loaded = { exports: {} }
   new Function('require', 'module', 'exports', 'fetch', compiled)(
@@ -42,12 +58,19 @@ function setup(fetch, initialBootstrap = { status: 'anonymous', hasSessionCookie
     endUpload: loaded.exports.endAdminUpload,
     observers,
     getSnapshot: () => snapshot(),
-    setBootstrap: next => { bootstrap = next },
+    setBootstrap: next => {
+      bootstrap = next
+    },
     renderServer(next) {
       const previous = bootstrap
       bootstrap = next
       server = true
-      try { return loaded.exports.default() } finally { bootstrap = previous; server = false }
+      try {
+        return loaded.exports.default()
+      } finally {
+        bootstrap = previous
+        server = false
+      }
     },
   }
 }
@@ -57,9 +80,15 @@ const tick = () => new Promise(resolve => setImmediate(resolve))
 
 test('login synchronizes subscribers and ignores a stale initial session response', async () => {
   let resolveSession
-  const store = setup(url => url.endsWith('/session')
-    ? new Promise(resolve => { resolveSession = resolve })
-    : Promise.resolve(response({ authenticated: true })), { status: 'anonymous', hasSessionCookie: true })
+  const store = setup(
+    url =>
+      url.endsWith('/session')
+        ? new Promise(resolve => {
+            resolveSession = resolve
+          })
+        : Promise.resolve(response({ authenticated: true })),
+    { status: 'anonymous', hasSessionCookie: true },
+  )
   const first = store.useSession()
   store.useSession()
   const observed = []
@@ -87,9 +116,9 @@ test('failed operations retain the current session and release busy state', asyn
 
 test('malformed successful login payloads never authenticate or leave the store busy', async () => {
   for (const body of [null, {}, [], { authenticated: 'true' }, { authenticated: false }]) {
-    const store = setup(async url => response(url.endsWith('/session')
-      ? { initialized: true, authenticated: false }
-      : body))
+    const store = setup(async url =>
+      response(url.endsWith('/session') ? { initialized: true, authenticated: false } : body),
+    )
     const session = store.useSession()
     await tick()
     await assert.rejects(session.login('password'), /Administrator login failed/)
@@ -99,9 +128,12 @@ test('malformed successful login payloads never authenticate or leave the store 
 })
 
 test('login errors retain safe server-specific messages', async () => {
-  const store = setup(async url => response(url.endsWith('/session')
-    ? { initialized: true, authenticated: false }
-    : { error: 'redis_not_configured' }, url.endsWith('/session')))
+  const store = setup(async url =>
+    response(
+      url.endsWith('/session') ? { initialized: true, authenticated: false } : { error: 'redis_not_configured' },
+      url.endsWith('/session'),
+    ),
+  )
   const session = store.useSession()
   await tick()
   await assert.rejects(session.login('password'), /Set REDIS_URL/)
@@ -110,24 +142,33 @@ test('login errors retain safe server-specific messages', async () => {
 
 test('logout updates all subscribers without clearing directory credentials', async () => {
   const calls = []
-  const store = setup(async (url, options) => {
-    calls.push([url, options?.method])
-    return response(url.endsWith('/session') ? { initialized: true, authenticated: true } : { authenticated: false })
-  }, { status: 'anonymous', hasSessionCookie: true })
+  const store = setup(
+    async (url, options) => {
+      calls.push([url, options?.method])
+      return response(url.endsWith('/session') ? { initialized: true, authenticated: true } : { authenticated: false })
+    },
+    { status: 'anonymous', hasSessionCookie: true },
+  )
   const session = store.useSession()
   store.useSession()
   await tick()
   await session.logout()
   assert.deepEqual(store.getSnapshot(), { status: 'anonymous', busy: false, uploading: false })
-  assert.deepEqual(calls.map(([url]) => url), ['/api/admin/session', '/api/admin/logout'])
+  assert.deepEqual(
+    calls.map(([url]) => url),
+    ['/api/admin/session', '/api/admin/logout'],
+  )
 })
 
 test('upload blocks administrator logout until completion', async () => {
   const calls = []
-  const store = setup(async url => {
-    calls.push(url)
-    return response(url.endsWith('/session') ? { initialized: true, authenticated: true } : {})
-  }, { status: 'anonymous', hasSessionCookie: true })
+  const store = setup(
+    async url => {
+      calls.push(url)
+      return response(url.endsWith('/session') ? { initialized: true, authenticated: true } : {})
+    },
+    { status: 'anonymous', hasSessionCookie: true },
+  )
   const session = store.useSession()
   await tick()
   assert.equal(store.beginUpload(), true)
@@ -140,9 +181,11 @@ test('upload blocks administrator logout until completion', async () => {
 
 test('invalid session responses expose a retryable error', async () => {
   let valid = false
-  const store = setup(async () => response(valid
-    ? { initialized: true, authenticated: false }
-    : { initialized: false, authenticated: true }), { status: 'anonymous', hasSessionCookie: true })
+  const store = setup(
+    async () =>
+      response(valid ? { initialized: true, authenticated: false } : { initialized: false, authenticated: true }),
+    { status: 'anonymous', hasSessionCookie: true },
+  )
   const session = store.useSession()
   await tick()
   assert.equal(store.getSnapshot().status, 'error')
@@ -171,7 +214,12 @@ test('missing hash and invalid configuration retain their bootstrap statuses wit
   for (const status of ['uninitialized', 'error']) {
     for (const hasSessionCookie of [false, true]) {
       const calls = []
-      const store = setup(async url => { calls.push(url) }, { status, hasSessionCookie })
+      const store = setup(
+        async url => {
+          calls.push(url)
+        },
+        { status, hasSessionCookie },
+      )
       assert.equal(store.useSession().status, status)
       store.useSession()
       await tick()
@@ -185,10 +233,15 @@ test('missing hash and invalid configuration retain their bootstrap statuses wit
 test('an existing cookie verifies exactly once across subscribers and never grants bootstrap authority', async () => {
   const calls = []
   let resolveSession
-  const store = setup((url, options) => {
-    calls.push([url, options])
-    return new Promise(resolve => { resolveSession = resolve })
-  }, { status: 'anonymous', hasSessionCookie: true })
+  const store = setup(
+    (url, options) => {
+      calls.push([url, options])
+      return new Promise(resolve => {
+        resolveSession = resolve
+      })
+    },
+    { status: 'anonymous', hasSessionCookie: true },
+  )
   assert.equal(store.useSession().status, 'loading')
   store.useSession()
   store.useSession()
@@ -207,7 +260,13 @@ test('expired cookies and failed verification never authenticate or automaticall
     [response({}, false), 'error'],
   ]) {
     let calls = 0
-    const store = setup(async () => { calls++; return result }, { status: 'anonymous', hasSessionCookie: true })
+    const store = setup(
+      async () => {
+        calls++
+        return result
+      },
+      { status: 'anonymous', hasSessionCookie: true },
+    )
     store.useSession()
     await tick()
     store.useSession()
@@ -221,10 +280,13 @@ test('explicit refresh remains available for every non-authenticated bootstrap s
   for (const status of ['anonymous', 'uninitialized', 'error']) {
     const calls = []
     let initialized = false
-    const store = setup(async url => {
-      calls.push(url)
-      return response({ initialized, authenticated: initialized })
-    }, { status, hasSessionCookie: false })
+    const store = setup(
+      async url => {
+        calls.push(url)
+        return response({ initialized, authenticated: initialized })
+      },
+      { status, hasSessionCookie: false },
+    )
     const session = store.useSession()
     assert.deepEqual(calls, [])
     await session.refresh()
@@ -238,7 +300,10 @@ test('explicit refresh remains available for every non-authenticated bootstrap s
 
 test('server snapshots are request-specific and never initialize or reuse the shared client store', async () => {
   const calls = []
-  const store = setup(async url => { calls.push(url); return response({ authenticated: true }) })
+  const store = setup(async url => {
+    calls.push(url)
+    return response({ authenticated: true })
+  })
   for (const status of ['uninitialized', 'anonymous', 'error']) {
     assert.equal(store.renderServer({ status, hasSessionCookie: false }).status, status)
   }
@@ -260,7 +325,9 @@ test('busy operations block concurrent login, logout, refresh and upload until c
   let resolveLogin
   const store = setup(url => {
     calls.push(url)
-    return new Promise(resolve => { resolveLogin = resolve })
+    return new Promise(resolve => {
+      resolveLogin = resolve
+    })
   })
   const session = store.useSession()
   const login = session.login('password')
@@ -277,9 +344,13 @@ test('busy operations block concurrent login, logout, refresh and upload until c
 
 test('logout invalidates a pending explicit refresh that would restore authentication', async () => {
   let resolveSession
-  const store = setup(url => url.endsWith('/session')
-    ? new Promise(resolve => { resolveSession = resolve })
-    : Promise.resolve(response({ authenticated: true })))
+  const store = setup(url =>
+    url.endsWith('/session')
+      ? new Promise(resolve => {
+          resolveSession = resolve
+        })
+      : Promise.resolve(response({ authenticated: true })),
+  )
   const session = store.useSession()
   await session.login('password')
   const refresh = session.refresh()
@@ -291,7 +362,12 @@ test('logout invalidates a pending explicit refresh that would restore authentic
 
 test('the latest explicit refresh wins when responses arrive out of order', async () => {
   const pending = []
-  const store = setup(() => new Promise(resolve => { pending.push(resolve) }))
+  const store = setup(
+    () =>
+      new Promise(resolve => {
+        pending.push(resolve)
+      }),
+  )
   const session = store.useSession()
   const first = session.refresh()
   const second = session.refresh()
@@ -304,13 +380,17 @@ test('the latest explicit refresh wins when responses arrive out of order', asyn
 
 test('the real provider and React SSR render each request bootstrap without fetching', () => {
   function load(path, mocks) {
-    const compiled = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {
+    const compiled = compileOnce(readFileSync(new URL(path, import.meta.url), 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: false },
     }).outputText
     const loaded = { exports: {} }
     new Function('require', 'module', 'exports', 'fetch', compiled)(
-      name => { assert.ok(Object.hasOwn(mocks, name), name); return mocks[name] },
-      loaded, loaded.exports,
+      name => {
+        assert.ok(Object.hasOwn(mocks, name), name)
+        return mocks[name]
+      },
+      loaded,
+      loaded.exports,
       () => assert.fail('SSR must not fetch the administrator session'),
     )
     return loaded.exports
@@ -331,13 +411,15 @@ test('the real provider and React SSR render each request bootstrap without fetc
     [{ status: 'error', hasSessionCookie: true }, 'error'],
     [{ status: 'anonymous', hasSessionCookie: false }, 'anonymous'],
   ]) {
-    assert.equal(renderToString(React.createElement(provider.default, { bootstrap },
-      React.createElement(Consumer))), `<span>${status}</span>`)
+    assert.equal(
+      renderToString(React.createElement(provider.default, { bootstrap }, React.createElement(Consumer))),
+      `<span>${status}</span>`,
+    )
   }
 })
 
 test('root layout passes only status and cookie presence to the bootstrap provider', async () => {
-  const compiled = ts.transpileModule(readFileSync(new URL('../app/layout.tsx', import.meta.url), 'utf8'), {
+  const compiled = compileOnce(readFileSync(new URL('../app/layout.tsx', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: false },
   }).outputText
   const nodes = (type, props) => ({ type, props })
@@ -352,12 +434,19 @@ test('root layout passes only status and cookie presence to the bootstrap provid
       let validations = 0
       const mocks = {
         'react/jsx-runtime': { jsx: nodes, jsxs: nodes },
-        '@vercel/analytics/react': { Analytics: 'analytics' },
-        'next/script': { default: 'script' },
-        'next/headers': { cookies: async () => ({
-          has(name) { assert.equal(name, 'admin_session'); return hasSessionCookie },
-          get() { assert.fail('Layout must not read cookie contents') },
-        }) },
+        '../components/OverlayScrollbars': { default: 'overlay-scrollbars' },
+        '../components/ThirdPartyScripts': { default: 'third-party-scripts' },
+        'next/headers': {
+          cookies: async () => ({
+            has(name) {
+              assert.equal(name, 'admin_session')
+              return hasSessionCookie
+            },
+            get() {
+              assert.fail('Layout must not read cookie contents')
+            },
+          }),
+        },
         '../../config/site.config': { default: { googleFontLinks: [] } },
         '../../config/api.config': { default: {} },
         '../components/ClientConfigProvider': { ConfigProvider: 'config-provider' },
@@ -366,18 +455,24 @@ test('root layout passes only status and cookie presence to the bootstrap provid
         '../lib/brandIcons': { brandIcons: {} },
         '../components/ProgressBar': { default: 'progress' },
         '../lib/i18n': { getLocale: async () => 'en', getMessages: async () => ({}) },
-        '../lib/adminAuth': { isAdminConfigurationValid: () => {
-          validations++
-          return hash === 'valid-private-hash'
-        } },
+        '../lib/adminAuth': {
+          isAdminConfigurationValid: () => {
+            validations++
+            return hash === 'valid-private-hash'
+          },
+        },
         '../components/AdminSessionProvider': { default: 'admin-provider' },
         '../styles/globals.css': {},
         '../styles/markdown-github.css': {},
       }
       const loaded = { exports: {} }
       new Function('require', 'module', 'exports', 'process', compiled)(
-        name => { assert.ok(Object.hasOwn(mocks, name), name); return mocks[name] },
-        loaded, loaded.exports,
+        name => {
+          assert.ok(Object.hasOwn(mocks, name), name)
+          return mocks[name]
+        },
+        loaded,
+        loaded.exports,
         { env: { ADMIN_PASSWORD_HASH: hash, ADMIN_SESSION_SECRET: 'private-session-secret' } },
       )
       assert.equal(loaded.exports.dynamic, 'force-dynamic')
