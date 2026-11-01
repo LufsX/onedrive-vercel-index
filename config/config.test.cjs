@@ -4,7 +4,7 @@ const { spawnSync } = require('node:child_process')
 
 function load(file, env = {}, browser = false) {
   const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-    !key.startsWith('NEXT_PUBLIC_') && key !== 'KV_PREFIX'))
+    !key.startsWith('NEXT_PUBLIC_') && key !== 'KV_PREFIX' && key !== 'ADMIN_PASSWORD_HASH'))
   return spawnSync(process.execPath, ['-e',
     `${browser ? 'global.window = {};' : ''} console.log(JSON.stringify(require('./config/${file}.config.js')))`,
   ], { cwd: require('node:path').join(__dirname, '..'), env: { ...cleanEnv, ...env }, encoding: 'utf8' })
@@ -37,9 +37,25 @@ test('defaults and all runtime overrides', () => {
   assert.deepEqual(config('api', {
     NEXT_PUBLIC_CLIENT_ID: 'id', NEXT_PUBLIC_REDIRECT_URI: 'http://localhost', NEXT_PUBLIC_AUTH_API: 'https://example.com/auth',
     NEXT_PUBLIC_DRIVE_API: 'https://example.com/drive', NEXT_PUBLIC_SCOPE: 'scope', NEXT_PUBLIC_CACHE_CONTROL_HEADER: 'cache',
+    ADMIN_PASSWORD_HASH: 'configured-hash',
   }), { clientId: 'id', redirectUri: 'http://localhost', authApi: 'https://example.com/auth', driveApi: 'https://example.com/drive', scope: 'scope', cacheControlHeader: 'cache' })
   assert.equal(config('api').clientId, '6280202a-1acd-47d6-b311-7a6367163699')
-  assert.equal(config('api').scope, 'user.read files.readwrite offline_access')
+  assert.equal(config('api').scope, 'user.read files.read offline_access')
+  assert.equal(config('api', { ADMIN_PASSWORD_HASH: 'configured-hash' }).scope, 'user.read files.readwrite offline_access')
+})
+
+test('scope overrides cannot request write permissions without an admin password hash', () => {
+  for (const hash of [undefined, '']) {
+    const env = { NEXT_PUBLIC_SCOPE: 'files.readwrite.all mail.send' }
+    if (hash !== undefined) env.ADMIN_PASSWORD_HASH = hash
+    assert.equal(config('api', env).scope, 'user.read files.read offline_access')
+  }
+  assert.equal(config('api', {
+    ADMIN_PASSWORD_HASH: 'configured-hash', NEXT_PUBLIC_SCOPE: 'custom.scope',
+  }).scope, 'custom.scope')
+  assert.equal(config('api', {
+    ADMIN_PASSWORD_HASH: 'server-only-hash', NEXT_PUBLIC_SCOPE: 'files.readwrite.all',
+  }, true).scope, 'user.read files.read offline_access')
 })
 
 test('rejects invalid structured values', () => {

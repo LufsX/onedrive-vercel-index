@@ -3,14 +3,20 @@ import apiConfig from '../../../../../config/api.config'
 import siteConfig from '../../../../../config/site.config'
 import { getOAuthClientSecret } from '../../../../lib/oauthServerConfig'
 import { authorizeTokenWrite } from '../../../../lib/oauthSetup'
+import { isReadOnlyOAuthScope, readOnlyOAuthScope } from '../../../../lib/oauthScopes'
 import { adminError, checkAdminRateLimit, readAdminBody, requireAdmin, validateWriteRequest } from '../../../../lib/adminAuth'
 import { storeTokensFromRequestBody } from '../../../../lib/odApi'
 
 const headers = { 'Cache-Control': 'no-store' }
 
 export async function POST(request: NextRequest) {
-  const rejected = validateWriteRequest(request) || await requireAdmin(request)
+  const rejected = validateWriteRequest(request)
   if (rejected) return rejected
+  const adminConfigured = !!process.env.ADMIN_PASSWORD_HASH
+  if (adminConfigured) {
+    const unauthorized = await requireAdmin(request)
+    if (unauthorized) return unauthorized
+  }
   try {
     if (!(await checkAdminRateLimit('oauth'))) return adminError('rate_limited', 429)
   } catch {
@@ -29,6 +35,8 @@ export async function POST(request: NextRequest) {
     code: body.code,
     grant_type: 'authorization_code',
   })
+  // Do not trust the authorization code, client body, or configured scope to be read-only.
+  if (!adminConfigured) params.set('scope', readOnlyOAuthScope)
 
   try {
     const response = await fetch(apiConfig.authApi, {
@@ -43,6 +51,7 @@ export async function POST(request: NextRequest) {
         typeof data.expires_in !== 'number' || !Number.isFinite(data.expires_in) || data.expires_in <= 0) {
       return adminError('invalid_token_response', 502)
     }
+    if (!adminConfigured && !isReadOnlyOAuthScope(data.scope)) return adminError('invalid_token_response', 502)
 
     const result = await authorizeTokenWrite({
       owner: siteConfig.userPrincipalName,

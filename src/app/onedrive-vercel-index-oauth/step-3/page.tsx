@@ -16,11 +16,12 @@ export default function OAuthStep3() {
   const router = useRouter()
   const t = useTranslations()
   const { status, refresh } = useAdminSession()
+  const canProceed = status === 'authenticated' || status === 'uninitialized'
   const [hasCode, setHasCode] = useState(false)
   const [state, setState] = useState<'ready' | 'working' | 'stored' | 'error'>('ready')
 
   useEffect(() => {
-    if (status === 'anonymous' || status === 'uninitialized') {
+    if (status === 'anonymous') {
       router.replace('/onedrive-vercel-index-oauth/step-0?next=step-3')
     }
   }, [router, status])
@@ -35,7 +36,7 @@ export default function OAuthStep3() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
-    if (status !== 'authenticated' || state === 'working') return
+    if (!canProceed || state === 'working') return
     setState('working')
     try {
       const code = sessionStorage.getItem('oauth_auth_code')
@@ -58,7 +59,7 @@ export default function OAuthStep3() {
 
   return (
     <SetupShell step={3} title={t('Step 3/3: Get access and refresh tokens')}>
-      {status !== 'authenticated' ? (
+      {!canProceed ? (
         <SetupSessionState status={status} retry={refresh} />
       ) : state === 'stored' ? (
         <div className="fade-in space-y-4">

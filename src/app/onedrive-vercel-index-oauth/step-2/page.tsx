@@ -18,6 +18,7 @@ export default function OAuthStep2() {
   const router = useRouter()
   const t = useTranslations()
   const { status, refresh } = useAdminSession()
+  const canProceed = status === 'authenticated' || status === 'uninitialized'
 
   const [oAuthRedirectedUrl, setOAuthRedirectedUrl] = useState('')
   const [authCode, setAuthCode] = useState('')
@@ -25,14 +26,14 @@ export default function OAuthStep2() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (status === 'anonymous' || status === 'uninitialized') router.replace('/onedrive-vercel-index-oauth/step-0')
+    if (status === 'anonymous') router.replace('/onedrive-vercel-index-oauth/step-0')
   }, [router, status])
 
   const oAuthUrl = generateAuthorisationUrl(apiConfig)
 
   function proceed(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!authCode || buttonLoading || status !== 'authenticated') return
+    if (!authCode || buttonLoading || !canProceed) return
     setButtonLoading(true)
     setError(false)
     try {
@@ -46,7 +47,7 @@ export default function OAuthStep2() {
 
   return (
     <SetupShell step={2} title={t('Step 2/3: Get authorisation code')}>
-      {status !== 'authenticated' ? (
+      {!canProceed ? (
         <SetupSessionState status={status} retry={refresh} />
       ) : (
         <div className="fade-in space-y-4">

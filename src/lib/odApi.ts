@@ -12,6 +12,7 @@ import {
 } from '../utils/odAuthTokenStore'
 import { isPasswordFile } from './itemPath'
 import { getOAuthClientSecret } from './oauthServerConfig'
+import { isReadOnlyOAuthScope, readOnlyOAuthScope } from './oauthScopes'
 
 const basePath = pathPosix.resolve('/', siteConfig.baseDirectory)
 
@@ -60,11 +61,14 @@ async function refreshAccessToken(): Promise<string> {
           refresh_token: refreshToken,
           grant_type: 'refresh_token',
         })
+        const readOnly = !process.env.ADMIN_PASSWORD_HASH
+        if (readOnly) body.set('scope', readOnlyOAuthScope)
         const resp = await axiosInstance.post(apiConfig.authApi, body, {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           timeout: 15000,
         })
         if (typeof resp.data?.access_token !== 'string' || typeof resp.data?.refresh_token !== 'string') return ''
+        if (readOnly && !isReadOnlyOAuthScope(resp.data.scope)) return ''
         const committed = await commitOdRefresh({
           accessToken: resp.data.access_token,
           accessTokenExpiry: parseInt(resp.data.expires_in),

@@ -35,8 +35,10 @@ module.exports = {
   authApi: url('NEXT_PUBLIC_AUTH_API', 'https://login.microsoftonline.com/common/oauth2/v2.0/token'),
   driveApi: url('NEXT_PUBLIC_DRIVE_API', 'https://graph.microsoft.com/v1.0/me/drive'),
 
-  // The scope we require are listed here, in most cases you would not need to change this as well.
-  scope: env('NEXT_PUBLIC_SCOPE') ?? 'user.read files.readwrite offline_access',
+  // Without an admin password, OAuth setup must never request write permissions, even via an override.
+  scope: env('ADMIN_PASSWORD_HASH')
+    ? env('NEXT_PUBLIC_SCOPE') ?? 'user.read files.readwrite offline_access'
+    : 'user.read files.read offline_access',
 
   // Cache-Control header, check Vercel documentation for more details. The default settings imply:
   // - max-age=0: no cache for your browser

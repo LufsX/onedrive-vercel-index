@@ -16,9 +16,10 @@ export default function OAuthStep1() {
   const router = useRouter()
   const t = useTranslations()
   const { status, refresh } = useAdminSession()
+  const canProceed = status === 'authenticated' || status === 'uninitialized'
 
   useEffect(() => {
-    if (status === 'anonymous' || status === 'uninitialized') router.replace('/onedrive-vercel-index-oauth/step-0')
+    if (status === 'anonymous') router.replace('/onedrive-vercel-index-oauth/step-0')
   }, [router, status])
 
   const configuration = [
@@ -31,7 +32,7 @@ export default function OAuthStep1() {
 
   return (
     <SetupShell step={1} title={t('Step 1/3: Preparations')}>
-      {status !== 'authenticated' ? (
+      {!canProceed ? (
         <SetupSessionState status={status} retry={refresh} />
       ) : (
         <div className="fade-in space-y-4">
