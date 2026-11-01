@@ -1,16 +1,33 @@
 import Redis from 'ioredis'
 
-// Singleton Redis client with connection pooling and optimization
+// Reuse one connection per module instance; Vercel instances do not share it.
 let redisClient: Redis | null = null
 
 export function getRedisClient(): Redis {
   if (!redisClient) {
-    const redisUrl = process.env.REDIS_URL || ''
+    const redisUrl = process.env.REDIS_URL?.trim()
+    if (!redisUrl) {
+      throw Object.assign(new Error('Redis is not configured.'), { code: 'redis_not_configured' })
+    }
 
-    redisClient = new Redis(redisUrl, {
-      // Connection pool settings for better performance
+    let parsed: URL
+    try {
+      parsed = new URL(redisUrl)
+      if ((parsed.protocol !== 'redis:' && parsed.protocol !== 'rediss:') || !parsed.hostname) {
+        throw new Error()
+      }
+      // ioredis decodes credentials before connecting; reject malformed escapes here as well.
+      decodeURIComponent(parsed.username)
+      decodeURIComponent(parsed.password)
+    } catch {
+      throw Object.assign(new Error('Redis URL configuration is invalid.'), { code: 'redis_invalid_url' })
+    }
+
+    redisClient = new Redis(parsed.href, {
       maxRetriesPerRequest: 3,
-      enableReadyCheck: true,
+      // Managed Redis commands report availability without an extra INFO on every connection.
+      enableReadyCheck: false,
+      disableClientInfo: true,
       enableOfflineQueue: true,
 
       // Connection timeout optimizations
@@ -26,15 +43,16 @@ export function getRedisClient(): Redis {
       keepAlive: 30000,
 
       // Lazy connection - only connect when needed
-      lazyConnect: false,
+      lazyConnect: true,
 
       // Command timeout
       commandTimeout: 5000,
     })
 
     // Error handling
-    redisClient.on('error', err => {
-      console.error('Redis Client Error:', err)
+    redisClient.on('error', () => {
+      // Redis errors may include command arguments such as AUTH credentials.
+      console.error('Redis Client Error: connection or command failed')
     })
 
     redisClient.on('connect', () => {

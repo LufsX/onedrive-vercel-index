@@ -9,7 +9,8 @@ const refreshLockKey = () => `${siteConfig.kvPrefix}refresh_token_lock`
 
 // All three keys must be on the same Redis server (or cluster hash slot).
 const readScript = `
-return {redis.call('GET', KEYS[1]), redis.call('GET', KEYS[2]), redis.call('TTL', KEYS[1])}
+local tokens = redis.call('MGET', KEYS[1], KEYS[2])
+return {tokens[1], tokens[2], redis.call('TTL', KEYS[1])}
 `
 const writeScript = `
 if ARGV[4] ~= '' and (redis.call('GET', KEYS[3]) ~= ARGV[4] or redis.call('GET', KEYS[2]) ~= ARGV[5]) then
@@ -50,7 +51,7 @@ export function tokenStoreGeneration(): number {
   return generation
 }
 
-/** Cache valid pairs for at most five seconds; other instances can observe old tokens for that long. */
+/** Cache valid pairs for at most 60 seconds; other instances can observe old tokens for that long. */
 export async function getOdAuthTokens(forceLive = false): Promise<Tokens> {
   const now = Date.now()
   if (!forceLive && cached && now < cached.expiresAt) {
@@ -61,9 +62,11 @@ export async function getOdAuthTokens(forceLive = false): Promise<Tokens> {
   const readGeneration = generation
   const readStarted = Date.now()
   const read = readTokens().then(({ tokens, tokenExpiresAt }) => {
-    const expiresAt = Math.min(readStarted + 5000, tokenExpiresAt - 120000)
+    const expiresAt = Math.min(readStarted + 60000, tokenExpiresAt - 120000)
     if (!forceLive && !writesInFlight && generation === readGeneration &&
-      typeof tokens.accessToken === 'string' && tokens.accessToken.length > 0 && expiresAt > Date.now()) {
+      typeof tokens.accessToken === 'string' && tokens.accessToken.length > 0 &&
+      typeof tokens.refreshToken === 'string' && tokens.refreshToken.length > 0 &&
+      Number.isFinite(tokenExpiresAt) && expiresAt > Date.now()) {
       cached = { tokens: { ...tokens }, expiresAt, tokenExpiresAt }
     }
     return tokens
