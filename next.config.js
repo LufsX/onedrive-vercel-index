@@ -3,6 +3,12 @@ const nextConfig = {
   ...(process.env.DOCKER_BUILD === '1' ? { output: 'standalone' } : {}),
   reactStrictMode: true,
 
+  // Non-localhost origins that may load dev resources (scripts, HMR) during development
+  allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean),
+
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
@@ -20,14 +26,10 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
 
-  // Barrel-file imports are expanded at build time for smaller client bundles
+  // Barrel-file imports are expanded at build time for smaller client bundles.
+  // lucide-react and @headlessui/react are already in the Next.js default list.
   experimental: {
-    optimizePackageImports: [
-      '@fortawesome/react-fontawesome',
-      '@fortawesome/free-solid-svg-icons',
-      '@fortawesome/free-regular-svg-icons',
-      'react-hot-toast',
-    ],
+    optimizePackageImports: ['react-hot-toast'],
   },
 }
 
