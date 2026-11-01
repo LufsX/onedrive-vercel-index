@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import ts from 'typescript'
+import * as adminErrors from '../utils/adminErrors.ts'
 
 const nodes = (type, props) => ({ ...props, type })
 
@@ -204,6 +205,7 @@ function navbarView(admin = { status: 'authenticated', busy: false }) {
     './Loading': { LoadingIcon: 'loading-icon' },
     './uiStyles': { uiButton: '', uiFieldLabel: '', uiInput: '', uiPrimaryButton: '' },
     '../utils/useDeviceOS': { __esModule: true, default: () => 'mac' },
+    '../utils/adminErrors': adminErrors,
     '../utils/useAdminSession': { __esModule: true, default: () => admin },
   })
   return () => {
@@ -231,6 +233,20 @@ test('Navbar retains lazy search and logout components when closed so leave anim
   assert.equal(logout.open, true)
   logout.onClose()
   assert.equal(find(render(), 'logout-dialog')[0].open, false)
+})
+
+test('Navbar login shows safe detailed errors and exposes password regeneration', async () => {
+  for (const [failure, expected] of [
+    ['Incorrect administrator password.', 'Incorrect administrator password.'],
+    ['Redis is not configured. Set REDIS_URL and redeploy.', 'Redis is not configured. Set REDIS_URL and redeploy.'],
+    ['https://secret.example/password', 'Administrator login failed.'],
+  ]) {
+    const render = navbarView({ status: 'anonymous', busy: false, login: async () => { throw new Error(failure) } })
+    const form = find(render(), 'form')[0]
+    await form.onSubmit({ preventDefault() {} })
+    assert.equal(find(render(), 'p').find(node => node.role === 'alert').children, expected)
+    assert.ok(find(render(), 'link').some(node => node.href === '/onedrive-vercel-index-oauth/step-0?generate=1'))
+  }
 })
 
 test('login keeps its password until afterLeave and blocks closing or submitting while busy', async () => {

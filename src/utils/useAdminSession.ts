@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useAdminSessionBootstrap } from '../components/AdminSessionProvider'
+import { readAdminError } from './adminErrors'
 
 type Status = 'loading' | 'uninitialized' | 'anonymous' | 'authenticated' | 'error'
 type Session = { status: Status; busy: boolean; uploading: boolean }
@@ -44,7 +46,17 @@ async function login(password: string) {
   update({ ...session, busy: true })
   try {
     const response = await fetch('/api/admin/login', { method: 'POST', headers, body: JSON.stringify({ password }) })
-    if (!response.ok) throw new Error('Login failed')
+    if (!response.ok) throw new Error(await readAdminError(response))
+    const data: unknown = await response.json().catch(() => null)
+    if (
+      !data ||
+      typeof data !== 'object' ||
+      Array.isArray(data) ||
+      !('authenticated' in data) ||
+      data.authenticated !== true
+    ) {
+      throw new Error('Administrator login failed.')
+    }
     update({ ...session, status: 'authenticated', busy: true })
   } finally {
     update({ ...session, busy: false })
@@ -76,12 +88,20 @@ export function endAdminUpload() {
 }
 
 export default function useAdminSession() {
-  const current = useSyncExternalStore(subscribe, () => session, () => initialSession)
+  const bootstrap = useAdminSessionBootstrap()
+  const initial = useMemo<Session>(() => ({
+    status: bootstrap.status === 'anonymous' && bootstrap.hasSessionCookie ? 'loading' : bootstrap.status,
+    busy: false,
+    uploading: false,
+  }), [bootstrap.status, bootstrap.hasSessionCookie])
+  // Server renders always read this request's bootstrap; effects initialize only the client store.
+  const current = useSyncExternalStore(subscribe, () => started ? session : initial, () => initial)
   useEffect(() => {
     if (!started) {
       started = true
-      void refresh()
+      update(initial)
+      if (initial.status === 'loading') void refresh()
     }
-  }, [])
+  }, [initial])
   return { ...current, login, logout, refresh }
 }

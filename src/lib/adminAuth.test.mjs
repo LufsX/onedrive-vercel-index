@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { readFileSync } from 'node:fs'
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
@@ -9,7 +12,7 @@ const require = createRequire(import.meta.url)
 
 function fixture() {
   const data = new Map()
-  let down = false, now = 0, lastSet
+  let down = false, now = 0, lastSet, connections = 0
   const expiry = new Map()
   const redis = {
     async exists(key) {
@@ -43,7 +46,7 @@ function fixture() {
   const modules = {
     'next/server': { NextResponse: Response },
     '../../config/site.config': { __esModule: true, default: { kvPrefix: 'test:' } },
-    '../utils/redisClient': { getRedisClient: () => redis },
+    '../utils/redisClient': { getRedisClient: () => { connections++; return redis } },
   }
   const code = ts.transpileModule(readFileSync(new URL('./adminAuth.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
@@ -56,7 +59,7 @@ function fixture() {
     headers: new Headers({ origin, host: 'example.com', 'x-requested-with': 'XMLHttpRequest', 'x-forwarded-host': 'evil.example', 'x-forwarded-proto': 'http' }),
     cookies: { get: () => token ? { value: token } : undefined },
   })
-  return { auth: exports, data, env, request, setDown: value => { down = value }, advance: seconds => { now += seconds }, lastSet: () => lastSet }
+  return { auth: exports, data, env, request, setDown: value => { down = value }, advance: seconds => { now += seconds }, lastSet: () => lastSet, connections: () => connections }
 }
 
 test('origin and header checks ignore forwarded headers and require HTTPS', () => {
@@ -92,7 +95,7 @@ test('generated configuration stays inactive until deployed; login, logout, and 
   const f = fixture(), { auth } = f
   assert.equal(await auth.generateAdminSetup('1234567'), null)
   const config = await auth.generateAdminSetup('12345678')
-  assert.match(config.passwordHash, /^scrypt\$16384\$8\$1\$[a-f0-9]{32}\$[a-f0-9]{128}$/)
+  assert.match(config.passwordHash, /^scrypt:16384:8:1:[a-f0-9]{32}:[a-f0-9]{128}$/)
   assert.equal(await auth.isAdminInitialized(), false)
   assert.equal(await auth.loginAdmin('12345678'), null)
   f.env.ADMIN_PASSWORD_HASH = config.passwordHash
@@ -112,20 +115,84 @@ test('generated configuration stays inactive until deployed; login, logout, and 
   assert.equal((await auth.requireAdmin(f.request(undefined, token))).status, 503)
 })
 
-test('legacy scrypt hashes remain valid and invalid parameters are rejected', async () => {
+test('only complete colon-separated scrypt hashes are accepted and invalid parameters are rejected', async () => {
   const f = fixture()
   const config = await f.auth.generateAdminSetup('a secure password')
-  f.env.ADMIN_PASSWORD_HASH = config.passwordHash.replace('scrypt$16384$8$1$', 'scrypt$')
-  assert.ok(await f.auth.loginAdmin('a secure password'))
+  const legacy = config.passwordHash.replaceAll(':', '$')
+  for (const stored of [legacy, legacy.replace('scrypt$16384$8$1$', 'scrypt$'), config.passwordHash.replace('scrypt:16384:8:1:', 'scrypt:')]) {
+    f.env.ADMIN_PASSWORD_HASH = stored
+    assert.equal(f.auth.isAdminConfigurationValid(), false)
+    assert.equal(await f.auth.isAdminInitialized(), true)
+    assert.equal(await f.auth.loginAdmin('a secure password'), null)
+  }
   const { scryptSync } = require('node:crypto')
   const salt = 'a'.repeat(32)
   const hash = scryptSync('a secure password', salt, 64, { N: 32768, r: 8, p: 1, maxmem: 128 * 1024 * 1024 }).toString('hex')
-  f.env.ADMIN_PASSWORD_HASH = `scrypt$32768$8$1$${salt}$${hash}`
+  f.env.ADMIN_PASSWORD_HASH = `scrypt:32768:8:1:${salt}:${hash}`
   assert.ok(await f.auth.loginAdmin('a secure password'))
-  for (const prefix of ['scrypt$999999999$8$1$', 'scrypt$16384$1$1$', 'scrypt$16384$8$99$', 'scrypt$16385$8$1$']) {
-    f.env.ADMIN_PASSWORD_HASH = config.passwordHash.replace('scrypt$16384$8$1$', prefix)
+  for (const prefix of ['scrypt:999999999:8:1:', 'scrypt:16384:1:1:', 'scrypt:16384:8:99:', 'scrypt:16385:8:1:']) {
+    f.env.ADMIN_PASSWORD_HASH = config.passwordHash.replace('scrypt:16384:8:1:', prefix)
     assert.equal(await f.auth.loginAdmin('a secure password'), null)
   }
+})
+
+test('new hashes survive Next.js env loading without escaping and equal a literal Vercel value', async () => {
+  const f = fixture()
+  const { passwordHash } = await f.auth.generateAdminSetup('a secure password')
+  assert.equal(passwordHash.includes('$'), false)
+  const directory = mkdtempSync(join(tmpdir(), 'admin-env-'))
+  try {
+    writeFileSync(join(directory, '.env.local'), `ADMIN_PASSWORD_HASH=${passwordHash}\n`)
+    const env = { ...process.env }
+    delete env.ADMIN_PASSWORD_HASH
+    const nextRequire = createRequire(require.resolve('next/package.json'))
+    const result = spawnSync(process.execPath, ['-e', `
+      const { loadEnvConfig } = require(${JSON.stringify(nextRequire.resolve('@next/env'))})
+      loadEnvConfig(${JSON.stringify(directory)}, false, { info() {}, error() {} })
+      process.stdout.write(process.env.ADMIN_PASSWORD_HASH || '')
+    `], { env, encoding: 'utf8' })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, passwordHash)
+    f.env.ADMIN_PASSWORD_HASH = result.stdout
+    assert.ok(await f.auth.loginAdmin('a secure password'))
+    f.env.ADMIN_PASSWORD_HASH = passwordHash
+    assert.ok(await f.auth.loginAdmin('a secure password'))
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('regeneration only takes effect through env replacement and invalidates previous sessions', async () => {
+  const f = fixture()
+  const original = await f.auth.generateAdminSetup('original password')
+  f.env.ADMIN_PASSWORD_HASH = original.passwordHash
+  const token = await f.auth.loginAdmin('original password')
+  const replacement = await f.auth.generateAdminSetup('replacement password')
+  assert.equal(f.env.ADMIN_PASSWORD_HASH, original.passwordHash)
+  assert.ok(await f.auth.loginAdmin('original password'))
+  assert.equal(await f.auth.loginAdmin('replacement password'), null)
+  f.env.ADMIN_PASSWORD_HASH = replacement.passwordHash
+  assert.equal((await f.auth.requireAdmin(f.request(undefined, token))).status, 401)
+  assert.equal(await f.auth.loginAdmin('original password'), null)
+  assert.ok(await f.auth.loginAdmin('replacement password'))
+  delete f.env.ADMIN_PASSWORD_HASH
+  f.setDown(true)
+  assert.equal((await f.auth.requireAdmin(f.request(undefined, token))).status, 401)
+  assert.equal(await f.auth.isAdminInitialized(), false)
+  f.env.ADMIN_PASSWORD_HASH = 'invalid'
+  assert.equal(await f.auth.isAdminInitialized(), true)
+  assert.equal(f.auth.isAdminConfigurationValid(), false)
+})
+
+test('missing, malformed and forged session cookies never access Redis', async () => {
+  const f = fixture()
+  const config = await f.auth.generateAdminSetup('a secure password')
+  f.env.ADMIN_PASSWORD_HASH = config.passwordHash
+  f.setDown(true)
+  for (const cookie of ['', 'malformed', `${'0'.repeat(64)}.${'0'.repeat(64)}`]) {
+    assert.equal(await f.auth.isAdmin(f.request(undefined, cookie)), false)
+  }
+  assert.equal(f.connections(), 0)
 })
 
 test('session TTL expires after 28800 seconds', async () => {

@@ -8,133 +8,198 @@ import { LoadingIcon } from '../../../components/Loading'
 import { uiButton, uiFieldLabel, uiInput, uiPrimaryButton } from '../../../components/uiStyles'
 import { useTranslations } from '../../../components/ClientProviders'
 import useAdminSession from '../../../utils/useAdminSession'
+import { getAdminErrorMessage, readAdminError } from '../../../utils/adminErrors'
+
+type Configuration = { passwordHash: string; sessionSecret: string }
 
 export default function OAuthStep0() {
   const router = useRouter()
   const t = useTranslations()
-  const { status, refresh } = useAdminSession()
+  const { status, refresh, login } = useAdminSession()
+  const [generate, setGenerate] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
-  const [configuration, setConfiguration] = useState('')
+  const [configuration, setConfiguration] = useState<Configuration | null>(null)
+  const [target, setTarget] = useState<'env' | 'vercel'>('env')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const generating = generate || status === 'uninitialized'
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      const next = new URLSearchParams(window.location.search).get('next')
-      router.replace(next === 'step-3' ? '/onedrive-vercel-index-oauth/step-3' : '/onedrive-vercel-index-oauth/step-1')
-    }
-  }, [router, status])
+    setGenerate(new URLSearchParams(window.location.search).get('generate') === '1')
+  }, [])
+
+  function proceed() {
+    const next = new URLSearchParams(window.location.search).get('next')
+    router.push(next === 'step-3' ? '/onedrive-vercel-index-oauth/step-3' : '/onedrive-vercel-index-oauth/step-1')
+  }
+
+  function changeMode(value: boolean) {
+    setGenerate(value)
+    setPassword('')
+    setConfirmation('')
+    setConfiguration(null)
+    setError('')
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (busy || (status !== 'uninitialized' && status !== 'anonymous')) return
-    if (status === 'uninitialized' && password !== confirmation) {
+    if (busy || (!generating && status !== 'anonymous')) return
+    if (generating && password !== confirmation) {
       setError('Passwords do not match.')
       return
     }
+    const fallback = generating ? 'Could not generate administrator configuration.' : 'Administrator login failed.'
     setBusy(true)
     setError('')
     try {
-      const setup = status === 'uninitialized'
-      const response = await fetch(setup ? '/api/admin/setup' : '/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ password }),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        if (response.status === 429) throw new Error('Too many requests. Try again later.')
-        if (setup && response.status === 403 && data?.error === 'already_initialized') {
-          await refresh()
-          return
-        }
-        throw new Error(setup ? 'Could not generate administrator configuration.' : 'Administrator login failed.')
-      }
-      if (setup) {
+      if (generating) {
+        const response = await fetch('/api/admin/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          body: JSON.stringify({ password }),
+        })
+        if (!response.ok) throw new Error(await readAdminError(response, fallback))
+        const data = await response.json()
         if (
           typeof data?.passwordHash !== 'string' ||
           typeof data?.sessionSecret !== 'string' ||
-          !/^scrypt\$[1-9]\d*\$[1-9]\d*\$[1-9]\d*\$[a-f0-9]{32}\$[a-f0-9]{128}$/.test(data.passwordHash) ||
+          !/^scrypt:16384:8:1:[a-f0-9]{32}:[a-f0-9]{128}$/.test(data.passwordHash) ||
           !/^[a-f0-9]{64}$/.test(data.sessionSecret)
         )
-          throw new Error('Could not generate administrator configuration.')
-        setConfiguration(`ADMIN_PASSWORD_HASH='${data.passwordHash}'\nADMIN_SESSION_SECRET='${data.sessionSecret}'`)
+          throw new Error(fallback)
+        setConfiguration({ passwordHash: data.passwordHash, sessionSecret: data.sessionSecret })
         setConfirmation('')
       } else {
-        if (data?.authenticated !== true) throw new Error('Administrator login failed.')
-        await refresh()
-        const next = new URLSearchParams(window.location.search).get('next')
-        router.replace(
-          next === 'step-3' ? '/onedrive-vercel-index-oauth/step-3' : '/onedrive-vercel-index-oauth/step-1',
-        )
+        await login(password)
+        proceed()
       }
       setPassword('')
     } catch (failure) {
-      const message = failure instanceof Error ? failure.message : ''
-      setError(
-        [
-          'Too many requests. Try again later.',
-          'Could not generate administrator configuration.',
-          'Administrator login failed.',
-        ].includes(message)
-          ? message
-          : status === 'uninitialized'
-            ? 'Could not generate administrator configuration.'
-            : 'Administrator login failed.',
-      )
+      setError(getAdminErrorMessage(failure, fallback))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <SetupShell step={0} title={t(status === 'uninitialized' ? 'Set up administrator' : 'Administrator login')}>
-      <div key={status} className="fade-in mx-auto w-full max-w-lg">
-        {status === 'loading' || status === 'authenticated' || status === 'error' ? (
-          <SetupSessionState status={status} retry={refresh} />
-        ) : configuration && status === 'uninitialized' ? (
+    <SetupShell step={0} title={t(generating ? 'Generate password configuration' : 'Administrator login')}>
+      <div className="mx-auto w-full max-w-lg space-y-3">
+        {status === 'uninitialized' && (
+          <SetupStatus>
+            {t('Set ADMIN_PASSWORD_HASH to enable administrator functions, or skip for read-only OAuth.')}
+          </SetupStatus>
+        )}
+        {configuration ? (
           <div className="fade-in space-y-3">
             <SetupStatus tone="success">
-              {t('Set these environment variables and restart the deployment. Keep them private.')}
+              {t(
+                'Replace these environment variables and restart or redeploy. Generating them does not change the current password.',
+              )}
             </SetupStatus>
             <label className={uiFieldLabel}>
-              {t('Environment configuration')}
-              <textarea
-                readOnly
-                value={configuration}
-                rows={5}
-                spellCheck={false}
-                autoComplete="off"
+              {t('Configuration format')}
+              <select
+                value={target}
+                onChange={event => setTarget(event.target.value as 'env' | 'vercel')}
                 className={`mt-1 block ${uiInput}`}
-              />
+              >
+                <option value="env">.env / .env.local / Docker Compose</option>
+                <option value="vercel">Vercel</option>
+              </select>
             </label>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true)
-                try {
-                  await refresh()
-                } finally {
-                  setBusy(false)
-                }
-              }}
-              className={`${uiButton} bg-gray-100 dark:bg-gray-800`}
-            >
-              {busy && <LoadingIcon className="h-4 w-4 motion-safe:animate-spin" />}
-              {t(busy ? 'Loading...' : 'Retry')}
-            </button>
+            {target === 'env' ? (
+              <label className={uiFieldLabel}>
+                {t('Environment configuration')}
+                <textarea
+                  readOnly
+                  value={`ADMIN_PASSWORD_HASH=${configuration.passwordHash}\nADMIN_SESSION_SECRET=${configuration.sessionSecret}`}
+                  rows={4}
+                  spellCheck={false}
+                  autoComplete="off"
+                  className={`mt-1 block ${uiInput}`}
+                />
+              </label>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {t('In Vercel, paste each value without quotes or backslashes.')}
+                </p>
+                {(
+                  [
+                    ['ADMIN_PASSWORD_HASH', configuration.passwordHash],
+                    ['ADMIN_SESSION_SECRET', configuration.sessionSecret],
+                  ] as const
+                ).map(([name, value]) => (
+                  <label key={name} className={uiFieldLabel}>
+                    {name}
+                    <input
+                      readOnly
+                      value={value}
+                      spellCheck={false}
+                      autoComplete="off"
+                      className={`mt-1 block ${uiInput}`}
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap justify-end gap-2 border-t border-gray-400/30 pt-3">
+              <button type="button" onClick={() => changeMode(true)} className={uiButton}>
+                {t('Generate again')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  changeMode(false)
+                  void refresh()
+                }}
+                className={uiPrimaryButton}
+              >
+                {t('Administrator login')}
+              </button>
+            </div>
           </div>
-        ) : (
+        ) : generating ? (
+          <form onSubmit={submit} className="fade-in space-y-3" aria-busy={busy}>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t(
+                'Generate a new password hash at any time, then replace ADMIN_PASSWORD_HASH in your environment variables.',
+              )}
+            </p>
+            <PasswordFields
+              password={password}
+              confirmation={confirmation}
+              setPassword={setPassword}
+              setConfirmation={setConfirmation}
+              busy={busy}
+              error={error}
+            />
+            {error && (
+              <div id="admin-error">
+                <SetupStatus tone="error">{t(error)}</SetupStatus>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 border-t border-gray-400/30 pt-3">
+              {status !== 'uninitialized' && (
+                <button type="button" disabled={busy} onClick={() => changeMode(false)} className={uiButton}>
+                  {t('Cancel')}
+                </button>
+              )}
+              <button type="submit" disabled={busy} className={uiPrimaryButton}>
+                {busy && <LoadingIcon className="h-4 w-4 motion-safe:animate-spin" />}
+                {t(busy ? 'Loading...' : 'Generate configuration')}
+              </button>
+            </div>
+          </form>
+        ) : status === 'anonymous' ? (
           <form onSubmit={submit} className="fade-in space-y-3" aria-busy={busy}>
             <label className={uiFieldLabel}>
               {t('Enter Password')}
               <input
                 type="password"
-                autoComplete={status === 'uninitialized' ? 'new-password' : 'current-password'}
+                autoComplete="current-password"
                 required
-                minLength={8}
                 disabled={busy}
                 value={password}
                 onChange={event => setPassword(event.target.value)}
@@ -143,38 +208,86 @@ export default function OAuthStep0() {
                 className={`mt-1 block ${uiInput}`}
               />
             </label>
-            {status === 'uninitialized' && (
-              <label className={uiFieldLabel}>
-                {t('Confirm password')}
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                  disabled={busy}
-                  value={confirmation}
-                  onChange={event => setConfirmation(event.target.value)}
-                  aria-invalid={!!error}
-                  aria-describedby={error ? 'admin-error' : undefined}
-                  className={`mt-1 block ${uiInput}`}
-                />
-              </label>
-            )}
             {error && (
-              <div id="admin-error" key={error}>
+              <div id="admin-error">
                 <SetupStatus tone="error">{t(error)}</SetupStatus>
               </div>
             )}
             <div className="flex justify-end border-t border-gray-400/30 pt-3">
               <button type="submit" disabled={busy} className={uiPrimaryButton}>
                 {busy && <LoadingIcon className="h-4 w-4 motion-safe:animate-spin" />}
-                {busy ? t('Loading...') : t(status === 'uninitialized' ? 'Generate configuration' : 'Login')}
-                {!busy && <ArrowRight aria-hidden="true" className="h-4 w-4" />}
+                {t(busy ? 'Loading...' : 'Login')}
               </button>
             </div>
           </form>
+        ) : status === 'authenticated' ? (
+          <div className="flex justify-end">
+            <button type="button" onClick={proceed} className={uiPrimaryButton}>
+              {t('Proceed to OAuth')}
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <SetupSessionState status={status} retry={refresh} />
+        )}
+        {!generating && !configuration && status !== 'loading' && (
+          <button type="button" onClick={() => changeMode(true)} className={uiButton}>
+            {t('Generate password configuration')}
+          </button>
+        )}
+        {status === 'uninitialized' && (
+          <div className="flex justify-end border-t border-gray-400/30 pt-3">
+            <button type="button" disabled={busy} onClick={proceed} className={uiButton}>
+              {t('Skip administrator setup (read-only OAuth)')}
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
     </SetupShell>
+  )
+}
+
+function PasswordFields({
+  password,
+  confirmation,
+  setPassword,
+  setConfirmation,
+  busy,
+  error,
+}: {
+  password: string
+  confirmation: string
+  setPassword: (value: string) => void
+  setConfirmation: (value: string) => void
+  busy: boolean
+  error: string
+}) {
+  const t = useTranslations()
+  return (
+    <>
+      {(
+        [
+          ['Enter Password', password, setPassword],
+          ['Confirm password', confirmation, setConfirmation],
+        ] as const
+      ).map(([label, value, update]) => (
+        <label key={label} className={uiFieldLabel}>
+          {t(label)}
+          <input
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            disabled={busy}
+            value={value}
+            onChange={event => update(event.target.value)}
+            aria-invalid={!!error}
+            aria-describedby={error ? 'admin-error' : undefined}
+            className={`mt-1 block ${uiInput}`}
+          />
+        </label>
+      ))}
+    </>
   )
 }

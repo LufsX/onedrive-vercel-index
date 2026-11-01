@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminError, checkAdminRateLimit, generateAdminSetup, isAdminInitialized, readAdminBody, validateWriteRequest } from '../../../../lib/adminAuth'
+import { adminError, adminUnavailable, checkAdminRateLimit, generateAdminSetup, readAdminBody, validateWriteRequest } from '../../../../lib/adminAuth'
 
 export async function POST(request: NextRequest) {
   const rejected = validateWriteRequest(request)
   if (rejected) return rejected
   try {
-    if (await isAdminInitialized()) return adminError('already_initialized', 403)
     if (!(await checkAdminRateLimit('setup'))) return adminError('rate_limited', 429)
     const body = await readAdminBody(request)
     const result = await generateAdminSetup(body?.password)
@@ -14,7 +13,7 @@ export async function POST(request: NextRequest) {
       passwordHash: result.passwordHash,
       sessionSecret: result.sessionSecret,
     }, { headers: { 'Cache-Control': 'no-store' } })
-  } catch {
-    return adminError('auth_unavailable', 503)
+  } catch (error) {
+    return adminUnavailable(error)
   }
 }

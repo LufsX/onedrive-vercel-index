@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/react'
 import Script from 'next/script'
+import { cookies } from 'next/headers'
 
 import '../styles/globals.css'
 import '../styles/markdown-github.css'
@@ -13,6 +14,8 @@ import BrandIconsProvider from '../components/BrandIconsProvider'
 import { brandIcons } from '../lib/brandIcons'
 import ProgressBar from '../components/ProgressBar'
 import { getLocale, getMessages } from '../lib/i18n'
+import { isAdminConfigurationValid } from '../lib/adminAuth'
+import AdminSessionProvider, { type AdminSessionBootstrap } from '../components/AdminSessionProvider'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +40,13 @@ type RootLayoutProps = {
 export default async function RootLayout(props: RootLayoutProps) {
   const locale = await getLocale()
   const messages = await getMessages(locale)
+  const cookieStore = await cookies()
+  const adminBootstrap: AdminSessionBootstrap = {
+    status: !process.env.ADMIN_PASSWORD_HASH
+      ? 'uninitialized'
+      : isAdminConfigurationValid() ? 'anonymous' : 'error',
+    hasSessionCookie: cookieStore.has('admin_session'),
+  }
   const publicSiteConfig = {
     userPrincipalName: siteConfig.userPrincipalName,
     icon: siteConfig.icon,
@@ -95,7 +105,9 @@ export default async function RootLayout(props: RootLayoutProps) {
 
         <ClientProviders messages={messages} locale={locale}>
           <ConfigProvider siteConfig={publicSiteConfig} apiConfig={publicApiConfig}>
-            <BrandIconsProvider icons={brandIcons}>{props.children}</BrandIconsProvider>
+            <AdminSessionProvider bootstrap={adminBootstrap}>
+              <BrandIconsProvider icons={brandIcons}>{props.children}</BrandIconsProvider>
+            </AdminSessionProvider>
           </ConfigProvider>
         </ClientProviders>
       </body>

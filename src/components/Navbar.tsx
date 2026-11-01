@@ -20,6 +20,7 @@ import { LoadingIcon } from './Loading'
 import { uiButton, uiFieldLabel, uiInput, uiPrimaryButton } from './uiStyles'
 import useDeviceOS from '../utils/useDeviceOS'
 import useAdminSession from '../utils/useAdminSession'
+import { getAdminErrorMessage } from '../utils/adminErrors'
 
 const SearchModal = dynamic(() => import('./SearchModal'), { ssr: false })
 
@@ -32,7 +33,7 @@ const Navbar = () => {
   const admin = useAdminSession()
   const [loginOpen, setLoginOpen] = useState(false)
   const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState(false)
+  const [loginError, setLoginError] = useState('')
   const loginFormId = useId()
   const passwordRef = useRef<HTMLInputElement>(null)
 
@@ -98,12 +99,12 @@ const Navbar = () => {
   const login = async (event: React.FormEvent) => {
     event.preventDefault()
     if (admin.busy) return
-    setLoginError(false)
+    setLoginError('')
     try {
       await admin.login(password)
       setLoginOpen(false)
-    } catch {
-      setLoginError(true)
+    } catch (failure) {
+      setLoginError(getAdminErrorMessage(failure))
     }
   }
 
@@ -240,7 +241,7 @@ const Navbar = () => {
         closeDisabled={admin.busy}
         afterLeave={() => {
           setPassword('')
-          setLoginError(false)
+          setLoginError('')
         }}
         footer={
           <>
@@ -271,9 +272,15 @@ const Navbar = () => {
           </label>
           {loginError && (
             <p role="alert" className="text-sm text-red-500">
-              {t('Administrator login failed.')}
+              {t(loginError)}
             </p>
           )}
+          <Link
+            href="/onedrive-vercel-index-oauth/step-0?generate=1"
+            className="inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
+          >
+            {t('Generate password configuration')}
+          </Link>
         </form>
       </AppDialog>
       {logoutMounted && (

@@ -12,16 +12,10 @@ type PasswordParameters = { salt: string; hash: string; N: number; r: number; p:
 const defaultScrypt = { N: 16384, r: 8, p: 1 }
 
 function parsePasswordHash(value: string): PasswordParameters | null {
-  const fields = value.split('$')
-  if (fields[0] !== 'scrypt') return null
-  let salt: string, hash: string, N: number, r: number, p: number
-  if (fields.length === 3) {
-    ;[, salt, hash] = fields
-    ;({ N, r, p } = defaultScrypt)
-  } else if (fields.length === 6 && fields.slice(1, 4).every(field => /^[1-9]\d*$/.test(field))) {
-    ;[, , , , salt, hash] = fields
-    ;[N, r, p] = fields.slice(1, 4).map(Number)
-  } else return null
+  const fields = value.split(':')
+  if (fields.length !== 6 || fields[0] !== 'scrypt' || !fields.slice(1, 4).every(field => /^[1-9]\d*$/.test(field))) return null
+  const [, , , , salt, hash] = fields
+  const [N, r, p] = fields.slice(1, 4).map(Number)
   if (!/^[a-f0-9]{32}$/.test(salt) || !/^[a-f0-9]{128}$/.test(hash) ||
       !Number.isSafeInteger(N) || N < 16384 || N > 65536 || (N & (N - 1)) !== 0 ||
       !Number.isSafeInteger(r) || r < 8 || r > 16 || !Number.isSafeInteger(p) || p < 1 || p > 4 ||
@@ -31,6 +25,11 @@ function parsePasswordHash(value: string): PasswordParameters | null {
 
 export function adminError(error: string, status: number): NextResponse {
   return NextResponse.json({ error }, { status, headers })
+}
+
+export function adminUnavailable(error: unknown): NextResponse {
+  const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined
+  return adminError(code === 'redis_not_configured' || code === 'redis_invalid_url' ? code : 'auth_unavailable', 503)
 }
 
 // The deployment proxy must validate Host and preserve the external scheme and host.
@@ -76,12 +75,13 @@ export async function readAdminBody(request: NextRequest): Promise<Record<string
   }
 }
 
-export async function checkAdminStore(): Promise<void> {
-  await getRedisClient().ping()
-}
-
 export async function isAdminInitialized(): Promise<boolean> {
   return !!process.env.ADMIN_PASSWORD_HASH
+}
+
+export function isAdminConfigurationValid(): boolean {
+  const hash = process.env.ADMIN_PASSWORD_HASH
+  return !!hash && parsePasswordHash(hash) !== null
 }
 
 function sessionKey(): Buffer | null {
@@ -144,7 +144,7 @@ export async function generateAdminSetup(password: unknown): Promise<{ passwordH
   if (typeof password !== 'string' || password.length < 8 || Buffer.byteLength(password) > 1024) return null
   const salt = randomBytes(16).toString('hex')
   const { N, r, p } = defaultScrypt
-  return { passwordHash: `scrypt$${N}$${r}$${p}$${salt}$${await passwordHash(password, salt, defaultScrypt)}`, sessionSecret: randomBytes(32).toString('hex') }
+  return { passwordHash: `scrypt:${N}:${r}:${p}:${salt}:${await passwordHash(password, salt, defaultScrypt)}`, sessionSecret: randomBytes(32).toString('hex') }
 }
 
 export async function loginAdmin(password: unknown): Promise<string | null> {
