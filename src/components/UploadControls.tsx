@@ -251,7 +251,7 @@ export default function UploadControls({ path, onComplete }: { path: string; onC
             <span role="status" className="min-w-0">
               {queue.items.length
                 ? t('{{completed}} of {{total}} file(s) uploaded', { completed, total: queue.items.length })
-                : t('Upload queue is empty.')}
+                : t('Upload queue is empty. Add files to begin uploading.')}
             </span>
             <div className="flex shrink-0 items-center gap-2">
               {completed > 0 && !queue.running && (
@@ -269,7 +269,7 @@ export default function UploadControls({ path, onComplete }: { path: string; onC
             </div>
           </div>
 
-          {queue.items.length > 0 ? (
+          {queue.items.length > 0 && (
             <ul className="max-h-[min(18rem,35dvh)] divide-y divide-gray-400/20 overflow-y-auto rounded border border-gray-400/30">
               {queue.items.map(item => {
                 const progress = item.file.size ? Math.min(100, Math.floor((item.uploaded / item.file.size) * 100)) : 0
@@ -326,7 +326,7 @@ export default function UploadControls({ path, onComplete }: { path: string; onC
                         </span>
                       </div>
                       {item.state === 'done' && item.backupName && (
-                        <p className="mt-0.5 break-all text-xs text-gray-500 dark:text-gray-400">
+                        <p className="mt-0.5 text-xs break-all text-gray-500 dark:text-gray-400">
                           {t('Previous file saved as {{name}}.', { name: item.backupName })}
                         </p>
                       )}
@@ -386,8 +386,6 @@ export default function UploadControls({ path, onComplete }: { path: string; onC
                 )
               })}
             </ul>
-          ) : (
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t('Add files to begin uploading.')}</p>
           )}
 
           {message && (
