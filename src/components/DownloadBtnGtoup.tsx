@@ -5,12 +5,12 @@ import { useClientConfig } from './ClientConfigProvider'
 import { MouseEventHandler, useState } from 'react'
 import { Copy, Download, FileDown, Pencil, type LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useClipboard } from 'use-clipboard-copy'
 import { useTranslations } from './ClientProviders'
 
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { rawFileUrl } from '../utils/rawFileUrl'
+import useClipboard from '../utils/useClipboard'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { getStoredToken } from '../utils/protectedRouteHandler'

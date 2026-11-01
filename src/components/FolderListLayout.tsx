@@ -6,17 +6,17 @@ import type { OdFolderChildren } from '../types'
 
 import Link from 'next/link'
 import { FC, memo } from 'react'
-import { useClipboard } from 'use-clipboard-copy'
 import { CircleArrowDown, Copy } from 'lucide-react'
 import { useTranslations } from './ClientProviders'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
+import useClipboard from '../utils/useClipboard'
 
 import { Downloading, Checkbox, ChildIcon, ChildName } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import HoverSurface from './HoverSurface'
-import { uiIconButton } from './uiStyles'
+import { uiRowIconButton } from './uiStyles'
 import { FileDeleteButton, useFileManager } from './FileManager'
 import DirectoryBody, { Skeleton } from './folder/DirectoryBody'
 
@@ -33,9 +33,9 @@ const sizeWidth = 'hidden w-20 shrink-0 truncate md:block'
 const dateCell = `${dateWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
 const sizeCell = `${sizeWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
 const rightCell = 'hidden shrink-0 items-center justify-end gap-0.5 pr-2 md:flex md:w-[100px]'
-const actionButton = uiIconButton
-const rowAction =
-  'cursor-pointer rounded p-1 transition-colors duration-150 motion-reduce:transition-none hover:bg-gray-300 dark:hover:bg-gray-600'
+// Same control as the header and the grid card, so every row icon looks alike.
+const actionButton = uiRowIconButton
+const rowAction = uiRowIconButton
 
 const FileListItem: FC<{ fileContent: OdFolderChildren }> = memo(function FileListItem({ fileContent: c }) {
   const { datetimeFormat } = useClientConfig().siteConfig
@@ -98,7 +98,7 @@ const FolderListRow = memo(function FolderListRow({
               <Copy className="h-4 w-4" />
             </span>
             {generating ? (
-              <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
+              <Downloading title={t('Downloading folder, refresh page to cancel')} style="p-1" />
             ) : (
               <span
                 title={t('Download folder')}
@@ -188,7 +188,7 @@ const FolderListLayout = ({
             <Copy className="h-4 w-4" />
           </button>
           {totalGenerating ? (
-            <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
+            <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1" />
           ) : (
             <button
               title={t('Download selected files')}

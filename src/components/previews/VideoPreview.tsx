@@ -11,7 +11,7 @@ import { Copy, Download, FileDown, Pencil } from 'lucide-react'
 import { useTranslations } from '../ClientProviders'
 
 import toast from 'react-hot-toast'
-import { useClipboard } from 'use-clipboard-copy'
+import useClipboard from '../../utils/useClipboard'
 
 import { getBaseUrl } from '../../utils/getBaseUrl'
 import { getStoredToken } from '../../utils/protectedRouteHandler'

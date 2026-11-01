@@ -6,7 +6,7 @@ import { Dispatch, SetStateAction, useRef, useState } from 'react'
 import { useTranslations } from './ClientProviders'
 import { Description } from '@headlessui/react'
 import { Check, Copy } from 'lucide-react'
-import { useClipboard } from 'use-clipboard-copy'
+import useClipboard from '../utils/useClipboard'
 
 import AppDialog from './AppDialog'
 import { uiFieldLabel, uiIconButton, uiInput } from './uiStyles'

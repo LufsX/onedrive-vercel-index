@@ -3,19 +3,16 @@
 import type { OdFolderChildren } from '../../types'
 import { FC, useEffect, useRef } from 'react'
 import { Check, Minus } from 'lucide-react'
-import emojiRegex from 'emoji-regex'
 import { getRawExtension } from '../../utils/getFileIcon'
+import { firstEmoji } from '../../utils/emoji'
 import FileIcon from '../FileIcon'
 import { LoadingIcon } from '../Loading'
 
 // Render the icon of a folder child (may be a file or a folder), use emoji if the name of the child contains emoji
-const renderEmoji = (name: string) => {
-  const emoji = emojiRegex().exec(name)
-  return { render: emoji && !emoji.index, emoji }
-}
+const renderEmoji = (name: string) => firstEmoji(name)
 const formatChildName = (name: string) => {
-  const { render, emoji } = renderEmoji(name)
-  return render ? name.replace(emoji ? emoji[0] : '', '').trim() : name
+  const emoji = renderEmoji(name)
+  return emoji ? name.replace(emoji, '').trim() : name
 }
 export const ChildName: FC<{ name: string; folder?: boolean }> = ({ name, folder }) => {
   const original = formatChildName(name)
@@ -28,9 +25,9 @@ export const ChildName: FC<{ name: string; folder?: boolean }> = ({ name, folder
   )
 }
 export const ChildIcon: FC<{ child: OdFolderChildren }> = ({ child }) => {
-  const { render, emoji } = renderEmoji(child.name)
-  return render ? (
-    <span>{emoji ? emoji[0] : '📁'}</span>
+  const emoji = renderEmoji(child.name)
+  return emoji ? (
+    <span>{emoji}</span>
   ) : (
     <FileIcon name={child.name} folder={Boolean(child.folder)} video={Boolean(child.video)} className="h-4 w-4" />
   )

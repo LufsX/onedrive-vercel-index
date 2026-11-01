@@ -7,20 +7,20 @@ import type { OdFolderChildren } from '../types'
 import Link from 'next/link'
 import { memo, useState } from 'react'
 import { CircleArrowDown, Copy } from 'lucide-react'
-import { useClipboard } from 'use-clipboard-copy'
 import { useTranslations } from './ClientProviders'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { formatModifiedDateTime } from '../utils/fileDetails'
+import useClipboard from '../utils/useClipboard'
 import { Checkbox, ChildIcon, ChildName, Downloading } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import HoverSurface from './HoverSurface'
-import { uiIconButton } from './uiStyles'
+import { uiRowIconButton } from './uiStyles'
 import { FileDeleteButton } from './FileManager'
 import DirectoryBody, { Skeleton } from './folder/DirectoryBody'
 
-const rowAction =
-  'cursor-pointer rounded p-1 transition-colors duration-150 hover:bg-gray-300 motion-reduce:transition-none dark:hover:bg-gray-600'
+// Same control as the list rows, so every card icon looks alike.
+const rowAction = uiRowIconButton
 
 const GridItem = memo(function GridItem({ c }: { c: OdFolderChildren }) {
   const { datetimeFormat } = useClientConfig().siteConfig
@@ -107,7 +107,7 @@ const FolderGridCard = memo(function FolderGridCard({
               <Copy className="h-4 w-4" />
             </span>
             {generating ? (
-              <Downloading title={t('Downloading folder, refresh page to cancel')} style="px-1.5 py-1" />
+              <Downloading title={t('Downloading folder, refresh page to cancel')} style="p-1" />
             ) : (
               <span
                 title={t('Download folder')}
@@ -196,7 +196,7 @@ const FolderGridLayout = ({
           />
           <button
             title={t('Copy selected files permalink')}
-            className={uiIconButton}
+            className={uiRowIconButton}
             disabled={totalSelected === 0}
             onClick={() => {
               copy(handleSelectedPermalink(getBaseUrl()))
@@ -206,11 +206,11 @@ const FolderGridLayout = ({
             <Copy className="h-4 w-4" />
           </button>
           {totalGenerating ? (
-            <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1.5" />
+            <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1" />
           ) : (
             <button
               title={t('Download selected files')}
-              className={uiIconButton}
+              className={uiRowIconButton}
               disabled={totalSelected === 0}
               onClick={handleSelectedDownload}
             >
