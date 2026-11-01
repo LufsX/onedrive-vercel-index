@@ -1,5 +1,5 @@
 import apiConfig from '../../../../config/api.config'
-import axiosInstance from '../../../utils/axiosInstance'
+import upstreamRequest from '../../../utils/upstreamRequest'
 
 type SearchResult = { id: string; [key: string]: unknown }
 type Request = { id: string; result: SearchResult; url: string }
@@ -38,11 +38,12 @@ async function verifyBatch(
   accessToken: string,
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
-  const { status, data } = await axiosInstance.post(
-    endpoint,
-    { requests: requests.map(({ id, url }) => ({ id, method: 'GET', url })) },
-    { headers: { Authorization: `Bearer ${accessToken}` }, signal },
-  )
+  const { status, data } = await upstreamRequest<{ responses?: Record<string, any>[] }>(endpoint, {
+    method: 'POST',
+    body: { requests: requests.map(({ id, url }) => ({ id, method: 'GET', url })) },
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal,
+  })
   if (status !== 200 || !Array.isArray(data?.responses) || data.responses.length !== requests.length) {
     throw new Error('Invalid batch response.')
   }

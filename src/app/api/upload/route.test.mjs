@@ -5,8 +5,20 @@ import { readFileSync } from 'node:fs'
 
 const require = createRequire(import.meta.url)
 const ts = require('typescript')
+
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
 require.extensions['.ts'] = (module, filename) => module._compile(
-  ts.transpileModule(readFileSync(filename, 'utf8'), {
+  compileOnce(readFileSync(filename, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 },
   }).outputText, filename,
 )
@@ -16,7 +28,7 @@ const oauthConfigPath = require.resolve('../../../lib/oauthServerConfig.ts')
 require.cache[oauthConfigPath] = { id: oauthConfigPath, filename: oauthConfigPath, loaded: true, exports: { getOAuthClientSecret: () => '' } }
 const od = require('../../../lib/odApi.ts')
 const cache = require('../../../lib/cache.ts')
-const axios = require('../../../utils/axiosInstance.ts').default
+const upstream = require('../../../utils/upstreamRequest.ts').default
 const guard = require('../../../lib/pathGuard.ts')
 const site = require('../../../../config/site.config.js')
 const { POST } = require('./session/route.ts')
@@ -29,10 +41,10 @@ const makeRequest = (body = { path: '/', name: 'file.txt', size: 10 }) =>
 
 function setup(t) {
   const saved = { auth: admin.requireAdmin, validate: admin.validateWriteRequest, limit: admin.checkAdminRateLimit,
-    token: od.getAccessToken, get: axios.get, post: axios.post, put: axios.put, base: site.baseDirectory, limitEnv: process.env.UPLOAD_MAX_BYTES }
+    token: od.getAccessToken, get: upstream.get, post: upstream.post, put: upstream.put, base: site.baseDirectory, limitEnv: process.env.UPLOAD_MAX_BYTES }
   t.after(() => {
     admin.requireAdmin = saved.auth; admin.validateWriteRequest = saved.validate; admin.checkAdminRateLimit = saved.limit
-    od.getAccessToken = saved.token; axios.get = saved.get; axios.post = saved.post; axios.put = saved.put
+    od.getAccessToken = saved.token; upstream.get = saved.get; upstream.post = saved.post; upstream.put = saved.put
     site.baseDirectory = saved.base
     if (saved.limitEnv === undefined) delete process.env.UPLOAD_MAX_BYTES
     else process.env.UPLOAD_MAX_BYTES = saved.limitEnv
@@ -45,18 +57,18 @@ function setup(t) {
   admin.checkAdminRateLimit = async () => true
   od.getAccessToken = async () => 'secret-token'
   const calls = []
-  axios.get = async (url, config) => {
+  upstream.get = async (url, config) => {
     calls.push({ method: 'get', url, config })
     const isRoot = url.endsWith('/root' + od.encodePath('/'))
     return { data: isRoot
       ? { id: 'root-id', name: 'Share', parentReference: { path: '/drive/root:' }, folder: {} }
       : { id: 'child-id', name: 'Folder', parentReference: { path: '/drive/root:/Share' }, folder: {} } }
   }
-  axios.post = async (url, body, config) => {
+  upstream.post = async (url, body, config) => {
     calls.push({ method: 'post', url, body, config })
     return { data: { uploadUrl: 'https://abc.up.1drv.com/upload?token=private', expirationDateTime: '2099-01-01T00:00:00Z' } }
   }
-  axios.put = async (url, body, config) => {
+  upstream.put = async (url, body, config) => {
     calls.push({ method: 'put', url, body, config })
     return { status: 201, data: { id: 'new', size: 0 } }
   }
@@ -93,7 +105,7 @@ test('session creation checks scope and binds encoded file to validated parent i
   assert.match(calls[2].url, /\/items\/child-id:\/%E4%B8%AD%E6%96%87%20%23.txt:\/createUploadSession$/)
   assert.equal(calls[2].body.item['@microsoft.graph.conflictBehavior'], 'rename')
   assert.equal(calls[2].config.headers.Authorization, 'Bearer secret-token')
-  assert.equal(calls[2].config.maxRedirects, 0)
+  assert.equal(calls[2].config.redirect, 'manual')
 })
 
 test('rejects directories outside the shared root and shortcuts before session creation', async t => {
@@ -103,7 +115,7 @@ test('rejects directories outside the shared root and shortcuts before session c
     { id: 'x', name: 'Share', parentReference: { path: '/drive/root:' }, folder: {}, remoteItem: {} },
     { id: 'x', name: 'Share', parentReference: { path: '/drive/root:' }, file: {} },
   ]) {
-    axios.get = async () => ({ data })
+    upstream.get = async () => ({ data })
     assert.equal((await POST(makeRequest())).status, 400)
   }
   assert.equal(calls.length, 0)
@@ -120,7 +132,7 @@ test('empty files use conditional content PUT and invalidate even on ambiguous f
   assert.equal(calls.at(-1).body.length, 0)
   assert.equal(cache.knownKind('/old'), undefined)
   cache.rememberKind('/old', 'file', 30000)
-  axios.put = async () => { throw new Error('lost response') }
+  upstream.put = async () => { throw new Error('lost response') }
   assert.equal((await POST(makeRequest({ path: '/', name: 'empty.txt', size: 0 }))).status, 502)
   assert.equal(cache.knownKind('/old'), undefined)
 })
@@ -154,7 +166,7 @@ test('conflict behavior supports fail and rename for sessions and empty files', 
   assert.equal((await POST(makeRequest({ path: '/', name: 'x', size: 1, conflictBehavior: 'replace' }))).status, 400)
 
   const attempted = []
-  axios.put = async (url, body, config) => {
+  upstream.put = async (url, body, config) => {
     attempted.push({ url, config })
     if (attempted.length === 1) throw { response: { status: 412 } }
     return { status: 201, data: { id: 'new', size: 0 } }
@@ -182,11 +194,11 @@ test('auth and rate failures stop Graph; upstream errors never leak secrets', as
   assert.equal((await POST(makeRequest())).status, 503)
   assert.equal(calls.length, 0)
   admin.checkAdminRateLimit = async () => true
-  axios.post = async () => { throw { response: { status: 500, data: 'secret-token' } } }
+  upstream.post = async () => { throw { response: { status: 500, data: 'secret-token' } } }
   const response = await POST(makeRequest())
   assert.equal(response.status, 502)
   assert.ok(!(await response.text()).includes('secret-token'))
-  axios.post = async () => ({ data: { uploadUrl: 'https://evil.test/?secret=token', expirationDateTime: '2099-01-01' } })
+  upstream.post = async () => ({ data: { uploadUrl: 'https://evil.test/?secret=token', expirationDateTime: '2099-01-01' } })
   const invalid = await POST(makeRequest())
   assert.equal(invalid.status, 502)
   assert.ok(!(await invalid.text()).includes('secret=token'))
@@ -228,7 +240,7 @@ test('raw download redirects and thumbnails fetch fresh targets without process 
   const raw = require('../../../lib/rawFileHandler.ts').handleRawFile
   const thumbnail = require('../thumbnail/route.ts').GET
   let rawReads = 0, thumbnailReads = 0
-  axios.get = async url => {
+  upstream.get = async url => {
     if (url.endsWith('/thumbnails')) {
       thumbnailReads++
       return { data: { value: [{ medium: { url: 'https://example.test/thumbnail-' + thumbnailReads } }] } }

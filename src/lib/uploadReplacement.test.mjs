@@ -4,12 +4,24 @@ import { createRequire } from 'node:module'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 class MutationError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status }
 }
 function load(path, mocks) {
-  const compiled = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {
+  const compiled = compileOnce(readFileSync(new URL(path, import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 },
   }).outputText
   const loaded = { exports: {} }
@@ -74,7 +86,7 @@ function setup(t) {
       return { ...item }
     },
   }
-  const axios = {
+  const verbs = {
     post: async (url, body, config) => {
       state.writes.push({ method: 'post', url, body, config })
       if (state.sessionFailure) throw state.sessionFailure
@@ -108,11 +120,27 @@ function setup(t) {
       return state.afterPatch ? state.afterPatch(response, attempt) : response
     },
   }
+  // The HTTP client dispatches on options.method, so tests stub the per-verb helpers.
+  const upstream = Object.assign(
+    async (url, options = {}) => {
+      const method = options.method ?? 'GET'
+      if (method === 'POST') return verbs.post(url, options.body, options)
+      if (method === 'PATCH') return verbs.patch(url, options.body, options)
+      return verbs.get(url, options)
+    },
+    verbs,
+  )
   const lib = load('./uploadReplacement.ts', {
     'node:crypto': require('node:crypto'), 'next/server': {},
     '../../config/api.config': { driveApi: 'https://graph.test/drive' },
     '../../config/site.config': { kvPrefix: 'siteA:' },
-    '../utils/axiosInstance': axios, '../utils/redisClient': { getRedisClient: () => redis },
+    '../utils/upstreamRequest': {
+      __esModule: true,
+      default: upstream,
+      upstreamStatus: error => (typeof error?.status === 'number' ? error.status : error?.response?.status),
+      upstreamFailure: error => (typeof error?.status === 'number' ? { status: error.status, data: error.data } : {}),
+    },
+    '../utils/redisClient': { getRedisClient: () => redis },
     '../app/api/upload/shared': { authorize: async () => state.denied ?? null, readJson: async () => state.body ?? {} },
     './adminAuth': { checkAdminRateLimit: async (...args) => { state.rates.push(args); return !state.rateDenied } },
     './cache': { clearCache: () => state.clears++ },
@@ -185,8 +213,8 @@ test('large preparation uses fail, random temporary names, owner binding, prefix
   assert.ok(write.url.includes(encodeURIComponent(stored.tempName) + ':/createUploadSession'))
   assert.equal(Object.hasOwn(write.body, 'deferCommit'), false)
   assert.ok(write.url.includes('/items/parent-id:/'))
-  assert.equal(write.config.maxRedirects, 0)
-  assert.equal(write.config.timeout, 10000)
+  assert.equal(write.config.redirect, 'manual')
+  assert.equal(write.config.timeoutMs, 10000)
   assert.ok(!JSON.stringify(stored).includes('private-token'))
   assert.ok(!JSON.stringify(stored).includes('upload?'))
   assert.equal(state.clears, 1)
@@ -252,8 +280,8 @@ test('commit retains backup, conditionally renames both files, and replays origi
   assert.equal(state.saves[0].phase, 'committing')
   for (const patch of patches) {
     assert.equal(patch.body['@microsoft.graph.conflictBehavior'], 'fail')
-    assert.equal(patch.config.maxRedirects, 0)
-    assert.equal(patch.config.timeout, 10000)
+    assert.equal(patch.config.redirect, 'manual')
+    assert.equal(patch.config.timeoutMs, 10000)
   }
   assert.deepEqual(await commit(prepared.jobId), receipt)
   assert.equal(state.writes.length, 3)

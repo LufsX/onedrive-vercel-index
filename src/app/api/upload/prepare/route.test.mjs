@@ -4,13 +4,25 @@ import { createRequire } from 'node:module'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 const { NextRequest, NextResponse } = require('next/server')
 class MutationError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status }
 }
 function load(path, mocks) {
-  const compiled = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {
+  const compiled = compileOnce(readFileSync(new URL(path, import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 },
   }).outputText
   const loaded = { exports: {} }
@@ -39,7 +51,7 @@ function setup() {
   const lib = load('../../../../lib/uploadReplacement.ts', {
     'node:crypto': require('node:crypto'), 'next/server': {},
     '../../config/api.config': {}, '../../config/site.config': {},
-    '../utils/axiosInstance': {}, '../utils/redisClient': {},
+    '../utils/upstreamRequest': {}, '../utils/redisClient': {},
     '../app/api/upload/shared': shared, './adminAuth': admin,
     './cache': {}, './driveMutation': {
       MutationError, mutationError: error => error instanceof MutationError ? error : new MutationError('upstream_unavailable', 502),

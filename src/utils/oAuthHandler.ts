@@ -1,6 +1,6 @@
-import axios from 'axios'
 import { AES, Utf8 } from 'crypto-es'
 
+import upstreamRequest from './upstreamRequest'
 import type { ClientApiConfig } from '../components/ClientConfigProvider'
 
 // Just a disguise to obfuscate required tokens (including but not limited to client secret,
@@ -56,32 +56,37 @@ export async function requestTokenWithAuthCode(
   | { stored: true }
   | { error: string; errorDescription: string; errorUri: string }
 > {
-  return axios
-    .post('/api/oauth/token', { code }, {
+  type Result = { stored?: boolean; error?: string; errorDescription?: string; errorUri?: string }
+  try {
+    const { data } = await upstreamRequest<Result>('/api/oauth/token', {
+      method: 'POST',
+      body: { code },
       headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
+      // The route reports OAuth failures in the body, so every status carries meaning.
+      validateStatus: () => true,
     })
-    .then(resp => resp.data)
-    .catch(err => {
-      // A network failure has no response body; never let the wizard sit on
-      // "Requesting tokens..." forever.
-      const data = err?.response?.data
-      if (!data || typeof data !== 'object' || typeof data.error !== 'string' || !data.error) {
-        return {
-          error: 'network_error',
-          errorDescription: 'Could not reach the token service.',
-          errorUri: '',
-        }
-      }
 
+    if (data?.stored) return { stored: true }
+    if (typeof data?.error === 'string' && data.error) {
       return {
         error: data.error,
         errorDescription: typeof data.errorDescription === 'string' ? data.errorDescription : '',
         errorUri: typeof data.errorUri === 'string' ? data.errorUri : '',
       }
-    })
+    }
+  } catch {
+    // A network failure has no response body.
+  }
+
+  // Never let the wizard sit on "Requesting tokens..." forever.
+  return {
+    error: 'network_error',
+    errorDescription: 'Could not reach the token service.',
+    errorUri: '',
+  }
 }
 
 // Verify the identity of the user with the access token and compare it with the userPrincipalName
@@ -90,31 +95,13 @@ export async function getAuthPersonInfo(accessToken: string, driveApi: string) {
   const profileApi = driveApi.replace('/drive', '')
 
   try {
-    const response = await axios.get(profileApi, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+    const response = await upstreamRequest(profileApi, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      validateStatus: () => true,
     })
 
     return { data: response.data, status: response.status }
-  } catch (error: any) {
-    return { data: error?.response?.data ?? {}, status: error?.response?.status ?? 0 }
+  } catch {
+    return { data: {}, status: 0 }
   }
-}
-
-export async function sendTokenToServer(accessToken: string, refreshToken: string, expiryTime: string) {
-  return await axios.post(
-    '/api',
-    {
-      obfuscatedAccessToken: obfuscateToken(accessToken),
-      accessTokenExpiry: parseInt(expiryTime),
-      obfuscatedRefreshToken: obfuscateToken(refreshToken),
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-    },
-  )
 }

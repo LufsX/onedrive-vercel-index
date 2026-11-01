@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import axiosInstance from '../../../utils/axiosInstance'
+import upstreamRequest, { upstreamFailure } from '../../../utils/upstreamRequest'
 import { encodePath, getAccessToken } from '../../../lib/odApi'
 import { isPasswordFile, itemPath, validProtectedRoutes } from '../../../lib/itemPath'
 import { matchProtectedPath } from '../../../utils/protectedPath'
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const searchApi = `${apiConfig.driveApi}/root${encodedPath}/search(q='${sanitiseQuery(searchQuery)}')`
 
     try {
-      const { data } = await axiosInstance.get(searchApi, {
+      const { data } = await upstreamRequest<{ value?: unknown[] }>(searchApi, {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: {
           $select: 'id,name,file,folder,parentReference',
@@ -67,12 +67,10 @@ export async function GET(request: NextRequest) {
         }),
         { headers },
       )
-    } catch (error: any) {
+    } catch (error) {
       if (request.signal.aborted) return cancelled()
-      return NextResponse.json(
-        { error: error?.response?.data ?? 'Internal server error.' },
-        { status: error?.response?.status ?? 500, headers },
-      )
+      const { status, data } = upstreamFailure(error)
+      return NextResponse.json({ error: data ?? 'Internal server error.' }, { status: status ?? 500, headers })
     }
   } else {
     return NextResponse.json([], { headers })

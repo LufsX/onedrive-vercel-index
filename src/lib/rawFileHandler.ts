@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { posix as pathPosix } from 'path'
 import { Readable, Transform, pipeline } from 'stream'
 
-import axiosInstance from '../utils/axiosInstance'
+import upstreamRequest from '../utils/upstreamRequest'
 import { driveApi } from '../../config/api.config'
 import { checkAuthRoute, encodePath, getAccessToken } from './odApi'
 
@@ -70,7 +70,7 @@ export async function handleRawFile(request: NextRequest): Promise<NextResponse>
   try {
     const requestUrl = `${driveApi}/root${encodePath(cleanPath)}`
     const load = async () => {
-      const { data } = await axiosInstance.get(requestUrl, {
+      const { data } = await upstreamRequest(requestUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { select: 'id,size,@microsoft.graph.downloadUrl' },
       })
@@ -90,26 +90,30 @@ export async function handleRawFile(request: NextRequest): Promise<NextResponse>
 
       let streaming = false
       try {
-        const response = await axiosInstance.get<Readable>(data['@microsoft.graph.downloadUrl'], {
-          responseType: 'stream',
-          signal: controller.signal,
-          ...(inline
-            ? {
-                headers: {
-                  'Accept-Encoding': 'identity',
-                  ...(range ? { Range: range } : {}),
-                  ...(range && request.headers.get('if-range') ? { 'If-Range': request.headers.get('if-range')! } : {}),
-                },
-                decompress: false,
-                validateStatus: (status: number) => status === 200 || status === 206 || status === 416,
-              }
-            : {}),
-        })
-        const upstream = response.data
-        const length = response.headers['content-length']
-        // Axios removes content-encoding after decompression. Any remaining encoding
-        // cannot be served as an unencoded body; count decompressed bytes below.
-        const encoding = response.headers['content-encoding']
+        const response = await upstreamRequest<ReadableStream<Uint8Array> | null>(
+          data['@microsoft.graph.downloadUrl'],
+          {
+            responseType: 'body',
+            signal: controller.signal,
+            validateStatus: status =>
+              inline ? status === 200 || status === 206 || status === 416 : status === 200 || status === 206,
+            ...(inline
+              ? {
+                  headers: {
+                    // Keep the byte range byte-exact: no transfer encoding may be applied.
+                    'Accept-Encoding': 'identity',
+                    ...(range ? { Range: range } : {}),
+                    ...(range && request.headers.get('if-range') ? { 'If-Range': request.headers.get('if-range')! } : {}),
+                  },
+                }
+              : {}),
+          },
+        )
+        const upstream = response.data ? Readable.fromWeb(response.data as never) : Readable.from([])
+        const length = response.headers.get('content-length')
+        // The body is requested uncompressed; anything still encoded cannot be served
+        // as an unencoded body, so count decompressed bytes below.
+        const encoding = response.headers.get('content-encoding')
         if (encoding && encoding !== 'identity') {
           upstream.destroy()
           return NextResponse.json({ error: 'Unsupported upstream encoding.' }, { status: 502, headers })
@@ -121,8 +125,8 @@ export async function handleRawFile(request: NextRequest): Promise<NextResponse>
 
         const responseHeaders = new Headers(headers)
         for (const key of ['content-type', 'content-disposition', 'last-modified']) {
-          const value = response.headers[key]
-          if (typeof value === 'string') responseHeaders.set(key, value)
+          const value = response.headers.get(key)
+          if (value !== null) responseHeaders.set(key, value)
         }
 
         responseHeaders.set('X-Content-Type-Options', 'nosniff')
@@ -135,8 +139,8 @@ export async function handleRawFile(request: NextRequest): Promise<NextResponse>
             `inline; filename*=UTF-8''${encodeURIComponent(pathPosix.basename(cleanPath)).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16))}`,
           )
           for (const key of ['accept-ranges', 'content-range', 'content-length', 'etag']) {
-            const value = response.headers[key]
-            if (typeof value === 'string') responseHeaders.set(key, value)
+            const value = response.headers.get(key)
+            if (value !== null) responseHeaders.set(key, value)
           }
           if (response.status === 416) {
             upstream.destroy()

@@ -1,6 +1,6 @@
 import { posix as pathPosix } from 'path'
 
-import axiosInstance from '../utils/axiosInstance'
+import upstreamRequest, { upstreamStatus } from '../utils/upstreamRequest'
 import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
 import { matchProtectedPath } from '../utils/protectedPath'
@@ -63,9 +63,11 @@ async function refreshAccessToken(): Promise<string> {
         })
         const readOnly = !process.env.ADMIN_PASSWORD_HASH
         if (readOnly) body.set('scope', readOnlyOAuthScope)
-        const resp = await axiosInstance.post(apiConfig.authApi, body, {
+        const resp = await upstreamRequest(apiConfig.authApi, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          timeout: 15000,
+          body,
+          timeoutMs: 15000,
         })
         if (typeof resp.data?.access_token !== 'string' || typeof resp.data?.refresh_token !== 'string') return ''
         if (readOnly && !isReadOnlyOAuthScope(resp.data.scope)) return ''
@@ -86,7 +88,7 @@ async function refreshAccessToken(): Promise<string> {
       }
     }
   } catch (error: any) {
-    console.error('Failed to refresh access token:', error?.response?.data ?? error?.message)
+    console.error('Failed to refresh access token:', error?.data ?? error?.message)
     // A concurrent setup or an ambiguously acknowledged commit may have succeeded.
     try {
       const latest = await getOdAuthTokens(true)
@@ -179,14 +181,19 @@ export async function checkAuthRoute(
   }
 
   try {
-    const token = await axiosInstance.get(`${apiConfig.driveApi}/root${encodePath(authTokenPath)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: {
-        select: '@microsoft.graph.downloadUrl,file',
+    const token = await upstreamRequest<{ '@microsoft.graph.downloadUrl': string }>(
+      `${apiConfig.driveApi}/root${encodePath(authTokenPath)}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: {
+          select: '@microsoft.graph.downloadUrl,file',
+        },
       },
-    })
+    )
 
-    const odProtectedToken = await axiosInstance.get(token.data['@microsoft.graph.downloadUrl'])
+    const odProtectedToken = await upstreamRequest<string>(token.data['@microsoft.graph.downloadUrl'], {
+      responseType: 'text',
+    })
 
     if (
       !compareHashedToken({
@@ -197,7 +204,7 @@ export async function checkAuthRoute(
       return { code: 401, message: 'Password required.' }
     }
   } catch (error: any) {
-    if (error?.response?.status === 404) {
+    if (upstreamStatus(error) === 404) {
       return { code: 404, message: "You didn't set a password." }
     } else {
       return { code: 500, message: 'Internal server error.' }

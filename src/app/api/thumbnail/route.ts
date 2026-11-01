@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { posix as pathPosix } from 'path'
-import axiosInstance from '../../../utils/axiosInstance'
+import upstreamRequest, { upstreamFailure } from '../../../utils/upstreamRequest'
 import type { OdThumbnail } from '../../../types'
 import { checkAuthRoute, encodePath, getAccessToken } from '../../../lib/odApi'
 import apiConfig from '../../../../config/api.config'
@@ -40,10 +40,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const load = async () => {
-      const { data } = await axiosInstance.get(`${requestUrl}${isRoot ? '' : ':'}/thumbnails`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-      return data.value?.length > 0 ? ((data.value[0] as OdThumbnail)[size]?.url ?? null) : null
+      const { data } = await upstreamRequest<{ value?: OdThumbnail[] }>(
+        `${requestUrl}${isRoot ? '' : ':'}/thumbnails`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      )
+      const thumbnails = data?.value
+      return thumbnails?.length ? (thumbnails[0][size]?.url ?? null) : null
     }
     const thumbnailUrl = await load()
 
@@ -52,10 +54,11 @@ export async function GET(request: NextRequest) {
     } else {
       return NextResponse.json({ error: "The item doesn't have a valid thumbnail." }, { status: 400, headers })
     }
-  } catch (error: any) {
+  } catch (error) {
+    const { status, data } = upstreamFailure(error)
     return NextResponse.json(
-      { error: error?.response?.data ?? 'Internal server error.' },
-      { status: error?.response?.status ?? 500, headers: { 'Cache-Control': 'private, no-store' } },
+      { error: data ?? 'Internal server error.' },
+      { status: status ?? 500, headers: { 'Cache-Control': 'private, no-store' } },
     )
   }
 }

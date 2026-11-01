@@ -4,6 +4,18 @@ import { createRequire } from 'node:module'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 const { NextRequest, NextResponse } = require('next/server')
 const MAX = 4 * 1024 * 1024
@@ -13,7 +25,7 @@ class MutationError extends Error {
 }
 function load(path, mocks) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
-  const compiled = ts.transpileModule(source, {
+  const compiled = compileOnce(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 },
   }).outputText
   const loaded = { exports: {} }
@@ -44,14 +56,14 @@ function setup() {
       return state.resolve ? state.resolve(...args) : { ...target, path: args[1], id: args[2] }
     },
   }
-  const axios = {
-    put: async (url, body, config) => {
-      state.calls.push({ url, body, config })
-      return state.write ? state.write(url, body, config) : {
-        status: 200, data: { id: target.id, name: target.name, size: body.length, file: {}, eTag: '"v2"' },
-      }
-    },
+  const put = async (url, body, config) => {
+    state.calls.push({ url, body, config })
+    return state.write
+      ? state.write(url, body, config)
+      : { status: 200, data: { id: target.id, name: target.name, size: body.length, file: {}, eTag: '"v2"' } }
   }
+  // The HTTP client dispatches on options.method, so tests stub the per-verb helpers.
+  const upstream = Object.assign(async (url, options = {}) => put(url, options.body, options), { put })
   const { PUT } = load('./route.ts', {
     'next/server': { NextResponse },
     '../../../../../config/api.config': { driveApi: 'https://graph.test/me/drive' },
@@ -63,7 +75,11 @@ function setup() {
       if (state.tokenFailure) throw new Error('private-token')
       return 'private-token'
     } },
-    '../../../../utils/axiosInstance': axios,
+    '../../../../utils/upstreamRequest': {
+      __esModule: true,
+      default: upstream,
+      upstreamStatus: error => (typeof error?.status === 'number' ? error.status : error?.response?.status),
+    },
     '../../upload/shared': shared,
   })
   function request(options = {}) {
@@ -156,8 +172,8 @@ test('checks the target before reading and again before one conditional item-ID 
     Authorization: 'Bearer private-token', 'Content-Type': 'application/octet-stream',
     'If-Match': target.eTag, 'Content-Length': '3',
   })
-  assert.equal(write.config.maxRedirects, 0)
-  assert.equal(write.config.maxBodyLength, MAX)
+  // Writes must not follow redirects; the 4 MiB cap is validated before reading the body.
+  assert.equal(write.config.redirect, 'manual')
   assert.equal(state.clears, 1)
 })
 

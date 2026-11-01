@@ -6,8 +6,20 @@ import { fileURLToPath } from 'node:url'
 
 export const require = createRequire(import.meta.url)
 const ts = require('typescript')
+
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
 require.extensions['.ts'] = (module, filename) => module._compile(
-  ts.transpileModule(readFileSync(filename, 'utf8'), {
+  compileOnce(readFileSync(filename, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 },
   }).outputText, filename,
 )
@@ -20,7 +32,7 @@ export const { NextRequest, NextResponse } = require('next/server')
 export const admin = require('./adminAuth.ts')
 export const od = require('./odApi.ts')
 export const cache = require('./cache.ts')
-export const axios = require('../utils/axiosInstance.ts').default
+export const upstream = require('../utils/upstreamRequest.ts').default
 export const site = require('../../config/site.config.js')
 export const api = require('../../config/api.config.js')
 export const mutation = require('./driveMutation.ts')
@@ -43,12 +55,12 @@ export function graphItem(path, kind = 'folder', extra = {}) {
 export function setup(t) {
   const saved = {
     auth: admin.requireAdmin, validate: admin.validateWriteRequest, limit: admin.checkAdminRateLimit,
-    token: od.getAccessToken, get: axios.get, post: axios.post, delete: axios.delete, base: site.baseDirectory,
+    token: od.getAccessToken, get: upstream.get, post: upstream.post, delete: upstream.delete, base: site.baseDirectory,
   }
   t.after(() => {
     admin.requireAdmin = saved.auth; admin.validateWriteRequest = saved.validate
     admin.checkAdminRateLimit = saved.limit; od.getAccessToken = saved.token
-    axios.get = saved.get; axios.post = saved.post; axios.delete = saved.delete
+    upstream.get = saved.get; upstream.post = saved.post; upstream.delete = saved.delete
     site.baseDirectory = saved.base; cache.clearCache()
   })
   site.baseDirectory = '/Corp/Share'
@@ -64,7 +76,7 @@ export function setup(t) {
   admin.requireAdmin = async () => null
   admin.checkAdminRateLimit = async (...args) => { state.rates.push(args); return true }
   od.getAccessToken = async () => { state.tokenCalls++; return 'test-secret-token' }
-  axios.get = async (url, config) => {
+  upstream.get = async (url, config) => {
     const call = { method: 'get', url, config }
     state.calls.push(call)
     const endpoint = url.slice(api.driveApi.length)
@@ -85,7 +97,7 @@ export function setup(t) {
     if (!data) throw { response: { status: 404 } }
     return { status: 200, data: state.transform(structuredClone(data), call) }
   }
-  axios.post = async (url, body, config) => {
+  upstream.post = async (url, body, config) => {
     state.calls.push({ method: 'post', url, body, config })
     const parentId = decodeURIComponent(url.slice((api.driveApi + '/items/').length, -'/children'.length))
     const parent = [...state.nodes.entries()].find(([, item]) => item.id === parentId)?.[0]
@@ -93,7 +105,7 @@ export function setup(t) {
     const path = (parent === '/' ? '' : parent) + '/' + body.name
     return { status: 201, data: graphItem(path, 'folder', { eTag: '"new-v1"' }) }
   }
-  axios.delete = async (url, config) => {
+  upstream.delete = async (url, config) => {
     state.calls.push({ method: 'delete', url, config })
     return { status: 204 }
   }
@@ -139,7 +151,7 @@ function resolverTests() {
     ])
     for (const { config } of state.calls) {
       assert.equal(config.signal, signal)
-      assert.equal(config.maxRedirects, 0)
+      assert.equal(config.redirect, 'manual')
       assert.equal(config.params.select, 'id,name,parentReference,folder,file,remoteItem,eTag,size,root')
       assert.equal(config.headers['Cache-Control'], 'no-cache')
     }
@@ -296,7 +308,7 @@ function resolverTests() {
     const child = state.calls.at(-1)
     assert.equal(child.url, api.driveApi + '/items/' + encodeURIComponent(itemId('/Corp/Share/Folder')) + ':/' + encodeURIComponent(name))
     assert.equal(child.config.signal, signal)
-    assert.equal(child.config.maxRedirects, 0)
+    assert.equal(child.config.redirect, 'manual')
     assert.equal(child.config.params.select, 'id,name,parentReference,folder,file,remoteItem,eTag,size,root')
     const folder = await mutation.resolveManagedChild('token', '/', 'Folder')
     assert.equal(folder.kind, 'folder')
@@ -361,7 +373,7 @@ function resolverTests() {
 
   test('child lookup propagates transport/upstream failures and never treats malformed responses as absent', async t => {
     setup(t)
-    const get = axios.get
+    const get = upstream.get
     for (const [failure, code, status] of [
       [new Error('private upstream URL'), 'upstream_unavailable', 502],
       [{ response: { status: 401 } }, 'upstream_unavailable', 502],
@@ -371,23 +383,23 @@ function resolverTests() {
       [{ response: { status: 429 } }, 'rate_limited', 429],
       [{ response: { status: 500 } }, 'upstream_unavailable', 502],
     ]) {
-      axios.get = async (url, config) => {
+      upstream.get = async (url, config) => {
         if (url.includes('/items/')) throw failure
         return get(url, config)
       }
       await expectError(mutation.resolveManagedChild('token', '/', 'file.txt'), code, status)
     }
     for (const response of [{ status: 200, data: null }, { status: 202, data: graphItem('/Corp/Share/file.txt', 'file') }]) {
-      axios.get = async (url, config) => url.includes('/items/') ? response : get(url, config)
+      upstream.get = async (url, config) => url.includes('/items/') ? response : get(url, config)
       await expectError(mutation.resolveManagedChild('token', '/', 'file.txt'), 'upstream_unavailable', 502)
     }
   })
 
   test('directory chains are verified in path order even when GETs finish in reverse order', async t => {
     const state = setup(t)
-    const get = axios.get
+    const get = upstream.get
     const pending = []
-    axios.get = (url, config) => new Promise((resolve, reject) => {
+    upstream.get = (url, config) => new Promise((resolve, reject) => {
       pending.push({ url, finish: () => get(url, config).then(resolve, reject) })
     })
     const result = mutation.resolveManagedDirectory('token', '/Folder')
@@ -407,7 +419,7 @@ function resolverTests() {
       { id: 'file-id', name: 'file.txt', file: {}, eTag: '"list-version"' },
       { id: 'shortcut-id', name: 'shortcut', folder: {}, remoteItem: { id: 'remote-id' } },
     ]
-    axios.get = async (_url, config) => {
+    upstream.get = async (_url, config) => {
       assert.ok(config.params.select.split(',').includes('eTag'))
       assert.ok(config.params.select.split(',').includes('remoteItem'))
       return { status: 200, data: { value: children } }
@@ -418,9 +430,9 @@ function resolverTests() {
 
   test('read transport failures and non-200 responses are never accepted as metadata', async t => {
     setup(t)
-    axios.get = async () => { throw new Error('test-secret-token upstream URL') }
+    upstream.get = async () => { throw new Error('test-secret-token upstream URL') }
     await expectError(mutation.resolveManagedDirectory('token', '/'), 'upstream_unavailable', 502)
-    axios.get = async () => ({ status: 202, data: graphItem('/') })
+    upstream.get = async () => ({ status: 202, data: graphItem('/') })
     await expectError(mutation.resolveManagedDirectory('token', '/'), 'upstream_unavailable', 502)
   })
 }

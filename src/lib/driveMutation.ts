@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
-import axiosInstance from '../utils/axiosInstance'
+import upstreamRequest, { expectStatus, upstreamStatus } from '../utils/upstreamRequest'
 import { authorize, readJson } from '../app/api/upload/shared'
 import { checkAdminRateLimit } from './adminAuth'
 import { clearCache } from './cache'
@@ -108,14 +108,9 @@ function managed(data: Metadata, path: string): ManagedItem {
   return { id: data.id, name: data.name, path, eTag: data.eTag, size: data.size as number, kind: kind(data) }
 }
 
-function statusOf(error: unknown): number | undefined {
-  if (!record(error) || !record(error.response)) return undefined
-  return typeof error.response.status === 'number' ? error.response.status : undefined
-}
-
 function upstreamError(error: unknown, write = false): MutationError {
   if (error instanceof MutationError) return error
-  const status = statusOf(error)
+  const status = upstreamStatus(error)
   if (status === 412) return new MutationError('item_changed', 412)
   if (status === 409) return new MutationError('conflict', 409)
   if (status === 404) return new MutationError('item_not_found', 404)
@@ -129,13 +124,15 @@ function upstreamError(error: unknown, write = false): MutationError {
 
 async function getMetadata(accessToken: string, endpoint: string, signal?: AbortSignal): Promise<Metadata> {
   try {
-    const response = await axiosInstance.get(apiConfig.driveApi + endpoint, {
-      headers: { Authorization: `Bearer ${accessToken}`, 'Cache-Control': 'no-cache' },
-      params: { select: SELECT },
-      maxRedirects: 0,
-      signal,
-    })
-    if (response.status !== 200) throw { response: { status: response.status } }
+    const response = expectStatus(
+      await upstreamRequest(apiConfig.driveApi + endpoint, {
+        headers: { Authorization: `Bearer ${accessToken}`, 'Cache-Control': 'no-cache' },
+        params: { select: SELECT },
+        redirect: 'manual',
+        signal,
+      }),
+      200,
+    )
     return metadata(response.data)
   } catch (error) {
     throw upstreamError(error)
@@ -278,12 +275,19 @@ export async function createManagedFolder(
   // Also enforce the path limit for the newly created item before any write.
   validateManagedPath(childPath)
   try {
-    const response = await axiosInstance.post(
-      apiConfig.driveApi + '/items/' + encodeURIComponent(fresh.data.id) + '/children',
-      { name, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' },
-      { headers: { Authorization: `Bearer ${accessToken}` }, maxRedirects: 0, signal },
+    const response = expectStatus(
+      await upstreamRequest(
+        apiConfig.driveApi + '/items/' + encodeURIComponent(fresh.data.id) + '/children',
+        {
+          method: 'POST',
+          body: { name, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' },
+          headers: { Authorization: `Bearer ${accessToken}` },
+          redirect: 'manual',
+          signal,
+        },
+      ),
+      201,
     )
-    if (response.status !== 201) throw new MutationError('write_uncertain', 502)
     try {
       const data = metadata(response.data)
       if (kind(data) !== 'folder' || data.name !== name || fresh.ids.has(data.id)) throw new Error()
@@ -308,12 +312,15 @@ export async function deleteManagedFile(
   if (fresh.kind !== 'file') throw new MutationError('unsupported_item', 400)
   if (fresh.eTag !== eTag) throw new MutationError('item_changed', 412)
   try {
-    const response = await axiosInstance.delete(apiConfig.driveApi + '/items/' + encodeURIComponent(fresh.id), {
-      headers: { Authorization: `Bearer ${accessToken}`, 'If-Match': eTag },
-      maxRedirects: 0,
-      signal,
-    })
-    if (response.status !== 204) throw new MutationError('write_uncertain', 502)
+    expectStatus(
+      await upstreamRequest(apiConfig.driveApi + '/items/' + encodeURIComponent(fresh.id), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}`, 'If-Match': eTag },
+        redirect: 'manual',
+        signal,
+      }),
+      204,
+    )
   } catch (error) {
     throw upstreamError(error, true)
   } finally {

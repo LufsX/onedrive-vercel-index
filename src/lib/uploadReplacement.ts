@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { NextRequest } from 'next/server'
 import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
-import axiosInstance from '../utils/axiosInstance'
+import upstreamRequest, { upstreamStatus, type UpstreamOptions } from '../utils/upstreamRequest'
 import { getRedisClient } from '../utils/redisClient'
 import { authorize, readJson } from '../app/api/upload/shared'
 import { checkAdminRateLimit } from './adminAuth'
@@ -88,7 +88,7 @@ function validateInput(body: Record<string, unknown>): { path: string; name: str
 
 function graphError(error: unknown, write: boolean): MutationError {
   if (error instanceof MutationError) return error
-  const status = record(error) && record(error.response) ? error.response.status : undefined
+  const status = upstreamStatus(error)
   if (status === 412) return new MutationError('item_changed', 412)
   if (status === 409) return new MutationError('conflict', 409)
   if (status === 404) return new MutationError('item_not_found', 404)
@@ -98,8 +98,12 @@ function graphError(error: unknown, write: boolean): MutationError {
   }
   return new MutationError(write ? 'write_uncertain' : 'upstream_unavailable', 502)
 }
-function config(token: string) {
-  return { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }, timeout: 10000, maxRedirects: 0 }
+function config(token: string): UpstreamOptions {
+  return {
+    headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
+    timeoutMs: 10000,
+    redirect: 'manual',
+  }
 }
 
 export async function prepareReplacement(
@@ -129,10 +133,14 @@ export async function prepareReplacement(
     }
   } catch { throw new MutationError('upstream_unavailable', 503) }
   try {
-    const response = await axiosInstance.post(
+    const response = await upstreamRequest(
       apiConfig.driveApi + '/items/' + encodeURIComponent(parent.id) + ':/' + encodeURIComponent(tempName) + ':/createUploadSession',
-      { item: { '@microsoft.graph.conflictBehavior': 'fail' } },
-      { ...config(token), signal },
+      {
+        method: 'POST',
+        body: { item: { '@microsoft.graph.conflictBehavior': 'fail' } },
+        ...config(token),
+        signal,
+      },
     )
     const data: unknown = response.data
     if (response.status !== 200 || !record(data) || !validUploadUrl(data.uploadUrl) ||
@@ -151,7 +159,7 @@ const SAVE = "if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end; redis.
 
 async function childId(token: string, parentId: string, name: string): Promise<string> {
   try {
-    const response = await axiosInstance.get(
+    const response = await upstreamRequest(
       apiConfig.driveApi + '/items/' + encodeURIComponent(parentId) + ':/' + encodeURIComponent(name),
       { ...config(token), params: { select: 'id' } },
     )
@@ -163,10 +171,14 @@ async function childId(token: string, parentId: string, name: string): Promise<s
 
 async function rename(token: string, item: ManagedItem, name: string, parentId: string, parentPath: string) {
   try {
-    const response = await axiosInstance.patch(
+    const response = await upstreamRequest(
       apiConfig.driveApi + '/items/' + encodeURIComponent(item.id),
-      { '@microsoft.graph.conflictBehavior': 'fail', name },
-      { ...config(token), headers: { ...config(token).headers, 'If-Match': item.eTag } },
+      {
+        method: 'PATCH',
+        body: { '@microsoft.graph.conflictBehavior': 'fail', name },
+        ...config(token),
+        headers: { ...config(token).headers, 'If-Match': item.eTag },
+      },
     )
     const data: unknown = response.data
     if (response.status !== 200 || !record(data) || data.id !== item.id || data.name !== name ||
@@ -183,7 +195,7 @@ async function rename(token: string, item: ManagedItem, name: string, parentId: 
 // Read by ID after an ambiguous first rename; never repeat that rename based on a guessed version.
 async function inspectOriginal(token: string, job: Job): Promise<void> {
   try {
-    const response = await axiosInstance.get(
+    const response = await upstreamRequest(
       apiConfig.driveApi + '/items/' + encodeURIComponent(job.target.id),
       { ...config(token), params: { select: 'id,name,eTag,parentReference,file,folder,remoteItem,size' } },
     )

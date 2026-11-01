@@ -4,7 +4,7 @@ import { MutationError, resolveManagedItem } from '../../../../lib/driveMutation
 import { checkAdminRateLimit } from '../../../../lib/adminAuth'
 import { clearCache } from '../../../../lib/cache'
 import { getAccessToken } from '../../../../lib/odApi'
-import axiosInstance from '../../../../utils/axiosInstance'
+import upstreamRequest, { upstreamStatus } from '../../../../utils/upstreamRequest'
 import { authorize, headers } from '../../upload/shared'
 
 const MAX_BYTES = 4 * 1024 * 1024
@@ -53,7 +53,7 @@ async function readBytes(request: NextRequest, expectedSize: number): Promise<Bu
 
 function writeError(error: unknown): MutationError {
   if (error instanceof MutationError) return error
-  const status = record(error) && record(error.response) ? error.response.status : undefined
+  const status = upstreamStatus(error)
   if (status === 412) return new MutationError('item_changed', 412)
   if (status === 404) return new MutationError('item_not_found', 404)
   if (status === 409) return new MutationError('conflict', 409)
@@ -111,14 +111,17 @@ export async function PUT(request: NextRequest) {
     if (fresh.eTag !== eTag) throw new MutationError('item_changed', 412)
 
     try {
-      const response = await axiosInstance.put(
-        apiConfig.driveApi + '/items/' + encodeURIComponent(fresh.id) + '/content', body,
+      const response = await upstreamRequest(
+        apiConfig.driveApi + '/items/' + encodeURIComponent(fresh.id) + '/content',
         {
+          method: 'PUT',
+          body,
           headers: {
             Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/octet-stream',
             'If-Match': eTag, 'Content-Length': String(body.byteLength),
           },
-          maxRedirects: 0, maxBodyLength: MAX_BYTES, signal: request.signal,
+          redirect: 'manual',
+          signal: request.signal,
         },
       )
       const data: unknown = response.data

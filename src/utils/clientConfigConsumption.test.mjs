@@ -4,11 +4,23 @@ import { createRequire } from 'node:module'
 import { test } from 'node:test'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 
 function load(name, mocks = {}) {
   const source = readFileSync(new URL(name, import.meta.url), 'utf8')
-  const compiled = ts.transpileModule(source, {
+  const compiled = compileOnce(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
   }).outputText
   const loaded = { exports: {} }
@@ -50,10 +62,13 @@ test('protected paths and stored credentials use the supplied routes', () => {
 
 test('date and OAuth helpers use supplied runtime values', async () => {
   const calls = []
-  const axios = { get: async url => { calls.push(url); return { data: { id: 1 }, status: 200 } } }
+  const upstreamRequest = async url => {
+    calls.push(url)
+    return { data: { id: 1 }, status: 200, headers: new Headers() }
+  }
   const { formatModifiedDateTime } = load('./fileDetails.ts')
   const { generateAuthorisationUrl, extractAuthCodeFromRedirected, getAuthPersonInfo } = load('./oAuthHandler.ts', {
-    axios,
+    './upstreamRequest': { __esModule: true, default: upstreamRequest },
   })
   assert.equal(formatModifiedDateTime('2024-02-03', 'YYYY/MM/DD'), '2024/02/03')
   assert.equal(formatModifiedDateTime('2024-02-03', 'MM'), '02')

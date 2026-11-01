@@ -5,7 +5,7 @@ import { encodePath, getAccessToken } from '../../../../lib/odApi'
 import { clearCache } from '../../../../lib/cache'
 import { checkAdminRateLimit } from '../../../../lib/adminAuth'
 import { matchesUploadDirectory, uploadDirectory, validUploadName, validUploadUrl } from '../../../../lib/pathGuard'
-import axiosInstance from '../../../../utils/axiosInstance'
+import upstreamRequest, { upstreamStatus } from '../../../../utils/upstreamRequest'
 import { authorize, errorResponse, headers, readJson } from '../shared'
 
 // OneDrive's documented per-file limit is 250 GiB. Graph receives the file directly.
@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
     let parentId = ''
     for (let i = 0; i <= segments.length; i++) {
       const part = i === 0 ? '/' : '/' + segments.slice(0, i).join('/')
-      const { data } = await axiosInstance.get(`${apiConfig.driveApi}/root${encodePath(part)}`, {
+      const { data } = await upstreamRequest<{ id?: string }>(`${apiConfig.driveApi}/root${encodePath(part)}`, {
         headers: auth,
         params: { select: 'id,name,parentReference,folder,remoteItem' },
-        maxRedirects: 0,
+        redirect: 'manual',
         signal: request.signal,
       })
       if (!matchesUploadDirectory(data, siteConfig.baseDirectory, part) || typeof data.id !== 'string' || !data.id) {
@@ -79,17 +79,22 @@ export async function POST(request: NextRequest) {
         for (let attempt = 0; attempt < 100; attempt++) {
           const filename = attempt === 0 ? name : renamedFile(name, attempt)
           try {
-            const response = await axiosInstance.put(`${targetFor(filename)}/content`, Buffer.alloc(0), {
-              headers: { ...auth, 'Content-Type': 'application/octet-stream', 'If-Match': '"0"' },
-              maxRedirects: 0,
-              signal: request.signal,
-            })
+            const response = await upstreamRequest<{ id?: string; size?: number }>(
+              `${targetFor(filename)}/content`,
+              {
+                method: 'PUT',
+                body: Buffer.alloc(0),
+                headers: { ...auth, 'Content-Type': 'application/octet-stream', 'If-Match': '"0"' },
+                redirect: 'manual',
+                signal: request.signal,
+              },
+            )
             if (response.status !== 201 || typeof response.data?.id !== 'string' || response.data?.size !== 0) {
               return errorResponse('Invalid empty file response.', 502)
             }
             return NextResponse.json({ completed: true }, { headers })
           } catch (error: unknown) {
-            const status = (error as { response?: { status?: number } })?.response?.status
+            const status = upstreamStatus(error)
             if ((status !== 409 && status !== 412) || conflictBehavior === 'fail') throw error
           }
         }
@@ -99,10 +104,15 @@ export async function POST(request: NextRequest) {
         clearCache()
       }
     }
-    const { data } = await axiosInstance.post(
+    const { data } = await upstreamRequest<{ uploadUrl?: string; expirationDateTime?: string }>(
       `${targetFor(name)}/createUploadSession`,
-      { item: { '@microsoft.graph.conflictBehavior': conflictBehavior } },
-      { headers: auth, maxRedirects: 0, signal: request.signal },
+      {
+        method: 'POST',
+        body: { item: { '@microsoft.graph.conflictBehavior': conflictBehavior } },
+        headers: auth,
+        redirect: 'manual',
+        signal: request.signal,
+      },
     )
     if (!validUploadUrl(data?.uploadUrl) || typeof data?.expirationDateTime !== 'string' ||
         !Number.isFinite(Date.parse(data.expirationDateTime)) || Date.parse(data.expirationDateTime) <= Date.now()) {
@@ -110,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ uploadUrl: data.uploadUrl, expirationDateTime: data.expirationDateTime }, { headers })
   } catch (error: unknown) {
-    const status = (error as { response?: { status?: number } })?.response?.status
+    const status = upstreamStatus(error)
     if (status === 404) return errorResponse('Upload directory not found.', 404)
     if (status === 401 || status === 403) return errorResponse('OneDrive write access denied.', 403)
     if (status === 409 || status === 412) return errorResponse('An item with this name already exists.', 409)

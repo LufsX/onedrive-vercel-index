@@ -5,6 +5,18 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 function fixture() {
   let reads = 0, graph = 0, stores = 0, identity = 'owner@example.com'
@@ -14,7 +26,7 @@ function fixture() {
   }
   const modules = {
     'next/server': { NextResponse: Response },
-    '../../utils/axiosInstance': { __esModule: true, default: {} },
+    '../../utils/upstreamRequest': { __esModule: true, default: {} },
     '../../../config/api.config': { __esModule: true, default: { driveApi: 'https://graph.example/me/drive' } },
     '../../lib/odApi': { storeTokensFromRequestBody: async () => { stores++; return true } },
     '../../lib/driveListing': {},
@@ -31,7 +43,7 @@ function fixture() {
   }
   const exports = {}
   const source = readFileSync(new URL('./route.ts', import.meta.url), 'utf8')
-  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText
+  const code = compileOnce(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText
   vm.runInNewContext(code, {
     exports, require: name => modules[name] || require(name), Headers, AbortSignal,
     fetch: async () => { graph++; return { ok: true, json: async () => ({ userPrincipalName: identity }) } },

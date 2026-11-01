@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import axiosInstance from '../../../utils/axiosInstance'
+import upstreamRequest, { upstreamFailure } from '../../../utils/upstreamRequest'
 import { checkAuthRoute, getAccessToken } from '../../../lib/odApi'
 import { itemPath, isPasswordFile, validProtectedRoutes } from '../../../lib/itemPath'
 import type { OdDriveItem } from '../../../types'
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const load = async (): Promise<OdDriveItem> => {
-      const { data } = await axiosInstance.get(`${apiConfig.driveApi}/items/${encodeURIComponent(id)}`, {
+      const { data } = await upstreamRequest<OdDriveItem>(`${apiConfig.driveApi}/items/${encodeURIComponent(id)}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { select: 'id,name,parentReference' },
       })
@@ -45,10 +45,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(resolved, { headers })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.response?.data ?? 'Internal server error.' },
-      { status: error?.response?.status ?? 500, headers },
-    )
+  } catch (error) {
+    const { status, data } = upstreamFailure(error)
+    return NextResponse.json({ error: data ?? 'Internal server error.' }, { status: status ?? 500, headers })
   }
 }

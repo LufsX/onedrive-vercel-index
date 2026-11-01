@@ -1,4 +1,4 @@
-import axiosInstance from '../utils/axiosInstance'
+import upstreamRequest from '../utils/upstreamRequest'
 import apiConfig from '../../config/api.config'
 import siteConfig from '../../config/site.config'
 import { cacheGeneration, cacheKeyFor, cached, knownKind, rememberKind, rememberKinds } from './cache'
@@ -59,7 +59,7 @@ export async function loadDrivePath(
   const isRoot = requestPath === ''
 
   const fetchItem = async (): Promise<any> => {
-    const { data } = await axiosInstance.get(requestUrl, {
+    const { data } = await upstreamRequest(requestUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: { select: SELECT },
     })
@@ -67,7 +67,7 @@ export async function loadDrivePath(
   }
 
   const fetchChildren = async (): Promise<OdAPIResult> => {
-    const { data: folderData } = await axiosInstance.get(`${requestUrl}${isRoot ? '' : ':'}/children`, {
+    const { data: folderData } = await upstreamRequest(`${requestUrl}${isRoot ? '' : ':'}/children`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       params: {
         ...{

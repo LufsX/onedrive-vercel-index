@@ -6,9 +6,21 @@ import { readFileSync } from 'node:fs'
 const require = createRequire(import.meta.url)
 const ts = require('typescript')
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 require.extensions['.ts'] = (module, filename) => {
   module._compile(
-    ts.transpileModule(readFileSync(filename, 'utf8'), {
+    compileOnce(readFileSync(filename, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
     }).outputText,
     filename,
@@ -16,7 +28,7 @@ require.extensions['.ts'] = (module, filename) => {
 }
 
 const { NextRequest } = require('next/server')
-const axiosInstance = require('../../../utils/axiosInstance.ts').default
+const axiosInstance = require('../../../utils/upstreamRequest.ts').default
 const oauthConfigPath = require.resolve('../../../lib/oauthServerConfig.ts')
 require.cache[oauthConfigPath] = {
   id: oauthConfigPath,

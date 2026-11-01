@@ -55,7 +55,7 @@ test('path APIs deny password files and listing filters every page', async () =>
   const configPath = require.resolve('./oauthServerConfig.ts')
   require.cache[configPath] = { id: configPath, filename: configPath, loaded: true, exports: { getOAuthClientSecret: () => '' } }
   const odApi = require('./odApi.ts')
-  const axios = require('../utils/axiosInstance.ts').default
+  const upstream = require('../utils/upstreamRequest.ts').default
   const config = require('../../config/site.config.js')
   const { clearCache } = require('./cache.ts')
   const { GET: metadata } = require('../app/api/route.ts')
@@ -64,14 +64,14 @@ test('path APIs deny password files and listing filters every page', async () =>
   const { GET: namedRaw } = require('../app/api/name/[name]/route.ts')
   const { getDrivePath } = require('./driveListing.ts')
   const originalToken = odApi.getAccessToken
-  const originalGet = axios.get
+  const originalGet = upstream.get
   const originalRoutes = config.protectedRoutes
   let calls = 0
 
   try {
     odApi.getAccessToken = async () => 'access'
     config.protectedRoutes = ['/secret']
-    axios.get = async url => {
+    upstream.get = async url => {
       calls++
       if (url.includes('/children')) {
         return {
@@ -117,7 +117,7 @@ test('path APIs deny password files and listing filters every page', async () =>
     }
   } finally {
     odApi.getAccessToken = originalToken
-    axios.get = originalGet
+    upstream.get = originalGet
     config.protectedRoutes = originalRoutes
     clearCache()
     delete require.extensions['.ts']

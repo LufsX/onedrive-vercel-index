@@ -5,11 +5,23 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 const require = createRequire(import.meta.url)
 
 function load(path, modules, clock = Date, env = { ADMIN_PASSWORD_HASH: 'configured' }) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
-  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText
+  const code = compileOnce(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText
   const exports = {}
   vm.runInNewContext(code, { exports, require: name => name in modules ? modules[name] : name === './oauthScopes' ? require('../lib/oauthScopes.ts') : require(name), process: { env }, URLSearchParams, setTimeout, console, Date: clock })
   return exports
@@ -321,9 +333,15 @@ test('two API processes share one refresh and observe the committed pair', async
   f.data.delete('test:access_token')
   let calls = 0, release
   const gate = new Promise(resolve => { release = resolve })
-  const axios = { post: async () => { calls++; await gate; return { data: { access_token: 'new', refresh_token: 'next', expires_in: '3600' } } } }
+  const post = async () => {
+    calls++
+    await gate
+    return { data: { access_token: 'new', refresh_token: 'next', expires_in: '3600' } }
+  }
+  // The HTTP client dispatches on options.method, so tests stub the per-verb helpers.
+  const upstream = Object.assign(async (_url, options = {}) => post(_url, options.body, options), { post })
   const api = store => load('../lib/odApi.ts', {
-    '../utils/axiosInstance': { default: axios, __esModule: true },
+    '../utils/upstreamRequest': { default: upstream, __esModule: true },
     '../../config/api.config': { default: { obfuscatedClientSecret: '', clientId: 'id', redirectUri: 'uri', authApi: 'auth' }, __esModule: true },
     '../../config/site.config': { default: { baseDirectory: '/', protectedRoutes: [] }, __esModule: true },
     '../utils/protectedPath': {}, '../utils/oAuthHandler': { revealObfuscatedToken: () => '' },
@@ -344,10 +362,13 @@ test('without a hash refresh requests and accepts only read-only scopes', async 
     f.data.delete('test:access_token')
     let requested
     const api = load('../lib/odApi.ts', {
-      '../utils/axiosInstance': { default: { post: async (_, body) => {
-        requested = body.get('scope')
-        return { data: { access_token: 'new', refresh_token: 'next', expires_in: '3600', scope } }
-      } }, __esModule: true },
+      '../utils/upstreamRequest': {
+        __esModule: true,
+        default: async (_url, options = {}) => {
+          requested = options.body.get('scope')
+          return { data: { access_token: 'new', refresh_token: 'next', expires_in: '3600', scope } }
+        },
+      },
       '../../config/api.config': { default: { clientId: 'id', redirectUri: 'uri', authApi: 'auth' }, __esModule: true },
       '../../config/site.config': { default: { baseDirectory: '/', protectedRoutes: [] }, __esModule: true },
       '../utils/protectedPath': {}, '../utils/oAuthHandler': { revealObfuscatedToken: () => '' },
@@ -369,7 +390,14 @@ test('reauthorization during an OAuth request wins over its stale response', asy
   const entered = new Promise(resolve => { started = resolve })
   const gate = new Promise(resolve => { release = resolve })
   const api = load('../lib/odApi.ts', {
-    '../utils/axiosInstance': { default: { post: async () => { started(); await gate; return { data: { access_token: 'stale', refresh_token: 'stale-refresh', expires_in: '3600' } } } }, __esModule: true },
+    '../utils/upstreamRequest': {
+      __esModule: true,
+      default: async () => {
+        started()
+        await gate
+        return { data: { access_token: 'stale', refresh_token: 'stale-refresh', expires_in: '3600' } }
+      },
+    },
     '../../config/api.config': { default: { obfuscatedClientSecret: '', clientId: 'id', redirectUri: 'uri', authApi: 'auth' }, __esModule: true },
     '../../config/site.config': { default: { baseDirectory: '/', protectedRoutes: [] }, __esModule: true },
     '../utils/protectedPath': {}, '../utils/oAuthHandler': { revealObfuscatedToken: () => '' },
