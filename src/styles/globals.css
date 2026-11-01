@@ -15,6 +15,66 @@ body {
   }
 }
 
+/* One scrollbar style for the page and every scrollable panel. */
+:root {
+  --scrollbar-thumb: rgb(113 113 122 / 0.5);
+  --scrollbar-thumb-hover: rgb(82 82 91 / 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --scrollbar-thumb: rgb(161 161 170 / 0.4);
+    --scrollbar-thumb-hover: rgb(161 161 170 / 0.65);
+  }
+}
+
+/* Every native scrollbar reserves layout space the moment its content
+   overflows, which shifted the page whenever a listing finished loading. With a
+   pointer the native bar is therefore removed and <OverlayScrollbars /> paints a
+   floating thumb instead. Touch devices keep their platform scrollbars. */
+@media (hover: hover) {
+  * {
+    scrollbar-width: none; /* Firefox */
+  }
+
+  *::-webkit-scrollbar {
+    display: none; /* Chrome, Edge, Safari */
+  }
+}
+
+/* Floating thumb painted by <OverlayScrollbars />, positioned in viewport
+   coordinates so it never takes part in the document layout. */
+.overlay-scrollbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 300;
+  border-radius: 9999px;
+  background-color: var(--scrollbar-thumb);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 150ms ease-out,
+    background-color 100ms linear;
+  will-change: transform;
+}
+
+.overlay-scrollbar[data-visible] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.overlay-scrollbar:hover,
+.overlay-scrollbar[data-dragging] {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-scrollbar {
+    transition: none;
+  }
+}
+
 /* Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
