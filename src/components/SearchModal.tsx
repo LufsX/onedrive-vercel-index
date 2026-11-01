@@ -9,7 +9,7 @@ import { useTranslations } from './ClientProviders'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
 import AppDialog from './AppDialog'
-import { uiButton, uiInput } from './uiStyles'
+import { uiInput } from './uiStyles'
 
 import type { OdDriveItem, OdSearchResult } from '../types'
 import { LoadingIcon } from './Loading'
@@ -219,7 +219,7 @@ export default function SearchModal({
       initialFocus={searchInputRef}
       afterLeave={() => setQuery('')}
     >
-      <div className="mb-3 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <Search className="h-4 w-4 shrink-0 text-gray-500" />
         <input
           ref={searchInputRef}
@@ -231,32 +231,28 @@ export default function SearchModal({
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
-        <button type="button" className={`${uiButton} text-xs`} aria-label={t('Close')} onClick={closeSearchBox}>
-          ESC
-        </button>
       </div>
-      <div className="-mx-4 -mb-3 overflow-x-hidden">
-        {results.loading && (
-          <div className="px-4 py-6 text-center text-sm font-medium">
-            <LoadingIcon className="mr-2 inline-block h-4 w-4 animate-spin align-middle motion-reduce:animate-none" />
-            <span>{t('Loading ...')}</span>
-          </div>
-        )}
-        {results.error && (
-          <div className="px-4 py-6 text-center text-sm font-medium">
-            {t('Error: {{message}}', { message: results.error.message })}
-          </div>
-        )}
-        {results.result && (
-          <>
-            {results.result.length === 0 ? (
+      {(results.loading || results.error || results.result) && (
+        <div className="-mx-4 mt-3 -mb-3 overflow-x-hidden">
+          {results.loading && (
+            <div className="px-4 py-6 text-center text-sm font-medium">
+              <LoadingIcon className="mr-2 inline-block h-4 w-4 animate-spin align-middle motion-reduce:animate-none" />
+              <span>{t('Loading ...')}</span>
+            </div>
+          )}
+          {results.error && (
+            <div className="px-4 py-6 text-center text-sm font-medium">
+              {t('Error: {{message}}', { message: results.error.message })}
+            </div>
+          )}
+          {results.result &&
+            (results.result.length === 0 ? (
               <div className="px-4 py-6 text-center text-sm font-medium">{t('Nothing here.')}</div>
             ) : (
               results.result.map(result => <SearchResultItem key={result.id} result={result} />)
-            )}
-          </>
-        )}
-      </div>
+            ))}
+        </div>
+      )}
     </AppDialog>
   )
 }

@@ -4,10 +4,22 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
+
 function load(path, mocks = {}, globals = {}) {
   const filename = new URL(path, import.meta.url)
   const source = readFileSync(filename, 'utf8')
-  const compiled = ts.transpileModule(source, {
+  const compiled = compileOnce(source, {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2022,
@@ -66,6 +78,12 @@ function button(tree, label) {
   return match
 }
 
+function formatDropdown(tree) {
+  const match = find(tree, 'dropdown')[0]
+  assert.ok(match, 'Missing configuration format control')
+  return match
+}
+
 function fixture({ status = 'uninitialized', search = '', fetch = async () => json(configuration) } = {}) {
   const states = []
   const dependencies = []
@@ -107,7 +125,7 @@ function fixture({ status = 'uninitialized', search = '', fetch = async () => js
       },
       'react/jsx-runtime': { jsx: nodes, jsxs: nodes, Fragment: 'fragment' },
       'next/navigation': { useRouter: () => ({ push: path => destinations.push(path) }) },
-      'lucide-react': { ArrowRight: 'arrow-right' },
+      'lucide-react': { ArrowRight: 'arrow-right', Check: 'check', ChevronDown: 'chevron-down' },
       '../../../components/SetupShell': {
         __esModule: true,
         default: 'setup-shell',
@@ -116,6 +134,9 @@ function fixture({ status = 'uninitialized', search = '', fetch = async () => js
       },
       '../../../components/Loading': { LoadingIcon: 'loading-icon' },
       '../../../components/uiStyles': { uiButton: '', uiFieldLabel: '', uiInput: '', uiPrimaryButton: '' },
+      // Headless UI cannot render inside the VM harness, so the control is stubbed
+      // and the tests drive onSelect() the way the real component would.
+      '../../../components/Dropdown': { __esModule: true, default: props => nodes('dropdown', props) },
       '../../../components/ClientProviders': { useTranslations: () => value => value },
       '../../../utils/useAdminSession': {
         __esModule: true,
@@ -322,9 +343,15 @@ test('successful generation renders exact colon-format env configuration and raw
           'Replace these environment variables and restart or redeploy. Generating them does not change the current password.',
     ),
   )
-  assert.equal(find(tree, 'select')[0].value, 'env')
+  const format = formatDropdown(tree)
+  // Array.from keeps the comparison in this realm; VM arrays have a foreign prototype.
+  assert.deepEqual(
+    Array.from(format.items, option => option.value),
+    ['env', 'vercel'],
+  )
+  assert.equal(format.items[format.selectedIndex].value, 'env')
 
-  find(tree, 'select')[0].onChange({ target: { value: 'vercel' } })
+  format.onSelect(format.items[1])
   const vercel = view.render()
   assert.equal(find(vercel, 'textarea').length, 0)
   assert.ok(content(vercel).includes('In Vercel, paste each value without quotes or backslashes.'))
@@ -344,7 +371,8 @@ test('successful generation renders exact colon-format env configuration and raw
     assert.ok(!/["'\\$]/.test(inputs[index].value))
   }
 
-  find(vercel, 'select')[0].onChange({ target: { value: 'env' } })
+  const backToEnv = formatDropdown(vercel)
+  backToEnv.onSelect(backToEnv.items[0])
   assert.equal(find(view.render(), 'textarea')[0].value, textarea.value)
   assert.equal(view.requests.length, 1)
 })
@@ -420,7 +448,7 @@ test('malformed successful configuration payloads never render environment value
       assertSetupRequest(view)
       assert.equal(find(tree, 'setup-status').find(node => node.tone === 'error').children, fallback)
       assert.equal(find(tree, 'textarea').length, 0)
-      assert.equal(find(tree, 'select').length, 0)
+      assert.equal(find(tree, 'dropdown').length, 0)
       assert.equal(find(tree, 'form')[0]['aria-busy'], false)
     })
   }

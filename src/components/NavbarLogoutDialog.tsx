@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { KeyRound, LogOut, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -54,9 +55,17 @@ export default function NavbarLogoutDialog({
       closeDisabled={admin.busy}
       afterLeave={() => setError(false)}
       footer={
-        <button type="button" disabled={admin.busy} onClick={onClose} className={uiButton}>
-          {t('Close')}
-        </button>
+        <>
+          <Link
+            href="/onedrive-vercel-index-oauth/step-0?generate=1"
+            className="mr-auto text-sm text-blue-600 hover:underline dark:text-blue-400"
+          >
+            {t('Generate password configuration')}
+          </Link>
+          <button type="button" disabled={admin.busy} onClick={onClose} className={uiButton}>
+            {t('Close')}
+          </button>
+        </>
       }
     >
       <div className="space-y-3" aria-busy={admin.busy}>

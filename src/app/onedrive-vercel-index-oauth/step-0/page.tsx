@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown } from 'lucide-react'
+import Dropdown from '../../../components/Dropdown'
 import SetupShell, { SetupSessionState, SetupStatus } from '../../../components/SetupShell'
 import { LoadingIcon } from '../../../components/Loading'
 import { uiButton, uiFieldLabel, uiInput, uiPrimaryButton } from '../../../components/uiStyles'
@@ -11,6 +12,12 @@ import useAdminSession from '../../../utils/useAdminSession'
 import { getAdminErrorMessage, readAdminError } from '../../../utils/adminErrors'
 
 type Configuration = { passwordHash: string; sessionSecret: string }
+
+// Same control as the other selectors in the site, instead of a native <select>.
+const configurationTargets = [
+  { value: 'env', label: '.env / .env.local / Docker Compose' },
+  { value: 'vercel', label: 'Vercel' },
+] as const
 
 export default function OAuthStep0() {
   const router = useRouter()
@@ -97,17 +104,37 @@ export default function OAuthStep0() {
                 'Replace these environment variables and restart or redeploy. Generating them does not change the current password.',
               )}
             </SetupStatus>
-            <label className={uiFieldLabel}>
-              {t('Configuration format')}
-              <select
-                value={target}
-                onChange={event => setTarget(event.target.value as 'env' | 'vercel')}
-                className={`mt-1 block ${uiInput}`}
-              >
-                <option value="env">.env / .env.local / Docker Compose</option>
-                <option value="vercel">Vercel</option>
-              </select>
-            </label>
+            <div>
+              <span className={uiFieldLabel}>{t('Configuration format')}</span>
+              <div className="relative mt-1">
+                <Dropdown
+                  role="listbox"
+                  items={configurationTargets}
+                  selectedIndex={configurationTargets.findIndex(option => option.value === target)}
+                  onSelect={option => setTarget(option.value)}
+                  triggerLabel={configurationTargets.find(option => option.value === target)?.label}
+                  triggerClassName="flex w-full cursor-pointer items-center justify-between gap-2 rounded border border-gray-600/10 bg-gray-50 px-2 py-1.5 text-sm text-gray-900 transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-hidden dark:bg-gray-600 dark:text-white dark:hover:bg-gray-700 motion-reduce:transition-none"
+                  trigger={
+                    <>
+                      <span className="truncate">
+                        {configurationTargets.find(option => option.value === target)?.label}
+                      </span>
+                      <ChevronDown className="h-3 w-3 shrink-0 transition-transform duration-200 group-aria-expanded:rotate-180" />
+                    </>
+                  }
+                  panelClassName="absolute top-full left-0 z-20 mt-1 w-full overflow-hidden rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900"
+                  itemClassName={option =>
+                    `flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-sm font-medium transition-colors duration-100 outline-hidden data-focus:text-blue-700 dark:data-focus:text-blue-400 ${option.value === target ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-200'}`
+                  }
+                  renderItem={option => (
+                    <>
+                      <span>{option.label}</span>
+                      {option.value === target && <Check className="h-3 w-3 shrink-0" />}
+                    </>
+                  )}
+                />
+              </div>
+            </div>
             {target === 'env' ? (
               <label className={uiFieldLabel}>
                 {t('Environment configuration')}

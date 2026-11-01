@@ -2,13 +2,25 @@ import { strict as assert } from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import ts from 'typescript'
+
+// Transpiling dominates fixture setup, so compile each source once per test file.
+const transpileCache = new Map()
+function compileOnce(source, config) {
+  const key = JSON.stringify(config ?? {}) + '\u0000' + source
+  let output = transpileCache.get(key)
+  if (output === undefined) {
+    output = ts.transpileModule(source, config).outputText
+    transpileCache.set(key, output)
+  }
+  return { outputText: output }
+}
 import * as adminErrors from '../utils/adminErrors.ts'
 
 const nodes = (type, props) => ({ ...props, type })
 
 function loadComponent(path, mocks) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
-  const compiled = ts.transpileModule(source, {
+  const compiled = compileOnce(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText
   const loaded = { exports: {} }
@@ -66,6 +78,7 @@ function renderDialog({ uploading = false, busy = false, open = true } = {}) {
     'react-hot-toast': { __esModule: true, default: { success: () => {} } },
     './ClientConfigProvider': { useClientConfig: () => ({ siteConfig: { protectedRoutes: ['/private'] } }) },
     './ClientProviders': { useTranslations: () => value => value },
+    'next/link': { __esModule: true, default: 'link' },
     '../utils/useAdminSession': { __esModule: true, default: () => admin },
   }
   const Dialog = loadComponent('./NavbarLogoutDialog.tsx', mocks)
@@ -90,6 +103,16 @@ test('administrator logout and folder token clearing are independent', async () 
     view.calls.length = 0
     clear.onClick()
     assert.deepEqual(view.calls, [['remove', '/private'], ['event', '/private'], ['close'], ['refresh']])
+  } finally {
+    view.restore()
+  }
+})
+
+test('logout dialog links to password configuration generation', () => {
+  const view = renderDialog()
+  try {
+    const link = find(view.tree, 'link').find(node => node.href === '/onedrive-vercel-index-oauth/step-0?generate=1')
+    assert.equal(link.children, 'Generate password configuration')
   } finally {
     view.restore()
   }
@@ -235,17 +258,26 @@ test('Navbar retains lazy search and logout components when closed so leave anim
   assert.equal(find(render(), 'logout-dialog')[0].open, false)
 })
 
-test('Navbar login shows safe detailed errors and exposes password regeneration', async () => {
+test('Navbar login shows safe detailed errors without exposing password regeneration', async () => {
   for (const [failure, expected] of [
     ['Incorrect administrator password.', 'Incorrect administrator password.'],
     ['Redis is not configured. Set REDIS_URL and redeploy.', 'Redis is not configured. Set REDIS_URL and redeploy.'],
     ['https://secret.example/password', 'Administrator login failed.'],
   ]) {
-    const render = navbarView({ status: 'anonymous', busy: false, login: async () => { throw new Error(failure) } })
+    const render = navbarView({
+      status: 'anonymous',
+      busy: false,
+      login: async () => {
+        throw new Error(failure)
+      },
+    })
     const form = find(render(), 'form')[0]
     await form.onSubmit({ preventDefault() {} })
     assert.equal(find(render(), 'p').find(node => node.role === 'alert').children, expected)
-    assert.ok(find(render(), 'link').some(node => node.href === '/onedrive-vercel-index-oauth/step-0?generate=1'))
+    assert.equal(
+      find(render(), 'link').some(node => node.href === '/onedrive-vercel-index-oauth/step-0?generate=1'),
+      false,
+    )
   }
 })
 

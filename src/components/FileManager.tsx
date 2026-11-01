@@ -17,7 +17,15 @@ import toast from 'react-hot-toast'
 import AppDialog from './AppDialog'
 import { LoadingIcon } from './Loading'
 import { useTranslations } from './ClientProviders'
-import { uiButton, uiDangerButton, uiFieldLabel, uiIconButton, uiInput, uiPrimaryButton } from './uiStyles'
+import {
+  uiButton,
+  uiDangerButton,
+  uiFieldLabel,
+  uiIconButton,
+  uiInput,
+  uiPrimaryButton,
+  uiRowIconButton,
+} from './uiStyles'
 import useAdminSession, { beginAdminUpload, endAdminUpload } from '../utils/useAdminSession'
 import {
   createManagedFolder,
@@ -346,13 +354,13 @@ export function FileDeleteButton({ item }: { item: Candidate }) {
   return (
     <button
       type="button"
-      className={`${uiIconButton} h-6 w-6 p-1 hover:text-red-500 dark:hover:text-red-400`}
+      className={`${uiRowIconButton} hover:text-red-500 dark:hover:text-red-400`}
       disabled={manager.busy}
       title={t('Delete file')}
       aria-label={`${t('Delete file')}: ${item.name}`}
       onClick={() => manager.deleteFile(item)}
     >
-      <Trash2 className="h-3.5 w-3.5" />
+      <Trash2 className="h-4 w-4" />
     </button>
   )
 }

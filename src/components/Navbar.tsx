@@ -275,12 +275,6 @@ const Navbar = () => {
               {t(loginError)}
             </p>
           )}
-          <Link
-            href="/onedrive-vercel-index-oauth/step-0?generate=1"
-            className="inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
-          >
-            {t('Generate password configuration')}
-          </Link>
         </form>
       </AppDialog>
       {logoutMounted && (
