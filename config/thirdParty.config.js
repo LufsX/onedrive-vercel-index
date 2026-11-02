@@ -51,6 +51,8 @@ const link = (entry, name) => {
   }
 }
 
+const warn = message => console.warn(`[thirdParty.config.js] ${message}`)
+
 const script = (entry, name) => {
   object(entry, name, ['id', 'src', 'content', 'strategy'])
   const id = entry.id
@@ -62,6 +64,11 @@ const script = (entry, name) => {
   // next/script cannot combine the two, and an entry without either injects nothing.
   if (hasSrc === hasContent) throw new Error(`${name} needs exactly one of src or content`)
   if (hasContent && typeof entry.content !== 'string') throw new Error(`${name}.content must be a string`)
+  if (hasContent && entry.content.includes('\\$')) {
+    // Only values that come from a .env file are unescaped; a value injected straight
+    // into the environment keeps the backslash and turns the script into a syntax error.
+    warn(`${name}.content contains "\\$": keep the backslash only for values read from a .env file`)
+  }
   return {
     id,
     src: hasSrc ? url(entry.src, `${name}.src`) : undefined,
@@ -72,6 +79,10 @@ const script = (entry, name) => {
 
 const list = (value, name, item) => {
   if (value === undefined || value === '') return []
+  // .env files strip the surrounding quotes, a hosting dashboard keeps them.
+  if (/^(['"`]).*\1$/.test(value.trim())) {
+    throw new Error(`${name} must not be wrapped in quotes, paste the JSON value only`)
+  }
   let parsed
   try {
     parsed = JSON.parse(value)

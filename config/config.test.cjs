@@ -205,3 +205,18 @@ test('third-party content is operator-defined, generic and validated', () => {
     }
   }
 })
+
+test('paste mistakes are reported with an actionable message', () => {
+  for (const name of ['NEXT_PUBLIC_THIRD_PARTY_LINKS', 'NEXT_PUBLIC_THIRD_PARTY_SCRIPTS']) {
+    const result = load('thirdParty', { [name]: "'[]'" })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /must not be wrapped in quotes/)
+  }
+
+  // .env files need \$ and unescape it; a value that never went through a .env file
+  // keeps the backslash, so the config warns instead of shipping broken JavaScript.
+  const script = JSON.stringify([{ id: 'x', content: 'window.\\$x=1' }])
+  const result = load('thirdParty', { NEXT_PUBLIC_THIRD_PARTY_SCRIPTS: script })
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stderr, /keep the backslash only for values read from a \.env file/)
+})
