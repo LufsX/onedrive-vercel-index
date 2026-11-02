@@ -87,7 +87,11 @@ const list = (value, name, item) => {
   try {
     parsed = JSON.parse(value)
   } catch {
-    throw new Error(`${name} must be a JSON array`)
+    // The exact value is not usually visible in a hosting dashboard or CI log, so show
+    // enough of it to spot the usual mistakes: mismatched quotes, stray escapes.
+    throw new Error(
+      `${name} must be a JSON array, received ${value.length} characters starting with ${JSON.stringify(value.slice(0, 48))}`,
+    )
   }
   if (!Array.isArray(parsed)) throw new Error(`${name} must be a JSON array`)
   const validated = parsed.map((entry, index) => item(entry, `${name}[${index}]`))

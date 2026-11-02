@@ -220,3 +220,9 @@ test('paste mistakes are reported with an actionable message', () => {
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stderr, /keep the backslash only for values read from a \.env file/)
 })
+
+test('invalid JSON reports the offending prefix', () => {
+  const result = load('thirdParty', { NEXT_PUBLIC_THIRD_PARTY_SCRIPTS: '{"id":"x"' })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /received 9 characters starting with "\{/)
+})
