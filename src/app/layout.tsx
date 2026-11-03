@@ -11,7 +11,6 @@ import ClientProviders from '../components/ClientProviders'
 import BrandIconsProvider from '../components/BrandIconsProvider'
 import { brandIcons } from '../lib/brandIcons'
 import ProgressBar from '../components/ProgressBar'
-import OverlayScrollbars from '../components/OverlayScrollbars'
 import ThirdPartyScripts from '../components/ThirdPartyScripts'
 import { getLocale, getMessages } from '../lib/i18n'
 import { isAdminConfigurationValid } from '../lib/adminAuth'
@@ -80,7 +79,6 @@ export default async function RootLayout(props: RootLayoutProps) {
         <ThirdPartyScripts />
 
         <ProgressBar />
-        <OverlayScrollbars />
 
         <ClientProviders messages={messages} locale={locale}>
           <ConfigProvider siteConfig={publicSiteConfig} apiConfig={publicApiConfig}>
