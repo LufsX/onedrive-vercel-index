@@ -40,6 +40,7 @@ const mocks = {
   '../Loading': { default: () => null },
   '../DownloadBtnGtoup': { default: () => null },
   './Containers': { PreviewContainer: passthrough, DownloadBtnContainer: passthrough },
+  './PreviewToolbar': { default: () => null },
 }
 const source = readFileSync(new URL('./MarkdownPreview.tsx', import.meta.url), 'utf8')
 const compiled = compileOnce(source, {

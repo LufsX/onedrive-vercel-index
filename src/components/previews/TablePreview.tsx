@@ -3,6 +3,7 @@
 import { useClientConfig } from '../ClientConfigProvider'
 
 import { usePathname } from 'next/navigation'
+import { RotateCw } from 'lucide-react'
 import { useTranslations } from '../ClientProviders'
 
 import Loading from '../Loading'
@@ -10,6 +11,7 @@ import DownloadButtonGroup from '../DownloadBtnGtoup'
 import useTablePreview from '../../utils/useTablePreview'
 import { DELIMITED_TEXT_ROW_LIMIT } from '../../utils/delimitedText'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import PreviewToolbar from './PreviewToolbar'
 
 const TablePreview = () => {
   const { protectedRoutes } = useClientConfig().siteConfig
@@ -20,13 +22,13 @@ const TablePreview = () => {
 
   return (
     <div>
+      {(error || malformed) && (
+        <PreviewToolbar actions={[{ id: 'retry', label: t('Retry'), icon: RotateCw, onSelect: retry }]} />
+      )}
       <PreviewContainer>
         {error || malformed ? (
           <div className="p-3 text-sm">
             <p role="alert">{error ? t(error) : t('Invalid CSV/TSV format.')}</p>
-            <button type="button" onClick={retry} className="mt-2 underline">
-              {t('Retry')}
-            </button>
           </div>
         ) : validating ? (
           <Loading loadingText={t('Loading file content...')} />

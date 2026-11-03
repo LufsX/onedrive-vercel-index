@@ -2,7 +2,8 @@
 
 import { useClientConfig } from '../ClientConfigProvider'
 
-import { Children, isValidElement, lazy, Suspense, type FC } from 'react'
+import { Children, isValidElement, lazy, Suspense, useState, type FC } from 'react'
+import { Eye, FileText } from 'lucide-react'
 import { rawFileUrl } from '../../utils/rawFileUrl'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 import ReactMarkdown from 'react-markdown'
@@ -18,6 +19,7 @@ import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import PreviewToolbar from './PreviewToolbar'
 const MarkdownCodeBlock = lazy(() => import('./MarkdownCodeBlock'))
 
 const MarkdownPreview: FC<{
@@ -35,6 +37,28 @@ const MarkdownPreview: FC<{
     validating,
   } = useFileContent(rawFileUrl(`${parentPath}/${encodeURIComponent(file.name)}`), path, protectedRoutes)
   const t = useTranslations()
+  const [view, setView] = useState<'preview' | 'source'>('preview')
+  const toolbar = standalone && (
+    <PreviewToolbar
+      label={t('Markdown view')}
+      actions={[
+        {
+          id: 'preview',
+          label: t('Preview'),
+          icon: Eye,
+          selected: view === 'preview',
+          onSelect: () => setView('preview'),
+        },
+        {
+          id: 'source',
+          label: t('Source'),
+          icon: FileText,
+          selected: view === 'source',
+          onSelect: () => setView('source'),
+        },
+      ]}
+    />
+  )
 
   const imageUrl = (src: string) => {
     if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(src)) return src
@@ -94,6 +118,7 @@ const MarkdownPreview: FC<{
   if (error) {
     return (
       <PreviewContainer>
+        {toolbar}
         <FourOhFour errorMsg={error} />
       </PreviewContainer>
     )
@@ -101,6 +126,7 @@ const MarkdownPreview: FC<{
   if (validating) {
     return (
       <>
+        {toolbar}
         <PreviewContainer>
           <Loading loadingText={t('Loading file content...')} />
         </PreviewContainer>
@@ -115,22 +141,27 @@ const MarkdownPreview: FC<{
 
   return (
     <div>
+      {toolbar}
       <PreviewContainer>
-        <div className="markdown-body">
-          <ReactMarkdown
-            skipHtml
-            // @ts-ignore
-            remarkPlugins={[remarkGfm, remarkMath]}
-            // The type error is introduced by caniuse-lite upgrade.
-            // Since type errors occur often in remark toolchain and the use is so common,
-            // ignoring it shoudld be safe enough.
-            // @ts-ignore
-            rehypePlugins={[rehypeKatex]}
-            components={customRenderer}
-          >
-            {content}
-          </ReactMarkdown>
-        </div>
+        {view === 'source' && standalone ? (
+          <pre className="overflow-x-auto p-0 text-sm md:p-3">{content}</pre>
+        ) : (
+          <div className="markdown-body">
+            <ReactMarkdown
+              skipHtml
+              // @ts-ignore
+              remarkPlugins={[remarkGfm, remarkMath]}
+              // The type error is introduced by caniuse-lite upgrade.
+              // Since type errors occur often in remark toolchain and the use is so common,
+              // ignoring it shoudld be safe enough.
+              // @ts-ignore
+              rehypePlugins={[rehypeKatex]}
+              components={customRenderer}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+        )}
       </PreviewContainer>
       {standalone && (
         <DownloadBtnContainer>

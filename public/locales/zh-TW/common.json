@@ -1,4 +1,9 @@
 {
+  "More": "更多",
+  "Preview actions": "預覽操作",
+  "Markdown view": "Markdown 顯示方式",
+  "Preview": "預覽",
+  "Source": "原文",
   "If you have not specified a REDIS_URL inside your Vercel env variable, go initialise one at <1>Upstash</1>. Docs: <2>Vercel Integration - Upstash</2>.": "如果尚未在 Vercel 環境變數中設定 REDIS_URL，請前往 <1>Upstash</1> 初始化一個。文件：<2>Vercel Integration - Upstash</2>。",
   "Authorisation is required as no valid <1>access_token</1> or <2>refresh_token</2> is present on this deployed instance. Check the following configurations before proceeding with authorising onedrive-vercel-index with your own Microsoft account.": "此部署執行個體中沒有有效的 <1>access_token</1> 或 <2>refresh_token</2>，因此需要授權。使用你的 Microsoft 帳戶授權 onedrive-vercel-index 之前，請檢查以下設定。",
   "If you see anything missing or incorrect, you need to reconfigure <1>/config/api.config.js</1> and redeploy this instance.": "如果發現任何設定遺漏或錯誤，請重新設定 <1>/config/api.config.js</1> 並重新部署此執行個體。",

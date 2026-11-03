@@ -9,8 +9,9 @@ import { useTranslations } from '../ClientProviders'
 
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
-import DownloadButtonGroup, { DownloadButton } from '../DownloadBtnGtoup'
+import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import PreviewToolbar from './PreviewToolbar'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
 import { decodePathSegment } from '../../utils/pathEncoding'
 
@@ -84,17 +85,17 @@ const URLContent = ({ url }: { url: string }) => {
         )}
       </PreviewContainer>
       {target && (
-        <DownloadBtnContainer>
-          <div className="flex justify-center">
-            <DownloadButton
-              onClickCallback={() => window.open(target, '_blank', 'noopener,noreferrer')}
-              btnColor="blue"
-              btnText={t('Open URL')}
-              btnIcon={ExternalLink}
-              btnTitle={t('Open URL{{url}}', { url: ' ' + target })}
-            />
-          </div>
-        </DownloadBtnContainer>
+        <PreviewToolbar
+          actions={[
+            {
+              id: 'open',
+              label: t('Open URL'),
+              icon: ExternalLink,
+              href: target,
+              title: t('Open URL{{url}}', { url: ' ' + target }),
+            },
+          ]}
+        />
       )}
     </>
   )

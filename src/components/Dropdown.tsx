@@ -10,54 +10,9 @@ import {
   MenuItem,
   MenuItems,
 } from '@headlessui/react'
-import { useLayoutEffect, useRef, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
+import { useRef, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
+import ActionHighlight from './ActionHighlight'
 import styles from './Dropdown.module.css'
-
-// Follow the accessible active descendant without moving DOM focus or adding a background to every row.
-function ActiveHighlight({ selectedIndex }: { selectedIndex: number }) {
-  const ref = useRef<HTMLSpanElement>(null)
-
-  useLayoutEffect(() => {
-    const highlight = ref.current
-    const panel = highlight?.parentElement
-    if (!highlight || !panel) return
-
-    const update = () => {
-      const activeId = panel.getAttribute('aria-activedescendant')
-      const active = activeId ? panel.ownerDocument.getElementById(activeId) : null
-      const item =
-        active && panel.contains(active)
-          ? active
-          : panel.querySelector<HTMLElement>(`[data-dropdown-index="${selectedIndex}"]`)
-
-      if (!item || !panel.clientWidth) {
-        highlight.removeAttribute('data-ready')
-        return
-      }
-
-      // Offsets stay in the panel's coordinate space while the panel itself scales on entry/exit.
-      highlight.style.width = `${Math.max(0, item.offsetWidth - 8)}px`
-      highlight.style.height = `${item.offsetHeight}px`
-      highlight.style.transform = `translate3d(${item.offsetLeft + 4 - panel.scrollLeft}px, ${item.offsetTop - panel.scrollTop}px, 0)`
-      highlight.setAttribute('data-ready', '')
-    }
-
-    update()
-    const activeObserver = new MutationObserver(update)
-    activeObserver.observe(panel, { attributes: true, attributeFilter: ['aria-activedescendant'] })
-    const sizeObserver = new ResizeObserver(update)
-    sizeObserver.observe(panel)
-    panel.querySelectorAll<HTMLElement>('[data-dropdown-index]').forEach(item => sizeObserver.observe(item))
-    panel.addEventListener('scroll', update, { passive: true })
-    return () => {
-      activeObserver.disconnect()
-      sizeObserver.disconnect()
-      panel.removeEventListener('scroll', update)
-    }
-  }, [selectedIndex])
-
-  return <span ref={ref} aria-hidden="true" className={`${styles.highlight} bg-blue-50 dark:bg-blue-600/10`} />
-}
 
 // Headless UI owns keyboard navigation, outside dismissal, focus restoration and transition cleanup.
 export default function Dropdown<T>({
@@ -70,6 +25,8 @@ export default function Dropdown<T>({
   triggerLabel,
   panelClassName,
   itemClassName,
+  itemHref,
+  itemDisabled,
   renderItem,
 }: {
   role: 'listbox' | 'menu'
@@ -81,6 +38,8 @@ export default function Dropdown<T>({
   triggerLabel?: string
   panelClassName: string
   itemClassName: (item: T) => string
+  itemHref?: (item: T) => string | undefined
+  itemDisabled?: (item: T) => boolean | undefined
   renderItem: (item: T) => ReactNode
 }) {
   const pointerType = useRef('mouse')
@@ -123,29 +82,34 @@ export default function Dropdown<T>({
           pointerType.current = event.pointerType
         }}
       >
-        <ActiveHighlight selectedIndex={selectedIndex} />
+        <ActionHighlight selectedIndex={selectedIndex} />
         {items.map((item, index) => {
           const props = {
-            'data-dropdown-index': index,
+            'data-action-index': index,
             className: `${styles.item} ${itemClassName(item)}`,
             onPointerMove: trackMouse,
             onPointerLeave: mousePointerOnly,
             onMouseMove: trackMouse,
             onMouseLeave: mouseOnly,
           }
+          const href = itemHref?.(item)
+          const disabled = itemDisabled?.(item)
           return role === 'menu' ? (
             <MenuItem
-              as="button"
-              type="button"
+              as={href ? 'a' : 'button'}
+              {...(href ? { href, target: '_blank', rel: 'noopener noreferrer' } : { type: 'button' })}
               key={index}
               {...props}
+              disabled={disabled}
               aria-current={index === selectedIndex ? 'true' : undefined}
-              onClick={() => onSelect(item)}
+              onClick={() => {
+                if (!href) onSelect(item)
+              }}
             >
               {renderItem(item)}
             </MenuItem>
           ) : (
-            <ListboxOption as="button" type="button" key={index} {...props} value={index}>
+            <ListboxOption as="button" type="button" key={index} {...props} value={index} disabled={disabled}>
               {renderItem(item)}
             </ListboxOption>
           )

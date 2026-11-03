@@ -4,6 +4,7 @@ import { useClientConfig } from '../ClientConfigProvider'
 
 import type { OdFileObject } from '../../types'
 import { useEffect, useState } from 'react'
+import { ExternalLink, RotateCw } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { rawFileUrl } from '../../utils/rawFileUrl'
 import { useTranslations } from '../ClientProviders'
@@ -11,6 +12,7 @@ import { getStoredToken } from '../../utils/protectedRouteHandler'
 import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import PreviewToolbar, { type PreviewAction } from './PreviewToolbar'
 
 function PDFEmbed({ url, name }: { url: string; name: string }) {
   const t = useTranslations()
@@ -64,26 +66,32 @@ function PDFEmbed({ url, name }: { url: string; name: string }) {
 
   return (
     <>
+      <PreviewToolbar
+        actions={[
+          ...(state === 'unsupported'
+            ? []
+            : [
+                {
+                  id: 'retry',
+                  label: t('Retry'),
+                  icon: RotateCw,
+                  disabled: state === 'loading',
+                  onSelect: () => setAttempt(value => value + 1),
+                } satisfies PreviewAction,
+              ]),
+          { id: 'open', label: t('Open in new tab'), icon: ExternalLink, href: url },
+        ]}
+      />
       {state === 'ready' ? (
-        <div>
-          <div className="mb-2 flex justify-end gap-4 text-sm text-blue-600 dark:text-blue-400">
-            <button type="button" className="hover:underline" onClick={() => setAttempt(value => value + 1)}>
-              {t('Retry')}
-            </button>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-              {t('Open in new tab')}
-            </a>
-          </div>
-          <div className="h-[90vh] w-full overflow-hidden rounded">
-            <iframe
-              src={url}
-              onError={() => setState('error')}
-              className="border-none"
-              width="100%"
-              height="100%"
-              title={t('PDF Preview: {{name}}', { name })}
-            />
-          </div>
+        <div className="h-[90vh] w-full overflow-hidden rounded">
+          <iframe
+            src={url}
+            onError={() => setState('error')}
+            className="border-none"
+            width="100%"
+            height="100%"
+            title={t('PDF Preview: {{name}}', { name })}
+          />
         </div>
       ) : (
         <PreviewContainer>
@@ -98,15 +106,6 @@ function PDFEmbed({ url, name }: { url: string; name: string }) {
                     : 'Unable to load this PDF. Retry or download the file.',
                 )}
               </p>
-              {state === 'error' && (
-                <button
-                  type="button"
-                  className="mt-2 text-blue-600 hover:underline dark:text-blue-400"
-                  onClick={() => setAttempt(value => value + 1)}
-                >
-                  {t('Retry')}
-                </button>
-              )}
             </div>
           )}
         </PreviewContainer>

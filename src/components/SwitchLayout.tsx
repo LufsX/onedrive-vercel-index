@@ -27,18 +27,19 @@ const SwitchLayout = () => {
   const t = useTranslations()
 
   return (
-    <div className="relative w-24 shrink-0 text-sm text-gray-600 md:w-28 dark:text-gray-300">
+    <div className="relative shrink-0 text-sm text-gray-600 dark:text-gray-300">
       <Dropdown
         role="listbox"
         items={layouts}
         selectedIndex={layouts.findIndex(layout => layout.name === preferredLayout.name)}
         onSelect={setPreferredLayout}
+        triggerLabel={t(preferredLayout.name)}
         triggerClassName="flex w-full cursor-pointer items-center justify-between gap-2 rounded px-2 py-1 transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-gray-700"
         trigger={
           <>
             <span className="flex min-w-0 items-center gap-2">
               <LayoutOptionIcon layout={preferredLayout.name} className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
+              <span className="hidden truncate sm:inline">
                 {
                   // t('Grid')
                   // t('List')
@@ -46,7 +47,7 @@ const SwitchLayout = () => {
                 }
               </span>
             </span>
-            <ChevronDown className="h-3 w-3 shrink-0 transition-transform duration-200 group-aria-expanded:rotate-180" />
+            <ChevronDown className="hidden h-3 w-3 shrink-0 transition-transform duration-200 group-aria-expanded:rotate-180 sm:block" />
           </>
         }
         panelClassName="absolute top-full right-0 z-20 mt-1 w-32 overflow-auto rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900"

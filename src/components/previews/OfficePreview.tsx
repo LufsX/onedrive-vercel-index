@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic'
 import { File } from 'lucide-react'
 import { useTranslations } from '../ClientProviders'
 import Loading from '../Loading'
+import PreviewToolbar from './PreviewToolbar'
 
 const OfficeFileViewer = dynamic(() => import('office-file-viewer').then(module => module.OfficeFileViewer), {
   ssr: false,
@@ -75,36 +76,24 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
 
   return (
     <div>
-      <div className="mb-3 flex justify-end">
-        <div
-          className="inline-flex overflow-hidden rounded border border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-800"
-          role="group"
-          aria-label={t('Office preview renderer')}
-        >
-          <button
-            aria-pressed={renderer === 'local'}
-            className={`flex h-9 cursor-pointer items-center gap-2 px-3 font-medium transition-colors active:bg-gray-200 dark:active:bg-gray-600 ${
-              renderer === 'local'
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-600/20 dark:text-blue-300'
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-            onClick={() => {
-              setRenderer('local')
-            }}
-            title={t('Preview locally')}
-            type="button"
-          >
-            <File className="h-3.5 w-3.5" />
-            {t('Local preview')}
-          </button>
-          <button
-            aria-pressed={renderer === 'microsoft'}
-            className={`flex h-9 cursor-pointer items-center gap-2 border-l border-gray-300 px-3 font-medium transition-colors active:bg-gray-200 dark:border-gray-600 dark:active:bg-gray-600 ${
-              renderer === 'microsoft'
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-600/20 dark:text-blue-300'
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-            onClick={() => {
+      <PreviewToolbar
+        label={t('Office preview renderer')}
+        actions={[
+          {
+            id: 'local',
+            label: t('Local preview'),
+            icon: File,
+            selected: renderer === 'local',
+            title: t('Preview locally'),
+            onSelect: () => setRenderer('local'),
+          },
+          {
+            id: 'microsoft',
+            label: t('Microsoft'),
+            icon: MicrosoftLogo,
+            selected: renderer === 'microsoft',
+            title: t('Preview with Microsoft Office Online'),
+            onSelect: () => {
               if (protectedFile) {
                 toast.error(t('Protected files can only be previewed locally.'), { id: 'microsoft-preview-url' })
                 return
@@ -114,16 +103,11 @@ const OfficePreview: FC<{ file: OdFileObject }> = ({ file }) => {
                 return
               }
               setRenderer('microsoft')
-            }}
-            title={t('Preview with Microsoft Office Online')}
-            type="button"
-          >
-            <MicrosoftLogo className="h-3.5 w-3.5" />
-            {t('Microsoft')}
-          </button>
-        </div>
-      </div>
-      <div className="max-h-[90vh] overflow-auto">
+            },
+          },
+        ]}
+      />
+      <div className="isolate max-h-[90vh] overflow-auto">
         {renderer === 'local' || protectedFile ? (
           <OfficeFileViewer uri={docUrl} defaultFileName={file.name} height="600px" />
         ) : (
