@@ -20,13 +20,13 @@ function LinkContainer({ title, value }: { title: string; value: string }) {
   return (
     <>
       <h4 className="mb-1 text-xs font-medium tracking-wider uppercase">{title}</h4>
-      <div className="group relative mb-3 max-h-24 overflow-y-auto rounded border border-gray-400/20 bg-gray-50 p-2 pr-10 font-mono break-all dark:bg-gray-800">
-        <div className="opacity-80">{value}</div>
+      <div className="mb-3 flex items-center gap-2 rounded border border-gray-400/20 bg-gray-50 p-2 font-mono dark:bg-gray-800">
+        <div className="max-h-24 min-w-0 flex-1 overflow-y-auto break-all opacity-80">{value}</div>
         <button
           type="button"
           aria-label={`${t('Copy direct link')}: ${title}`}
           onClick={() => clipboard.copy(value)}
-          className={`${uiIconButton} absolute top-0.5 right-0.5 bg-gray-100 dark:bg-gray-800`}
+          className={`${uiIconButton} bg-gray-100 dark:bg-gray-800`}
         >
           {clipboard.copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </button>

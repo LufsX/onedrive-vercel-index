@@ -4,9 +4,9 @@ import { useClientConfig } from './ClientConfigProvider'
 
 import type { OdFileObject, OdFolderChildren, OdFolderObject } from '../types'
 import type { ParsedUrlQuery } from 'querystring'
-import { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { FC, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CircleChevronDown } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 
 import dynamic from 'next/dynamic'
@@ -19,22 +19,39 @@ import { useProtectedSWRInfinite } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import { navigationTargets } from '../utils/navigationTarget'
 
-import { layouts } from './SwitchLayout'
+import SwitchLayout, { layouts } from './SwitchLayout'
 import Loading, { LoadingIcon } from './Loading'
 import { PreviewContainer } from './previews/Containers'
+import { PreviewToolbarTarget } from './previews/PreviewToolbar'
 
 import FolderListLayout from './FolderListLayout'
 import FolderGridLayout from './FolderGridLayout'
 import FeatureBoundary from './FeatureBoundary'
 import UploadControls from './UploadControls'
+import { useUploads } from './UploadProvider'
+import Breadcrumb from './Breadcrumb'
 import { CreateFolderButton, FileManagerProvider } from './FileManager'
 const PreviewLoading = () => {
   const t = useTranslations()
+  const toolbar = useContext(PreviewToolbarTarget)
 
   return (
-    <PreviewContainer>
-      <Loading loadingText={t('Loading ...')} />
-    </PreviewContainer>
+    <>
+      {toolbar &&
+        createPortal(
+          <span
+            role="status"
+            aria-label={t('Loading ...')}
+            className="inline-flex h-7 w-7 items-center justify-center text-gray-400"
+          >
+            <LoadingIcon className="h-3.5 w-3.5 motion-safe:animate-spin" />
+          </span>,
+          toolbar,
+        )}
+      <PreviewContainer>
+        <Loading loadingText={t('Loading ...')} />
+      </PreviewContainer>
+    </>
   )
 }
 
@@ -134,6 +151,12 @@ const FileListingContent: FC<{
     enabled: layoutReady,
   })
 
+  const { registerRefresh } = useUploads()
+  useEffect(() => {
+    if (!layoutReady) return
+    return registerRefresh(path, () => mutate())
+  }, [path, layoutReady, mutate, registerRefresh])
+
   // 403 with setupRequired means the site has no stored credentials yet: require admin setup.
   // Any other failure stays on the page, so a token refresh hiccup cannot throw the
   // visitor out to the OAuth wizard mid-browse.
@@ -146,7 +169,7 @@ const FileListingContent: FC<{
   }, [setupRequired, router])
 
   const responses: any[] = useMemo(() => (data ? [].concat(...data) : []), [data])
-  useEffect(() => {
+  useLayoutEffect(() => {
     const isFolder = data ? Boolean(responses[0] && 'folder' in responses[0]) : error ? false : null
     onFolderChange(path, isFolder, async removedId => {
       if (removedId) {
@@ -230,11 +253,12 @@ const FileListingContent: FC<{
       el.remove()
     } else if (files.length > 1) {
       setTotalGenerating(true)
+      const controller = new AbortController()
 
       try {
         const { DownloadingToast, downloadMultipleFiles } = await import('./MultiFileDownloader')
-        const toastId = toast.loading(<DownloadingToast router={router} />)
-        await downloadMultipleFiles({ toastId, router, files, folder })
+        const toastId = toast.loading(<DownloadingToast onCancel={() => controller.abort()} />, { icon: null })
+        await downloadMultipleFiles({ toastId, controller, files, folder })
           .then(() => {
             setTotalGenerating(false)
             toast.success(t('Finished downloading selected files.'), {
@@ -243,14 +267,15 @@ const FileListingContent: FC<{
           })
           .catch(() => {
             setTotalGenerating(false)
-            toast.error(t('Failed to download selected files.'), { id: toastId })
+            if (controller.signal.aborted) toast(t('Cancelled'), { id: toastId })
+            else toast.error(t('Failed to download selected files.'), { id: toastId })
           })
       } catch {
         setTotalGenerating(false)
         toast.error(t('Failed to download selected files.'))
       }
     }
-  }, [selectableFiles, selected, path, hashedToken, router, t])
+  }, [selectableFiles, selected, path, hashedToken, t])
 
   // Get selected file permalink
   const handleSelectedPermalink = useCallback(
@@ -270,11 +295,16 @@ const FileListingContent: FC<{
   const handleFolderDownload = useCallback(
     (path: string, id: string, name?: string) => async () => {
       setFolderGenerating(previous => ({ ...previous, [id]: true }))
+      const controller = new AbortController()
       try {
         const { DownloadingToast, downloadTreelikeMultipleFiles, traverseFolder } =
           await import('./MultiFileDownloader')
         const files = (async function* () {
-          for await (const { meta: c, path: p, isFolder, error } of traverseFolder(path, protectedRoutes)) {
+          for await (const { meta: c, path: p, isFolder, error } of traverseFolder(
+            path,
+            protectedRoutes,
+            controller.signal,
+          )) {
             if (error) {
               toast.error(
                 t('Failed to download folder {{path}}: {{status}} {{message}} Skipped it to continue.', {
@@ -295,11 +325,11 @@ const FileListingContent: FC<{
           }
         })()
 
-        const toastId = toast.loading(<DownloadingToast router={router} />)
+        const toastId = toast.loading(<DownloadingToast onCancel={() => controller.abort()} />, { icon: null })
 
         await downloadTreelikeMultipleFiles({
           toastId,
-          router,
+          controller,
           files,
           basePath: path,
           folder: name,
@@ -310,14 +340,15 @@ const FileListingContent: FC<{
           })
           .catch(() => {
             setFolderGenerating(previous => ({ ...previous, [id]: false }))
-            toast.error(t('Failed to download folder.'), { id: toastId })
+            if (controller.signal.aborted) toast(t('Cancelled'), { id: toastId })
+            else toast.error(t('Failed to download folder.'), { id: toastId })
           })
       } catch {
         setFolderGenerating(previous => ({ ...previous, [id]: false }))
         toast.error(t('Failed to download folder.'))
       }
     },
-    [router, t, protectedRoutes],
+    [t, protectedRoutes],
   )
 
   if (error && (!data || error.status === 401 || error.status === 403)) {
@@ -481,38 +512,49 @@ const FileListingContent: FC<{
 }
 const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
   const path = queryToPath(query)
-  const container = useRef<HTMLDivElement>(null)
   const [toolbar, setToolbar] = useState<HTMLElement | null>(null)
-  const [folderPath, setFolderPath] = useState<string | null>(null)
+  const [folderStatus, setFolderStatus] = useState<{ path: string; isFolder: boolean | null }>({ path, isFolder: null })
   const refreshFolder = useRef<(removedId?: string) => Promise<unknown>>(async () => undefined)
   const onFolderChange = useCallback(
     (folder: string, isFolder: boolean | null, refresh: (removedId?: string) => Promise<unknown>) => {
       refreshFolder.current = refresh
-      if (isFolder !== null) setFolderPath(isFolder ? folder : null)
+      setFolderStatus(previous =>
+        previous.path === folder && previous.isFolder === isFolder ? previous : { path: folder, isFolder },
+      )
     },
     [],
   )
-
-  useEffect(() => {
-    const actions = container.current?.parentElement?.querySelector<HTMLElement>('[data-upload-actions]')
-    if (actions) setToolbar(actions)
-  }, [])
+  const isFolder =
+    folderStatus.path === path && folderStatus.isFolder !== null
+      ? folderStatus.isFolder
+      : navigationTargets.get(path) === 'folder'
 
   return (
     <FileManagerProvider key={path} path={path} onRefresh={removedId => refreshFolder.current(removedId)}>
-      <div ref={container}>
-        {toolbar &&
-          folderPath === path &&
-          createPortal(
-            <>
-              <CreateFolderButton />
-              <UploadControls key={path} path={path} onComplete={() => refreshFolder.current()} />
-            </>,
-            toolbar,
-          )}
-        <FeatureBoundary key={path}>
-          <FileListingContent path={path} onFolderChange={onFolderChange} />
-        </FeatureBoundary>
+      <div>
+        <nav className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:pl-1">
+          <div className="min-w-0 flex-1 basis-48">
+            <Breadcrumb query={query} />
+          </div>
+          <div
+            ref={setToolbar}
+            data-file-actions
+            className="relative ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 empty:hidden"
+          >
+            {isFolder && (
+              <>
+                <CreateFolderButton />
+                <UploadControls path={path} />
+                <SwitchLayout />
+              </>
+            )}
+          </div>
+        </nav>
+        <PreviewToolbarTarget.Provider value={toolbar}>
+          <FeatureBoundary key={path}>
+            <FileListingContent path={path} onFolderChange={onFolderChange} />
+          </FeatureBoundary>
+        </PreviewToolbarTarget.Provider>
       </div>
     </FileManagerProvider>
   )

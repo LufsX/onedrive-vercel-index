@@ -6,10 +6,10 @@ import type { OdAPIResponse } from '../types'
 import { getStoredToken } from './protectedRouteHandler'
 
 // Keep the API error shape shared by listings, search and recursive downloads.
-export async function fetcher([url, token]: [url: string, token?: string]): Promise<any> {
+export async function fetcher([url, token]: [url: string, token?: string], signal?: AbortSignal): Promise<any> {
   let response: Response
   try {
-    response = await fetch(url, { headers: token ? { 'od-protected-token': token } : undefined })
+    response = await fetch(url, { signal, headers: token ? { 'od-protected-token': token } : undefined })
   } catch (error: any) {
     throw { status: 0, message: { error: error.message ?? 'Network error' } }
   }
@@ -34,7 +34,11 @@ export async function fetcher([url, token]: [url: string, token?: string]): Prom
  * @param path Current query directory path
  * @returns useSWRInfinite API
  */
-export function useProtectedSWRInfinite(path: string, protectedRoutes: readonly string[], options: { thumbnails?: 'medium'; enabled?: boolean } = {}) {
+export function useProtectedSWRInfinite(
+  path: string,
+  protectedRoutes: readonly string[],
+  options: { thumbnails?: 'medium'; enabled?: boolean } = {},
+) {
   const hashedToken = getStoredToken(path, protectedRoutes)
 
   /**

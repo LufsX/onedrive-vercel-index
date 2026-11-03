@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { FC, memo } from 'react'
 import { CircleArrowDown, Copy } from 'lucide-react'
 import { useTranslations } from './ClientProviders'
+import { LoadingIcon } from './Loading'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
@@ -187,18 +188,20 @@ const FolderListLayout = ({
           >
             <Copy className="h-4 w-4" />
           </button>
-          {totalGenerating ? (
-            <Downloading title={t('Downloading selected files, refresh page to cancel')} style="p-1" />
-          ) : (
-            <button
-              title={t('Download selected files')}
-              className={actionButton}
-              disabled={totalSelected === 0}
-              onClick={handleSelectedDownload}
-            >
+          <button
+            title={t(totalGenerating ? 'Downloading selected files...' : 'Download selected files')}
+            aria-label={t('Download selected files')}
+            aria-busy={totalGenerating}
+            className={actionButton}
+            disabled={loading || totalSelected === 0 || totalGenerating}
+            onClick={handleSelectedDownload}
+          >
+            {totalGenerating ? (
+              <LoadingIcon className="h-4 w-4 motion-safe:animate-spin" />
+            ) : (
               <CircleArrowDown className="h-4 w-4" />
-            </button>
-          )}
+            )}
+          </button>
           <Checkbox
             checked={totalSelected}
             disabled={loading}

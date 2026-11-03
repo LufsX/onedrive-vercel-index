@@ -11,6 +11,7 @@ import ClientProviders from '../components/ClientProviders'
 import BrandIconsProvider from '../components/BrandIconsProvider'
 import { brandIcons } from '../lib/brandIcons'
 import ProgressBar from '../components/ProgressBar'
+import UploadProvider from '../components/UploadProvider'
 import ThirdPartyScripts from '../components/ThirdPartyScripts'
 import { getLocale, getMessages } from '../lib/i18n'
 import { isAdminConfigurationValid } from '../lib/adminAuth'
@@ -83,7 +84,9 @@ export default async function RootLayout(props: RootLayoutProps) {
         <ClientProviders messages={messages} locale={locale}>
           <ConfigProvider siteConfig={publicSiteConfig} apiConfig={publicApiConfig}>
             <AdminSessionProvider bootstrap={adminBootstrap}>
-              <BrandIconsProvider icons={brandIcons}>{props.children}</BrandIconsProvider>
+              <BrandIconsProvider icons={brandIcons}>
+                <UploadProvider>{props.children}</UploadProvider>
+              </BrandIconsProvider>
             </AdminSessionProvider>
           </ConfigProvider>
         </ClientProviders>

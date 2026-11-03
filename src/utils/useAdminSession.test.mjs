@@ -434,7 +434,7 @@ test('root layout passes only status and cookie presence to the bootstrap provid
       let validations = 0
       const mocks = {
         'react/jsx-runtime': { jsx: nodes, jsxs: nodes },
-        '../components/OverlayScrollbars': { default: 'overlay-scrollbars' },
+        '../components/UploadProvider': { default: 'upload-provider' },
         '../components/ThirdPartyScripts': { default: 'third-party-scripts' },
         'next/headers': {
           cookies: async () => ({
