@@ -284,5 +284,18 @@
   "Redis is unavailable. Try again later.": "Redis 不可用。请稍后重试。",
   "Administrator authentication is unavailable. Try again later.": "管理员身份验证不可用。请稍后重试。",
   "Administrator password configuration is invalid. Generate a new configuration and redeploy.": "管理员密码配置无效。请生成新配置并重新部署。",
-  "Administrator password is not configured. Generate a configuration and redeploy.": "尚未配置管理员密码。请生成配置并重新部署。"
+  "Administrator password is not configured. Generate a configuration and redeploy.": "尚未配置管理员密码。请生成配置并重新部署。",
+  "View uploads": "查看上传",
+  "You can close this window. Uploads continue while this browser tab stays open.": "可以关闭此弹窗，保持浏览器标签页打开即可继续上传。",
+  "Administrator access": "管理员专用",
+  "Manage your OneDrive files": "管理你的 OneDrive 文件",
+  "Administrators can upload files, create folders and delete files. Visitors can browse and download without an administrator account.": "管理员可以上传文件、新建文件夹和删除文件。访客无需管理员账号即可浏览和下载。",
+  "Set an administrator password": "设置管理员密码",
+  "Apply the environment variables": "保存环境变量",
+  "Save ADMIN_PASSWORD_HASH and ADMIN_SESSION_SECRET in your deployment, then restart or redeploy.": "将 ADMIN_PASSWORD_HASH 和 ADMIN_SESSION_SECRET 保存到部署环境，然后重启或重新部署。",
+  "Connect OneDrive": "连接 OneDrive",
+  "Log in as administrator, then follow the next steps to authorize your Microsoft account.": "使用管理员密码登录后，按后续步骤完成 Microsoft 账号授权。",
+  "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.": "已配置过？直接登录即可继续。需要更换密码时，重新生成配置并更新部署环境。",
+  "Administrator session active": "管理员已登录",
+  "Generate the password configuration below. Use at least 8 characters.": "生成管理员密码配置，密码至少需要 8 个字符。"
 }

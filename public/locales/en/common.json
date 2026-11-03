@@ -255,5 +255,18 @@
   "Redis is unavailable. Try again later.": "Redis is unavailable. Try again later.",
   "Administrator authentication is unavailable. Try again later.": "Administrator authentication is unavailable. Try again later.",
   "Administrator password configuration is invalid. Generate a new configuration and redeploy.": "Administrator password configuration is invalid. Generate a new configuration and redeploy.",
-  "Administrator password is not configured. Generate a configuration and redeploy.": "Administrator password is not configured. Generate a configuration and redeploy."
+  "Administrator password is not configured. Generate a configuration and redeploy.": "Administrator password is not configured. Generate a configuration and redeploy.",
+  "View uploads": "View uploads",
+  "You can close this window. Uploads continue while this browser tab stays open.": "You can close this window. Uploads continue while this browser tab stays open.",
+  "Administrator access": "Administrator access",
+  "Manage your OneDrive files": "Manage your OneDrive files",
+  "Administrators can upload files, create folders and delete files. Visitors can browse and download without an administrator account.": "Administrators can upload files, create folders and delete files. Visitors can browse and download without an administrator account.",
+  "Set an administrator password": "Set an administrator password",
+  "Apply the environment variables": "Apply the environment variables",
+  "Save ADMIN_PASSWORD_HASH and ADMIN_SESSION_SECRET in your deployment, then restart or redeploy.": "Save ADMIN_PASSWORD_HASH and ADMIN_SESSION_SECRET in your deployment, then restart or redeploy.",
+  "Connect OneDrive": "Connect OneDrive",
+  "Log in as administrator, then follow the next steps to authorize your Microsoft account.": "Log in as administrator, then follow the next steps to authorize your Microsoft account.",
+  "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.": "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.",
+  "Administrator session active": "Administrator session active",
+  "Generate the password configuration below. Use at least 8 characters.": "Generate the password configuration below. Use at least 8 characters."
 }

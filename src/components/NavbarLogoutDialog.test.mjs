@@ -187,10 +187,10 @@ test('shared dialog guards every close entry point and delegates cleanup to afte
   assert.deepEqual(calls, ['close', 'close', 'left'])
 })
 
-function navbarView(admin = { status: 'authenticated', busy: false }) {
+function navbarView(admin = { status: 'authenticated', busy: false }, component = './AdminAccess.tsx') {
   const states = []
   let cursor = 0
-  const Navbar = loadComponent('./Navbar.tsx', {
+  const Navbar = loadComponent(component, {
     react: {
       useState: initial => {
         const index = cursor++
@@ -208,7 +208,13 @@ function navbarView(admin = { status: 'authenticated', busy: false }) {
       useRef: current => ({ current }),
     },
     'react/jsx-runtime': { jsx: nodes, jsxs: nodes },
-    'lucide-react': { LogIn: 'login-icon', LogOut: 'logout-icon', Mail: 'mail-icon', Search: 'search-icon' },
+    'lucide-react': {
+      LogIn: 'login-icon',
+      LogOut: 'logout-icon',
+      Mail: 'mail-icon',
+      Search: 'search-icon',
+      Settings2: 'settings-icon',
+    },
     'react-hot-toast': { Toaster: 'toaster' },
     'next/link': { __esModule: true, default: 'link' },
     'next/image': { __esModule: true, default: 'image' },
@@ -222,6 +228,7 @@ function navbarView(admin = { status: 'authenticated', busy: false }) {
     './ClientProviders': { useTranslations: () => value => value },
     './BrandIconsProvider': { useBrandIcons: () => ({}) },
     './BrandIcon': { __esModule: true, default: 'brand-icon' },
+    './AdminAccess': { __esModule: true, default: 'admin-access' },
     './SwitchLang': { __esModule: true, default: 'switch-lang' },
     './FeatureBoundary': { __esModule: true, default: 'boundary' },
     './AppDialog': { __esModule: true, default: 'app-dialog' },
@@ -233,12 +240,12 @@ function navbarView(admin = { status: 'authenticated', busy: false }) {
   })
   return () => {
     cursor = 0
-    return Navbar()
+    return Navbar({ children: 'brand' })
   }
 }
 
-test('Navbar retains lazy search and logout components when closed so leave animations can finish', () => {
-  const render = navbarView()
+test('search and administrator dialogs retain their lazy content through leave animations', () => {
+  const render = navbarView(undefined, './Navbar.tsx')
   const initial = render()
   assert.equal(find(initial, 'search-modal').length, 0)
   assert.equal(find(initial, 'logout-dialog').length, 0)
@@ -249,16 +256,15 @@ test('Navbar retains lazy search and logout components when closed so leave anim
   search.setSearchOpen(false)
   assert.equal(find(render(), 'search-modal')[0].searchOpen, false)
 
-  find(render(), 'button')
-    .find(button => button['aria-label'] === 'Logout')
-    .onClick()
-  const logout = find(render(), 'logout-dialog')[0]
+  const renderAdmin = navbarView()
+  find(renderAdmin(), 'span')[0].onKeyDown({ key: 'Enter', shiftKey: true, preventDefault() {} })
+  const logout = find(renderAdmin(), 'logout-dialog')[0]
   assert.equal(logout.open, true)
   logout.onClose()
-  assert.equal(find(render(), 'logout-dialog')[0].open, false)
+  assert.equal(find(renderAdmin(), 'logout-dialog')[0].open, false)
 })
 
-test('Navbar login shows safe detailed errors without exposing password regeneration', async () => {
+test('administrator login shows safe detailed errors without exposing password regeneration', async () => {
   for (const [failure, expected] of [
     ['Incorrect administrator password.', 'Incorrect administrator password.'],
     ['Redis is not configured. Set REDIS_URL and redeploy.', 'Redis is not configured. Set REDIS_URL and redeploy.'],
@@ -291,9 +297,7 @@ test('login keeps its password until afterLeave and blocks closing or submitting
     },
   }
   const render = navbarView(admin)
-  find(render(), 'button')
-    .find(button => button['aria-label'] === 'Administrator login')
-    .onClick()
+  find(render(), 'span')[0].onKeyDown({ key: 'Enter', shiftKey: true, preventDefault() {} })
   find(render(), 'input')[0].onChange({ target: { value: 'test-password' } })
 
   admin.busy = true

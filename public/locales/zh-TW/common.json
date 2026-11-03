@@ -284,5 +284,18 @@
   "Redis is unavailable. Try again later.": "Redis 無法使用。請稍後再試。",
   "Administrator authentication is unavailable. Try again later.": "管理員身分驗證無法使用。請稍後再試。",
   "Administrator password configuration is invalid. Generate a new configuration and redeploy.": "管理員密碼設定無效。請產生新的設定並重新部署。",
-  "Administrator password is not configured. Generate a configuration and redeploy.": "尚未設定管理員密碼。請產生設定並重新部署。"
+  "Administrator password is not configured. Generate a configuration and redeploy.": "尚未設定管理員密碼。請產生設定並重新部署。",
+  "View uploads": "檢視上傳",
+  "You can close this window. Uploads continue while this browser tab stays open.": "可以關閉此視窗，保持瀏覽器分頁開啟即可繼續上傳。",
+  "Administrator access": "管理員專用",
+  "Manage your OneDrive files": "管理你的 OneDrive 檔案",
+  "Administrators can upload files, create folders and delete files. Visitors can browse and download without an administrator account.": "管理員可以上傳檔案、建立資料夾和刪除檔案。訪客無需管理員帳號即可瀏覽和下載。",
+  "Set an administrator password": "設定管理員密碼",
+  "Apply the environment variables": "儲存環境變數",
+  "Save ADMIN_PASSWORD_HASH and ADMIN_SESSION_SECRET in your deployment, then restart or redeploy.": "將 ADMIN_PASSWORD_HASH 和 ADMIN_SESSION_SECRET 儲存至部署環境，然後重新啟動或部署。",
+  "Connect OneDrive": "連接 OneDrive",
+  "Log in as administrator, then follow the next steps to authorize your Microsoft account.": "使用管理員密碼登入後，按照後續步驟完成 Microsoft 帳號授權。",
+  "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.": "已完成設定？直接登入即可繼續。需要更換密碼時，重新產生設定並更新部署環境。",
+  "Administrator session active": "管理員已登入",
+  "Generate the password configuration below. Use at least 8 characters.": "產生管理員密碼設定，密碼至少需要 8 個字元。"
 }
