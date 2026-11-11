@@ -31,6 +31,8 @@ import UploadControls from './UploadControls'
 import { useUploads } from './UploadProvider'
 import Breadcrumb from './Breadcrumb'
 import { CreateFolderButton, FileManagerProvider } from './FileManager'
+import DirectoryError from './folder/DirectoryError'
+import { rawFileUrl } from '../utils/rawFileUrl'
 const PreviewLoading = () => {
   const t = useTranslations()
   const toolbar = useContext(PreviewToolbarTarget)
@@ -146,10 +148,13 @@ const FileListingContent: FC<{
   const t = useTranslations()
 
   // Grid cards render preview images, which the listing includes when asked for.
-  const { data, error, size, setSize, mutate } = useProtectedSWRInfinite(path, protectedRoutes, {
+  const { data, error, size, setSize, mutate, isValidating } = useProtectedSWRInfinite(path, protectedRoutes, {
     ...(layout.name === 'Grid' ? { thumbnails: 'medium' as const } : {}),
     enabled: layoutReady,
   })
+  const retry = () => {
+    void mutate().catch(() => undefined)
+  }
 
   const { registerRefresh } = useUploads()
   useEffect(() => {
@@ -241,7 +246,10 @@ const FileListingContent: FC<{
       .filter(c => selected[c.id])
       .map(c => ({
         name: c.name,
-        url: `/api/raw?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+        url: rawFileUrl(
+          `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`,
+          hashedToken ? { odpt: hashedToken } : {},
+        ),
       }))
 
     if (files.length == 1) {
@@ -267,7 +275,8 @@ const FileListingContent: FC<{
           })
           .catch(() => {
             setTotalGenerating(false)
-            if (controller.signal.aborted) toast(t('Cancelled'), { id: toastId })
+            if (controller.signal.aborted && controller.signal.reason?.name === 'AbortError')
+              toast(t('Cancelled'), { id: toastId })
             else toast.error(t('Failed to download selected files.'), { id: toastId })
           })
       } catch {
@@ -284,7 +293,11 @@ const FileListingContent: FC<{
         .filter(c => selected[c.id])
         .map(
           c =>
-            `${baseUrl}/api/raw?path=${path}/${encodeURIComponent(c.name)}${hashedToken ? `&odpt=${hashedToken}` : ''}`,
+            baseUrl +
+            rawFileUrl(
+              `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`,
+              hashedToken ? { odpt: hashedToken } : {},
+            ),
         )
         .join('\n')
     },
@@ -318,7 +331,7 @@ const FileListingContent: FC<{
             const hashedTokenForPath = getStoredToken(p, protectedRoutes)
             yield {
               name: c?.name,
-              url: `/api/raw?path=${p}${hashedTokenForPath ? `&odpt=${hashedTokenForPath}` : ''}`,
+              url: rawFileUrl(p, hashedTokenForPath ? { odpt: hashedTokenForPath } : {}),
               path: p,
               isFolder,
             }
@@ -340,7 +353,8 @@ const FileListingContent: FC<{
           })
           .catch(() => {
             setFolderGenerating(previous => ({ ...previous, [id]: false }))
-            if (controller.signal.aborted) toast(t('Cancelled'), { id: toastId })
+            if (controller.signal.aborted && controller.signal.reason?.name === 'AbortError')
+              toast(t('Cancelled'), { id: toastId })
             else toast.error(t('Failed to download folder.'), { id: toastId })
           })
       } catch {
@@ -360,20 +374,20 @@ const FileListingContent: FC<{
       <PreviewContainer>
         {error.status === 401 ? (
           <Auth redirect={path} />
-        ) : (
+        ) : error.status === 404 ? (
           <FourOhFour
             errorMsg={typeof error.message?.error === 'string' ? error.message.error : JSON.stringify(error.message)}
           />
+        ) : (
+          <DirectoryError status={error.status} retrying={isValidating} onRetry={retry} />
         )}
       </PreviewContainer>
     )
   }
-  const isLoadingInitialData = !data && !error
   const pageError = Boolean(error && data)
-  const isLoadingMore =
-    !pageError && (isLoadingInitialData || (size > 0 && data && typeof data[size - 1] === 'undefined'))
-  const isEmpty = data?.[0]?.length === 0
-  const isReachingEnd = isEmpty || (data && typeof data[data.length - 1]?.next === 'undefined')
+  const requestStatus = error ? 'error' : isValidating ? (data ? 'refreshing' : 'loading') : 'ready'
+  const isLoadingMore = !pageError && size > (data?.length ?? 0)
+  const isReachingEnd = Boolean(data && !data[data.length - 1]?.next)
   const onlyOnePage = !data || typeof data[0]?.next === 'undefined'
 
   if (!data && navigationTargets.get(path) !== 'folder') {
@@ -384,7 +398,9 @@ const FileListingContent: FC<{
     // Folder layout component props
     const folderProps = {
       loading: !data,
-      toast,
+      empty: Boolean(data && folderChildren.length === 0 && isReachingEnd),
+      refreshing: requestStatus === 'refreshing',
+      onRefresh: retry,
       path,
       folderChildren,
       selected,
@@ -400,6 +416,12 @@ const FileListingContent: FC<{
 
     return (
       <>
+        {pageError && <DirectoryError status={error.status} hasData retrying={isValidating} onRetry={retry} />}
+        {requestStatus === 'refreshing' && !pageError && !isLoadingMore && folderChildren.length > 0 && (
+          <p role="status" className="mb-2 px-3 text-xs text-gray-500 dark:text-gray-400">
+            {t('Refreshing...')}
+          </p>
+        )}
         {layout.name === 'Grid' ? (
           <FeatureBoundary>
             <FolderGridLayout {...folderProps} />
@@ -410,41 +432,40 @@ const FileListingContent: FC<{
 
         {!onlyOnePage && (
           <div className="rounded-b bg-white dark:bg-gray-900 dark:text-gray-100">
-            <div className="border-b border-gray-200 p-3 text-center font-mono text-sm text-gray-400 dark:border-gray-700">
+            <div className="border-b border-gray-200 p-3 text-center font-mono text-sm text-gray-400 tabular-nums dark:border-gray-700">
               {t('- showing {{count}} page(s) ', {
-                count: size,
+                count: data?.length ?? 0,
                 totalFileNum: isLoadingMore ? '...' : folderChildren.length,
               }) +
                 (isLoadingMore
                   ? t('of {{count}} file(s) -', { count: folderChildren.length, context: 'loading' })
                   : t('of {{count}} file(s) -', { count: folderChildren.length, context: 'loaded' }))}
             </div>
-            {pageError && (
-              <p role="alert" className="px-3 pt-3 text-center text-sm text-red-500">
-                {typeof error.message?.error === 'string' ? error.message.error : JSON.stringify(error.message)}
-              </p>
+            {!pageError && (
+              <button
+                className={`flex w-full items-center justify-center gap-2 p-3 disabled:cursor-not-allowed ${
+                  isLoadingMore || isReachingEnd ? 'opacity-60' : 'dark:hover:bg-gray-850 hover:bg-gray-100'
+                }`}
+                onClick={() => {
+                  void setSize(size + 1).catch(() => undefined)
+                }}
+                disabled={isValidating || isLoadingMore || isReachingEnd}
+              >
+                {isLoadingMore ? (
+                  <>
+                    <LoadingIcon className="inline-block h-4 w-4 animate-spin" />
+                    <span>{t('Loading ...')}</span>{' '}
+                  </>
+                ) : isReachingEnd ? (
+                  <span>{t('No more files')}</span>
+                ) : (
+                  <>
+                    <span>{t('Load more')}</span>
+                    <CircleChevronDown className="h-4 w-4" />
+                  </>
+                )}
+              </button>
             )}
-            <button
-              className={`flex w-full items-center justify-center gap-2 p-3 disabled:cursor-not-allowed ${
-                isLoadingMore || isReachingEnd ? 'opacity-60' : 'dark:hover:bg-gray-850 hover:bg-gray-100'
-              }`}
-              onClick={() => setSize(pageError ? size : size + 1)}
-              disabled={isLoadingMore || isReachingEnd}
-            >
-              {isLoadingMore ? (
-                <>
-                  <LoadingIcon className="inline-block h-4 w-4 animate-spin" />
-                  <span>{t('Loading ...')}</span>{' '}
-                </>
-              ) : isReachingEnd ? (
-                <span>{t('No more files')}</span>
-              ) : (
-                <>
-                  <span>{t('Load more')}</span>
-                  <CircleChevronDown className="h-4 w-4" />
-                </>
-              )}
-            </button>
           </div>
         )}
 

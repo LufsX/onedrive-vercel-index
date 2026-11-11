@@ -12,14 +12,16 @@ import { LoadingIcon } from './Loading'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { humanFileSize, formatModifiedDateTime } from '../utils/fileDetails'
-import useClipboard from '../utils/useClipboard'
+import useCopyLink from '../utils/useCopyLink'
 
 import { Downloading, Checkbox, ChildIcon, ChildName } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import HoverSurface from './HoverSurface'
 import { uiRowIconButton } from './uiStyles'
-import { FileDeleteButton, useFileManager } from './FileManager'
+import { FileDeleteButton } from './FileManager'
 import DirectoryBody, { Skeleton } from './folder/DirectoryBody'
+import FileItemMenu from './folder/FileItemMenu'
+import { rawFileUrl } from '../utils/rawFileUrl'
 
 /**
  * The name/date/size block and the right hand action block use fixed widths, so
@@ -31,8 +33,8 @@ const rowShell = 'flex min-w-0 items-center gap-3 px-3'
 const nameArea = 'flex min-w-0 flex-1 items-center gap-2'
 const dateWidth = 'hidden w-44 shrink-0 overflow-hidden text-ellipsis whitespace-nowrap md:block'
 const sizeWidth = 'hidden w-20 shrink-0 truncate md:block'
-const dateCell = `${dateWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
-const sizeCell = `${sizeWidth} font-mono text-sm text-gray-700 dark:text-gray-500`
+const dateCell = `${dateWidth} font-mono text-sm text-gray-700 tabular-nums dark:text-gray-500`
+const sizeCell = `${sizeWidth} font-mono text-sm text-gray-700 tabular-nums dark:text-gray-500`
 const rightCell = 'hidden shrink-0 items-center justify-end gap-0.5 pr-2 md:flex md:w-[100px]'
 // Same control as the header and the grid card, so every row icon looks alike.
 const actionButton = uiRowIconButton
@@ -61,7 +63,6 @@ const FolderListRow = memo(function FolderListRow({
   generating,
   hashedToken,
   copy,
-  toast,
   toggleItemSelected,
   handleFolderDownload,
 }: {
@@ -70,14 +71,13 @@ const FolderListRow = memo(function FolderListRow({
   selected: boolean
   generating: boolean
   hashedToken: string | null
-  copy: ReturnType<typeof useClipboard>['copy']
-  toast: typeof import('react-hot-toast').default
+  copy: ReturnType<typeof useCopyLink>
   toggleItemSelected: (id: string) => void
   handleFolderDownload: (path: string, id: string, name?: string) => () => void
 }) {
   const t = useTranslations()
-  const manager = useFileManager()
   const itemPath = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
+  const fileUrl = rawFileUrl(itemPath, hashedToken ? { odpt: hashedToken } : {})
 
   return (
     <div data-hover-item className="flex items-center">
@@ -88,45 +88,42 @@ const FolderListRow = memo(function FolderListRow({
       <div className={`${rightCell} text-gray-700 dark:text-gray-400`}>
         {c.folder ? (
           <>
-            <span
+            <button
+              type="button"
               title={t('Copy folder permalink')}
               className={rowAction}
               onClick={() => {
-                copy(`${getBaseUrl()}${itemPath}`)
-                toast(t('Copied folder permalink.'), { icon: '👌' })
+                void copy(`${getBaseUrl()}${itemPath}`, t('Copied folder permalink.'))
               }}
             >
               <Copy className="h-4 w-4" />
-            </span>
+            </button>
             {generating ? (
               <Downloading title={t('Downloading folder, refresh page to cancel')} style="p-1" />
             ) : (
-              <span
+              <button
+                type="button"
                 title={t('Download folder')}
                 className={rowAction}
                 onClick={handleFolderDownload(itemPath, c.id, c.name)}
               >
                 <CircleArrowDown className="h-4 w-4" />
-              </span>
+              </button>
             )}
           </>
         ) : (
           <>
-            <span
+            <button
+              type="button"
               title={t('Copy raw file permalink')}
               className={rowAction}
               onClick={() => {
-                copy(`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
-                toast.success(t('Copied raw file permalink.'))
+                void copy(getBaseUrl() + fileUrl, t('Copied raw file permalink.'))
               }}
             >
               <Copy className="h-4 w-4" />
-            </span>
-            <a
-              title={t('Download file')}
-              className={rowAction}
-              href={`/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-            >
+            </button>
+            <a title={t('Download file')} className={rowAction} href={fileUrl}>
               <CircleArrowDown className="h-4 w-4" />
             </a>
           </>
@@ -138,17 +135,27 @@ const FolderListRow = memo(function FolderListRow({
           </>
         )}
       </div>
-      {!c.folder && manager?.available && (
-        <div className="flex shrink-0 pr-2 md:hidden">
-          <FileDeleteButton item={c} />
-        </div>
-      )}
+      <div className="flex shrink-0 items-center pr-2 md:hidden">
+        {!c.folder && c.name !== '.password' && (
+          <Checkbox checked={selected ? 2 : 0} onChange={() => toggleItemSelected(c.id)} title={t('Select file')} />
+        )}
+        <FileItemMenu
+          item={c}
+          path={itemPath}
+          hashedToken={hashedToken}
+          generating={generating}
+          onDownloadFolder={handleFolderDownload(itemPath, c.id, c.name)}
+        />
+      </div>
     </div>
   )
 })
 
 const FolderListLayout = ({
   loading = false,
+  empty = false,
+  refreshing = false,
+  onRefresh,
   path,
   folderChildren,
   selected,
@@ -160,9 +167,8 @@ const FolderListLayout = ({
   folderGenerating,
   handleSelectedPermalink,
   handleFolderDownload,
-  toast,
 }) => {
-  const { copy } = useClipboard()
+  const copy = useCopyLink()
   const { protectedRoutes } = useClientConfig().siteConfig
   const hashedToken = getStoredToken(path, protectedRoutes)
 
@@ -176,14 +182,13 @@ const FolderListLayout = ({
           <div className={dateWidth}>{t('Last Modified')}</div>
           <div className={sizeWidth}>{t('Size')}</div>
         </div>
-        <div className={`${rightCell} text-gray-700 dark:text-gray-400`}>
+        <div className="flex shrink-0 items-center justify-end gap-0.5 pr-2 text-gray-700 md:w-[100px] dark:text-gray-400">
           <button
             title={t('Copy selected files permalink')}
             className={actionButton}
             disabled={totalSelected === 0}
             onClick={() => {
-              copy(handleSelectedPermalink(getBaseUrl()))
-              toast.success(t('Copied selected files permalink.'))
+              void copy(handleSelectedPermalink(getBaseUrl()), t('Copied selected files permalink.'))
             }}
           >
             <Copy className="h-4 w-4" />
@@ -215,6 +220,9 @@ const FolderListLayout = ({
       <DirectoryBody
         key={path}
         loading={loading}
+        empty={empty}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         placeholder={
           <div aria-hidden="true">
             {Array.from({ length: 6 }, (_, index) => (
@@ -249,7 +257,6 @@ const FolderListLayout = ({
               generating={Boolean(folderGenerating[c.id])}
               hashedToken={c.folder ? null : hashedToken}
               copy={copy}
-              toast={toast}
               toggleItemSelected={toggleItemSelected}
               handleFolderDownload={handleFolderDownload}
             />

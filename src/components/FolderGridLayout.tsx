@@ -12,13 +12,14 @@ import { LoadingIcon } from './Loading'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { formatModifiedDateTime } from '../utils/fileDetails'
-import useClipboard from '../utils/useClipboard'
+import useCopyLink from '../utils/useCopyLink'
 import { Checkbox, ChildIcon, ChildName, Downloading } from './folder/ListingItems'
 import { getStoredToken } from '../utils/protectedRouteHandler'
 import HoverSurface from './HoverSurface'
 import { uiRowIconButton } from './uiStyles'
 import { FileDeleteButton } from './FileManager'
 import DirectoryBody, { Skeleton } from './folder/DirectoryBody'
+import { rawFileUrl } from '../utils/rawFileUrl'
 
 // Same control as the list rows, so every card icon looks alike.
 const rowAction = uiRowIconButton
@@ -75,7 +76,6 @@ const FolderGridCard = memo(function FolderGridCard({
   generating,
   hashedToken,
   copy,
-  toast,
   toggleItemSelected,
   handleFolderDownload,
 }: {
@@ -84,58 +84,55 @@ const FolderGridCard = memo(function FolderGridCard({
   selected: boolean
   generating: boolean
   hashedToken: string | null
-  copy: ReturnType<typeof useClipboard>['copy']
-  toast: typeof import('react-hot-toast').default
+  copy: ReturnType<typeof useCopyLink>
   toggleItemSelected: (id: string) => void
   handleFolderDownload: (path: string, id: string, name?: string) => () => void
 }) {
   const t = useTranslations()
   const itemPath = `${path === '/' ? '' : path}/${encodeURIComponent(c.name)}`
+  const fileUrl = rawFileUrl(itemPath, hashedToken ? { odpt: hashedToken } : {})
 
   return (
     <div data-hover-item className="group relative overflow-hidden rounded">
       <div className="absolute top-0 right-0 z-10 m-1 rounded bg-white/50 py-0.5 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none dark:bg-gray-900/50 [@media(hover:none)]:opacity-100">
         {c.folder ? (
           <div>
-            <span
+            <button
+              type="button"
               title={t('Copy folder permalink')}
               className={rowAction}
               onClick={() => {
-                copy(`${getBaseUrl()}${itemPath}`)
-                toast(t('Copied folder permalink.'), { icon: '👌' })
+                void copy(`${getBaseUrl()}${itemPath}`, t('Copied folder permalink.'))
               }}
             >
               <Copy className="h-4 w-4" />
-            </span>
+            </button>
             {generating ? (
               <Downloading title={t('Downloading folder, refresh page to cancel')} style="p-1" />
             ) : (
-              <span
+              <button
+                type="button"
                 title={t('Download folder')}
                 className={rowAction}
                 onClick={handleFolderDownload(itemPath, c.id, c.name)}
               >
                 <CircleArrowDown className="h-4 w-4" />
-              </span>
+              </button>
             )}
           </div>
         ) : (
           <div>
-            <span
+            <button
+              type="button"
               title={t('Copy raw file permalink')}
               className={rowAction}
               onClick={() => {
-                copy(`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`)
-                toast.success(t('Copied raw file permalink.'))
+                void copy(getBaseUrl() + fileUrl, t('Copied raw file permalink.'))
               }}
             >
               <Copy className="h-4 w-4" />
-            </span>
-            <a
-              title={t('Download file')}
-              className={rowAction}
-              href={`${getBaseUrl()}/api/raw?path=${itemPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
-            >
+            </button>
+            <a title={t('Download file')} className={rowAction} href={fileUrl}>
               <CircleArrowDown className="h-4 w-4" />
             </a>
             <FileDeleteButton item={c} />
@@ -162,6 +159,9 @@ const FolderGridCard = memo(function FolderGridCard({
 
 const FolderGridLayout = ({
   loading = false,
+  empty = false,
+  refreshing = false,
+  onRefresh,
   path,
   folderChildren,
   selected,
@@ -173,9 +173,8 @@ const FolderGridLayout = ({
   folderGenerating,
   handleSelectedPermalink,
   handleFolderDownload,
-  toast,
 }) => {
-  const { copy } = useClipboard()
+  const copy = useCopyLink()
   const { protectedRoutes } = useClientConfig().siteConfig
   const hashedToken = getStoredToken(path, protectedRoutes)
 
@@ -200,8 +199,7 @@ const FolderGridLayout = ({
             className={uiRowIconButton}
             disabled={totalSelected === 0}
             onClick={() => {
-              copy(handleSelectedPermalink(getBaseUrl()))
-              toast.success(t('Copied selected files permalink.'))
+              void copy(handleSelectedPermalink(getBaseUrl()), t('Copied selected files permalink.'))
             }}
           >
             <Copy className="h-4 w-4" />
@@ -226,6 +224,9 @@ const FolderGridLayout = ({
       <DirectoryBody
         key={path}
         loading={loading}
+        empty={empty}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         placeholder={
           <div aria-hidden="true" className="grid grid-cols-2 gap-3 p-3 md:grid-cols-4">
             {Array.from({ length: 8 }, (_, index) => (
@@ -254,7 +255,6 @@ const FolderGridLayout = ({
               generating={Boolean(folderGenerating[c.id])}
               hashedToken={c.folder ? null : hashedToken}
               copy={copy}
-              toast={toast}
               toggleItemSelected={toggleItemSelected}
               handleFolderDownload={handleFolderDownload}
             />
