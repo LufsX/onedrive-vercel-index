@@ -9,7 +9,8 @@ import { useTranslations } from './ClientProviders'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
 import AppDialog from './AppDialog'
-import { uiInput } from './uiStyles'
+import { uiButton, uiInput } from './uiStyles'
+import { searchResultPath } from '../utils/searchResultPath'
 
 import type { OdDriveItem, OdSearchResult } from '../types'
 import { LoadingIcon } from './Loading'
@@ -17,26 +18,11 @@ import { LoadingIcon } from './Loading'
 import FileIcon from './FileIcon'
 import { fetcher } from '../utils/fetchWithSWR'
 
-/**
- * Extract the searched item's path in field 'parentReference' and convert it to the
- * absolute path represented in onedrive-vercel-index
- *
- * @param path Path returned from the parentReference field of the driveItem
- * @returns The absolute path of the driveItem in the search result
- */
-function mapAbsolutePath(path: string, baseDirectory: string): string {
-  // path is in the format of '/drive/root:/path/to/file', if baseDirectory is '/' then we split on 'root:',
-  // otherwise we split on the user defined 'baseDirectory'
-  const absolutePath = path.split(baseDirectory === '/' ? 'root:' : baseDirectory)
-  // path returned by the API may contain #, by doing a decodeURIComponent and then encodeURIComponent we can
-  // replace URL sensitive characters such as the # with %23
-  return absolutePath.length > 1 // solve https://github.com/spencerwooo/onedrive-vercel-index/issues/539
-    ? absolutePath[1]
-        .split('/')
-        .map(p => encodeURIComponent(decodeURIComponent(p)))
-        .join('/')
-    : ''
-}
+type SearchState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; result: OdSearchResult }
+  | { status: 'error'; error: Error }
 
 /**
  * Implements a debounced search function that returns a promise that resolves to an array of
@@ -47,20 +33,19 @@ function mapAbsolutePath(path: string, baseDirectory: string): string {
 function useDriveItemSearch() {
   const { siteConfig } = useClientConfig()
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<{ loading: boolean; error?: any; result?: OdSearchResult }>({
-    loading: false,
-  })
+  const [results, setResults] = useState<SearchState>({ status: 'idle' })
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     const trimmed = query.trim()
 
     if (trimmed.length === 0) {
-      setResults({ loading: false })
+      setResults({ status: 'idle' })
       return
     }
 
     const controller = new AbortController()
-    setResults({ loading: true })
+    setResults({ status: 'loading' })
 
     // One request per settled query rather than one per keystroke
     const timer = setTimeout(async () => {
@@ -74,14 +59,16 @@ function useDriveItemSearch() {
           item['path'] =
             'path' in item.parentReference
               ? // OneDrive International have the path returned in the parentReference field
-                `${mapAbsolutePath(item.parentReference.path, siteConfig.baseDirectory)}/${encodeURIComponent(item.name)}`
+                (searchResultPath(item.parentReference.path, item.name, siteConfig.baseDirectory) ?? '')
               : // OneDrive for Business/Education does not, so we need extra steps here
                 ''
         })
 
-        if (!controller.signal.aborted) setResults({ loading: false, result: data })
+        if (!controller.signal.aborted) setResults({ status: 'success', result: data })
       } catch (error) {
-        if (!controller.signal.aborted) setResults({ loading: false, error })
+        if (!controller.signal.aborted) {
+          setResults({ status: 'error', error: error instanceof Error ? error : new Error(String(error)) })
+        }
       }
     }, 300)
 
@@ -89,12 +76,13 @@ function useDriveItemSearch() {
       controller.abort()
       clearTimeout(timer)
     }
-  }, [query, siteConfig.baseDirectory])
+  }, [query, siteConfig.baseDirectory, attempt])
 
   return {
     query,
     setQuery,
     results,
+    retry: () => setAttempt(value => value + 1),
   }
 }
 
@@ -118,13 +106,17 @@ function SearchResultItemTemplate({
       href={driveItemPath}
       prefetch={false}
 
-      className={`dark:hover:bg-gray-850 flex items-center gap-4 border-b border-gray-400/30 px-4 py-1.5 hover:bg-gray-50 ${
+      aria-disabled={disabled || undefined}
+      tabIndex={disabled ? -1 : undefined}
+      className={`dark:hover:bg-gray-850 flex min-w-0 items-center gap-4 border-b border-gray-400/30 px-4 py-1.5 hover:bg-gray-50 ${
         disabled ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
       }`}
     >
       <SearchResultIcon driveItem={driveItem} />
-      <div>
-        <div className="text-sm leading-8 font-medium">{driveItem.name}</div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm leading-8 font-medium" title={driveItem.name}>
+          {driveItem.name}
+        </div>
         <div
           className={`truncate overflow-hidden font-mono text-xs opacity-60 ${
             itemDescription === 'Loading ...' && 'animate-pulse'
@@ -167,13 +159,13 @@ function SearchResultItemLoadRemote({ result }: { result: OdSearchResult[number]
     )
   }
 
-  const driveItemPath = `${mapAbsolutePath(data.parentReference.path, baseDirectory)}/${encodeURIComponent(data.name)}`
+  const driveItemPath = searchResultPath(data.parentReference.path, data.name, baseDirectory)
   return (
     <SearchResultItemTemplate
       driveItem={result}
-      driveItemPath={driveItemPath}
-      itemDescription={decodeURIComponent(driveItemPath)}
-      disabled={false}
+      driveItemPath={driveItemPath ?? ''}
+      itemDescription={driveItemPath ? decodeURIComponent(driveItemPath) : t('Could not resolve this file path.')}
+      disabled={!driveItemPath}
     />
   )
 }
@@ -203,7 +195,7 @@ export default function SearchModal({
   searchOpen: boolean
   setSearchOpen: Dispatch<SetStateAction<boolean>>
 }) {
-  const { query, setQuery, results } = useDriveItemSearch()
+  const { query, setQuery, results, retry } = useDriveItemSearch()
 
   const t = useTranslations()
 
@@ -232,22 +224,25 @@ export default function SearchModal({
           onChange={e => setQuery(e.target.value)}
         />
       </div>
-      {(results.loading || results.error || results.result) && (
+      {results.status !== 'idle' && (
         <div className="-mx-4 mt-3 -mb-3 overflow-x-hidden">
-          {results.loading && (
+          {results.status === 'loading' && (
             <div className="px-4 py-6 text-center text-sm font-medium">
               <LoadingIcon className="mr-2 inline-block h-4 w-4 animate-spin align-middle motion-reduce:animate-none" />
               <span>{t('Loading ...')}</span>
             </div>
           )}
-          {results.error && (
-            <div className="px-4 py-6 text-center text-sm font-medium">
-              {t('Error: {{message}}', { message: results.error.message })}
+          {results.status === 'error' && (
+            <div role="alert" className="space-y-2 px-4 py-6 text-center text-sm font-medium">
+              <p>{t('Error: {{message}}', { message: results.error.message })}</p>
+              <button type="button" className={uiButton} onClick={retry}>
+                {t('Retry')}
+              </button>
             </div>
           )}
-          {results.result &&
+          {results.status === 'success' &&
             (results.result.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm font-medium">{t('Nothing here.')}</div>
+              <div className="px-4 py-6 text-center text-sm font-medium">{t('No matching files found.')}</div>
             ) : (
               results.result.map(result => <SearchResultItem key={result.id} result={result} />)
             ))}
