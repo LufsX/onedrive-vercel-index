@@ -37,6 +37,8 @@ import {
 import { humanFileSize } from '../utils/fileDetails'
 
 type Candidate = { id: string; name: string; size: number; eTag?: string; remoteItem?: unknown }
+export const canDeleteFile = (item: Candidate) =>
+  item.remoteItem === undefined && item.name.toLowerCase() !== '.password'
 type Manager = {
   available: boolean
   busy: boolean
@@ -350,7 +352,7 @@ export function CreateFolderButton() {
 export function FileDeleteButton({ item }: { item: Candidate }) {
   const manager = useFileManager()
   const t = useTranslations()
-  if (!manager?.available || item.remoteItem !== undefined || item.name.toLowerCase() === '.password') return null
+  if (!manager?.available || !canDeleteFile(item)) return null
   return (
     <button
       type="button"

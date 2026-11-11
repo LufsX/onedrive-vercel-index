@@ -66,7 +66,7 @@ export default function AppDialog({
               leaveTo="opacity-0 scale-95 motion-reduce:transform-none"
             >
               <DialogPanel
-                className={`${uiPanel} relative flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden text-left text-sm shadow-2xl ring-1 ring-black/5 ${sizes[size]} ${className}`}
+                className={`${uiPanel} relative flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden text-left text-sm shadow-lg ${sizes[size]} ${className}`}
               >
                 <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-400/30 bg-gray-50 px-4 py-2 dark:bg-gray-800">
                   <DialogTitle as="h3" className="min-w-0 text-sm font-semibold text-gray-900 dark:text-gray-100">

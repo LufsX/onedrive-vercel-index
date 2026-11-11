@@ -28,6 +28,7 @@ export default function Dropdown<T>({
   itemHref,
   itemDisabled,
   renderItem,
+  anchor,
 }: {
   role: 'listbox' | 'menu'
   items: readonly T[]
@@ -41,6 +42,7 @@ export default function Dropdown<T>({
   itemHref?: (item: T) => string | undefined
   itemDisabled?: (item: T) => boolean | undefined
   renderItem: (item: T) => ReactNode
+  anchor?: 'bottom start' | 'bottom end'
 }) {
   const pointerType = useRef('mouse')
   const pointerPosition = useRef<{ x: number; y: number } | null>(null)
@@ -72,9 +74,10 @@ export default function Dropdown<T>({
         {trigger}
       </Button>
       <Panel
+        anchor={anchor}
         transition
         modal={false}
-        className={`${styles.panel} ${panelClassName}`}
+        className={`${styles.panel} ${anchor ? 'z-[150] max-w-[calc(100vw-1rem)] [--anchor-gap:4px] [--anchor-padding:8px]' : ''} ${panelClassName}`}
         onPointerDownCapture={event => {
           pointerType.current = event.pointerType
         }}

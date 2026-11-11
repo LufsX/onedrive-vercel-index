@@ -50,7 +50,7 @@ export const Checkbox: FC<{
   return (
     <label
       title={title}
-      className="relative inline-flex cursor-pointer items-center justify-center rounded p-1.5 text-white transition-colors duration-150 hover:bg-gray-100 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-disabled:hover:bg-transparent motion-reduce:transition-none dark:hover:bg-gray-800"
+      className="relative inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded text-white transition-colors duration-150 hover:bg-gray-100 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-disabled:hover:bg-transparent motion-reduce:transition-none md:size-6 dark:hover:bg-gray-800"
       onClick={event => event.stopPropagation()}
     >
       <input
