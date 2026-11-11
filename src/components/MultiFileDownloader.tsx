@@ -8,23 +8,48 @@ import { useTranslations } from './ClientProviders'
 
 import { fetcher } from '../utils/fetchWithSWR'
 import { getStoredToken } from '../utils/protectedRouteHandler'
+import { downloadFiles } from '../utils/downloadQueue'
 
-export function DownloadingToast({ onCancel, progress }: { onCancel: () => void; progress?: string }) {
+type DownloadProgress =
+  { phase: 'downloading'; completed: number; total?: number } | { phase: 'compressing'; percent: number }
+
+export function DownloadingToast({
+  onCancel,
+  progress = { phase: 'downloading', completed: 0 },
+}: {
+  onCancel: () => void
+  progress?: DownloadProgress
+}) {
   const t = useTranslations()
-  const percent = progress === undefined ? undefined : Math.min(100, Math.max(0, Number(progress) || 0))
+  const percent =
+    progress.phase === 'compressing'
+      ? Math.min(100, Math.max(0, progress.percent))
+      : progress.total
+        ? (progress.completed / progress.total) * 100
+        : undefined
+  const label = t(progress.phase === 'compressing' ? 'Preparing ZIP...' : 'Downloading files...')
   return (
     <div className="flex w-72 max-w-[calc(100vw-5rem)] items-center gap-2.5 text-gray-700 dark:text-gray-200">
       <FileArchive className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
       <div className="min-w-0 flex-1 py-1">
         <div className="flex items-center justify-between gap-2 text-sm font-medium">
-          <span>{t('Downloading selected files...')}</span>
-          {percent !== undefined && (
-            <span className="font-mono text-xs text-gray-500 dark:text-gray-400">{percent}%</span>
-          )}
+          <span>{label}</span>
+          <span className="font-mono text-xs whitespace-nowrap text-gray-500 tabular-nums dark:text-gray-400">
+            {progress.phase === 'compressing'
+              ? `${percent?.toFixed(0)}%`
+              : progress.total !== undefined
+                ? `${progress.completed} / ${progress.total}`
+                : t('{{count}} file(s) downloaded', { count: progress.completed })}
+          </span>
         </div>
         <div
           role="progressbar"
-          aria-label={t('Downloading selected files...')}
+          aria-label={label}
+          aria-valuetext={
+            progress.phase === 'downloading'
+              ? t('{{count}} file(s) downloaded', { count: progress.completed })
+              : undefined
+          }
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={percent}
@@ -43,16 +68,19 @@ export function DownloadingToast({ onCancel, progress }: { onCancel: () => void;
   )
 }
 
-async function downloadFile(url: string, signal: AbortSignal) {
-  const response = await fetch(url, { signal })
-  if (!response.ok) throw new Error(`Download failed: ${response.status}`)
-  return response.blob()
+function reportProgress(toastId: string, controller: AbortController, progress: DownloadProgress) {
+  if (controller.signal.aborted) return
+  toast.loading(<DownloadingToast onCancel={() => controller.abort()} progress={progress} />, {
+    id: toastId,
+    icon: null,
+  })
 }
 
 function generateZip(zip: JSZip, toastId: string, controller: AbortController): Promise<Blob> {
   const { signal } = controller
   signal.throwIfAborted()
-  const stream = zip.generateInternalStream({ type: 'blob' })
+  reportProgress(toastId, controller, { phase: 'compressing', percent: 0 })
+  const stream = zip.generateInternalStream({ type: 'blob', streamFiles: true })
   return new Promise((resolve, reject) => {
     const cleanup = () => signal.removeEventListener('abort', cancel)
     const cancel = () => {
@@ -64,10 +92,7 @@ function generateZip(zip: JSZip, toastId: string, controller: AbortController): 
     stream
       .accumulate(metadata => {
         if (signal.aborted) return
-        toast.loading(<DownloadingToast onCancel={() => controller.abort()} progress={metadata.percent.toFixed(0)} />, {
-          id: toastId,
-          icon: null,
-        })
+        reportProgress(toastId, controller, { phase: 'compressing', percent: metadata.percent })
       })
       .then(
         blob => {
@@ -122,11 +147,15 @@ export async function downloadMultipleFiles({
   const zip = new JSZip()
   const dir = folder ? zip.folder(folder)! : zip
 
-  const downloads = await Promise.all(
-    files.map(async ({ name, url }) => ({ name, blob: await downloadFile(url, signal) })),
+  reportProgress(toastId, controller, { phase: 'downloading', completed: 0, total: files.length })
+  await downloadFiles(
+    files,
+    controller,
+    ({ name }, blob) => {
+      dir.file(name, blob)
+    },
+    completed => reportProgress(toastId, controller, { phase: 'downloading', completed, total: files.length }),
   )
-  signal.throwIfAborted()
-  downloads.forEach(({ name, blob }) => dir.file(name, blob))
 
   // Create zip file and download it
   const b = await generateZip(zip, toastId, controller)
@@ -169,38 +198,30 @@ export async function downloadTreelikeMultipleFiles({
   signal.throwIfAborted()
   const zip = new JSZip()
   const root = folder ? zip.folder(folder)! : zip
-  const map = [{ path: basePath, dir: root }]
-  const downloads: { dir: typeof zip; name: string; content: Promise<Blob> }[] = []
-
-  // Add selected file blobs to zip according to its path
-  for await (const { name, url, path, isFolder } of files) {
-    signal.throwIfAborted()
-    // Search parent dir in map
-    const i = map
-      .slice()
-      .reverse()
-      .findIndex(
-        ({ path: parent }) =>
-          path.substring(0, parent.length) === parent && path.substring(parent.length + 1).indexOf('/') === -1,
-      )
-    if (i === -1) {
-      throw new Error('File array does not satisfy requirement')
-    }
-
-    // Add file or folder to zip
-    const dir = map[map.length - 1 - i].dir
-    if (isFolder) {
-      map.push({ path, dir: dir.folder(name)! })
-    } else {
-      const content = downloadFile(url!, signal)
-      // Traversal may still be waiting for another folder when this request fails.
-      void content.catch(() => undefined)
-      downloads.push({ dir, name, content })
+  const directories = new Map([[basePath, root]])
+  async function* entries() {
+    for await (const { name, url, path, isFolder } of files) {
+      signal.throwIfAborted()
+      const parentPath = path.slice(0, path.lastIndexOf('/')) || '/'
+      const dir = directories.get(parentPath)
+      if (!dir) throw new Error('File array does not satisfy requirement')
+      if (isFolder) {
+        directories.set(path, dir.folder(name)!)
+      } else {
+        if (!url) throw new Error('Missing file URL')
+        yield { name, url, dir }
+      }
     }
   }
 
-  await Promise.all(downloads.map(async ({ dir, name, content }) => dir.file(name, await content)))
-  signal.throwIfAborted()
+  await downloadFiles(
+    entries(),
+    controller,
+    ({ dir, name }, blob) => {
+      dir.file(name, blob)
+    },
+    completed => reportProgress(toastId, controller, { phase: 'downloading', completed }),
+  )
 
   // Create zip file and download it
   const b = await generateZip(zip, toastId, controller)
