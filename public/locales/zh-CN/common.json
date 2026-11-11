@@ -297,5 +297,20 @@
   "Log in as administrator, then follow the next steps to authorize your Microsoft account.": "使用管理员密码登录后，按后续步骤完成 Microsoft 账号授权。",
   "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.": "已配置过？直接登录即可继续。需要更换密码时，重新生成配置并更新部署环境。",
   "Administrator session active": "管理员已登录",
-  "Generate the password configuration below. Use at least 8 characters.": "生成管理员密码配置，密码至少需要 8 个字符。"
+  "Generate the password configuration below. Use at least 8 characters.": "生成管理员密码配置，密码至少需要 8 个字符。",
+  "Could not resolve this file path.": "无法确定文件路径。",
+  "No matching files found.": "没有找到匹配的文件。",
+  "Could not copy the link. Copy it manually below.": "复制失败，请选中链接后手动复制。",
+  "Downloading files...": "正在下载文件…",
+  "Preparing ZIP...": "正在生成压缩包…",
+  "{{count}} file(s) downloaded": "已下载 {{count}} 个文件",
+  "This folder is empty.": "此文件夹为空。",
+  "Refreshing...": "正在刷新…",
+  "Retrying...": "正在重试…",
+  "Check your connection and try again.": "请检查网络连接后重试。",
+  "You do not have permission to access this item.": "你没有权限访问此项目。",
+  "Too many requests. Please try again shortly.": "请求过于频繁，请稍后重试。",
+  "The service is temporarily unavailable. Please try again.": "服务暂时不可用，请重试。",
+  "Could not refresh. Your current files are still shown.": "刷新失败，仍显示上次加载的文件。",
+  "Unable to load this content.": "无法加载此内容。"
 }

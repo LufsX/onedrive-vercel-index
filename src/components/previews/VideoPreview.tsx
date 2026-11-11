@@ -10,8 +10,7 @@ import { usePathname } from 'next/navigation'
 import { Copy, Download, FileDown, Pencil } from 'lucide-react'
 import { useTranslations } from '../ClientProviders'
 
-import toast from 'react-hot-toast'
-import useClipboard from '../../utils/useClipboard'
+import useCopyLink from '../../utils/useCopyLink'
 
 import { getBaseUrl } from '../../utils/getBaseUrl'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
@@ -65,7 +64,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const { protectedRoutes, datetimeFormat } = useClientConfig().siteConfig
   const pathname = usePathname()
   const hashedToken = getStoredToken(pathname, protectedRoutes)
-  const clipboard = useClipboard()
+  const copyLink = useCopyLink()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const t = useTranslations()
@@ -153,8 +152,7 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           />
           <DownloadButton
             onClickCallback={() => {
-              clipboard.copy(directUrl)
-              toast.success(t('Copied direct link to clipboard.'))
+              void copyLink(directUrl, t('Copied direct link to clipboard.'))
             }}
             btnColor="pink"
             btnText={t('Copy direct link')}

@@ -268,5 +268,20 @@
   "Log in as administrator, then follow the next steps to authorize your Microsoft account.": "Log in as administrator, then follow the next steps to authorize your Microsoft account.",
   "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.": "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.",
   "Administrator session active": "Administrator session active",
-  "Generate the password configuration below. Use at least 8 characters.": "Generate the password configuration below. Use at least 8 characters."
+  "Generate the password configuration below. Use at least 8 characters.": "Generate the password configuration below. Use at least 8 characters.",
+  "Could not resolve this file path.": "Could not resolve this file path.",
+  "No matching files found.": "No matching files found.",
+  "Could not copy the link. Copy it manually below.": "Could not copy the link. Copy it manually below.",
+  "Downloading files...": "Downloading files...",
+  "Preparing ZIP...": "Preparing ZIP...",
+  "{{count}} file(s) downloaded": "Files downloaded: {{count}}",
+  "This folder is empty.": "This folder is empty.",
+  "Refreshing...": "Refreshing...",
+  "Retrying...": "Retrying...",
+  "Check your connection and try again.": "Check your connection and try again.",
+  "You do not have permission to access this item.": "You do not have permission to access this item.",
+  "Too many requests. Please try again shortly.": "Too many requests. Please try again shortly.",
+  "The service is temporarily unavailable. Please try again.": "The service is temporarily unavailable. Please try again.",
+  "Could not refresh. Your current files are still shown.": "Could not refresh. Your current files are still shown.",
+  "Unable to load this content.": "Unable to load this content."
 }

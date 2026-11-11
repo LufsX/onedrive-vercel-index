@@ -297,5 +297,20 @@
   "Log in as administrator, then follow the next steps to authorize your Microsoft account.": "使用管理員密碼登入後，按照後續步驟完成 Microsoft 帳號授權。",
   "Already configured? Log in to continue. To change the password, generate a new configuration and update your deployment.": "已完成設定？直接登入即可繼續。需要更換密碼時，重新產生設定並更新部署環境。",
   "Administrator session active": "管理員已登入",
-  "Generate the password configuration below. Use at least 8 characters.": "產生管理員密碼設定，密碼至少需要 8 個字元。"
+  "Generate the password configuration below. Use at least 8 characters.": "產生管理員密碼設定，密碼至少需要 8 個字元。",
+  "Could not resolve this file path.": "無法確定檔案路徑。",
+  "No matching files found.": "找不到符合的檔案。",
+  "Could not copy the link. Copy it manually below.": "複製失敗，請選取連結後手動複製。",
+  "Downloading files...": "正在下載檔案…",
+  "Preparing ZIP...": "正在產生壓縮檔…",
+  "{{count}} file(s) downloaded": "已下載 {{count}} 個檔案",
+  "This folder is empty.": "此資料夾是空的。",
+  "Refreshing...": "正在重新整理…",
+  "Retrying...": "正在重試…",
+  "Check your connection and try again.": "請檢查網路連線後重試。",
+  "You do not have permission to access this item.": "你沒有權限存取此項目。",
+  "Too many requests. Please try again shortly.": "請求過於頻繁，請稍後重試。",
+  "The service is temporarily unavailable. Please try again.": "服務暫時無法使用，請重試。",
+  "Could not refresh. Your current files are still shown.": "重新整理失敗，仍顯示上次載入的檔案。",
+  "Unable to load this content.": "無法載入此內容。"
 }

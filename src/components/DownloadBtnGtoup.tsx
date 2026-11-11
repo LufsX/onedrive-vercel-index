@@ -4,13 +4,13 @@ import { useClientConfig } from './ClientConfigProvider'
 
 import { MouseEventHandler, useState } from 'react'
 import { Copy, Download, FileDown, Pencil, type LucideIcon } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { useTranslations } from './ClientProviders'
 
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { rawFileUrl } from '../utils/rawFileUrl'
-import useClipboard from '../utils/useClipboard'
+import useCopyLink from '../utils/useCopyLink'
+import { uiButton } from './uiStyles'
 
 import { getBaseUrl } from '../utils/getBaseUrl'
 import { getStoredToken } from '../utils/protectedRouteHandler'
@@ -53,9 +53,7 @@ export const DownloadButton = ({
 }) => {
   return (
     <button
-      className={`flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100/10 focus:z-10 focus:ring-2 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-900 ${btnStyleMap(
-        btnColor,
-      )}`}
+      className={`${uiButton} border bg-white focus:z-10 dark:bg-gray-800 ${btnStyleMap(btnColor)}`}
       title={btnTitle}
       onClick={onClickCallback}
     >
@@ -73,7 +71,7 @@ const DownloadButtonGroup = () => {
   const hashedToken = getStoredToken(asPath, protectedRoutes)
   const fileUrl = rawFileUrl(asPath, hashedToken ? { odpt: hashedToken } : {})
 
-  const clipboard = useClipboard()
+  const copyLink = useCopyLink()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const t = useTranslations()
@@ -98,8 +96,7 @@ const DownloadButtonGroup = () => {
         />
         <DownloadButton
           onClickCallback={() => {
-            clipboard.copy(getBaseUrl() + fileUrl)
-            toast.success(t('Copied direct link to clipboard.'))
+            void copyLink(getBaseUrl() + fileUrl, t('Copied direct link to clipboard.'))
           }}
           btnColor="pink"
           btnText={t('Copy direct link')}

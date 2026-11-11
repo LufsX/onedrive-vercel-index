@@ -17,20 +17,40 @@ import { getReadablePath } from '../utils/getReadablePath'
 function LinkContainer({ title, value }: { title: string; value: string }) {
   const t = useTranslations()
   const clipboard = useClipboard({ copiedTimeout: 1000 })
+  const text = useRef<HTMLTextAreaElement>(null)
   return (
     <>
       <h4 className="mb-1 text-xs font-medium tracking-wider uppercase">{title}</h4>
       <div className="mb-3 flex items-center gap-2 rounded border border-gray-400/20 bg-gray-50 p-2 font-mono dark:bg-gray-800">
-        <div className="max-h-24 min-w-0 flex-1 overflow-y-auto break-all opacity-80">{value}</div>
+        <textarea
+          ref={text}
+          readOnly
+          aria-label={title}
+          rows={2}
+          value={value}
+          className="max-h-24 min-w-0 flex-1 resize-none bg-transparent text-xs break-all opacity-80 focus-visible:outline-2 focus-visible:outline-blue-400"
+          onFocus={event => event.currentTarget.select()}
+        />
         <button
           type="button"
           aria-label={`${t('Copy direct link')}: ${title}`}
-          onClick={() => clipboard.copy(value)}
+          disabled={clipboard.status === 'copying'}
+          onClick={async () => {
+            if (!(await clipboard.copy(value))) {
+              text.current?.focus()
+              text.current?.select()
+            }
+          }}
           className={`${uiIconButton} bg-gray-100 dark:bg-gray-800`}
         >
           {clipboard.copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         </button>
       </div>
+      {clipboard.status === 'error' && (
+        <p role="alert" className="mb-3 text-xs text-red-500 dark:text-red-400">
+          {t('Could not copy the link. Copy it manually below.')}
+        </p>
+      )}
     </>
   )
 }
