@@ -5,6 +5,7 @@ import Dropdown from './Dropdown'
 import { useTranslations } from './ClientProviders'
 
 import useLocalStorage from '../utils/useLocalStorage'
+import { uiButton } from './uiStyles'
 
 export const layouts: Array<{ id: number; name: 'Grid' | 'List' }> = [
   { id: 1, name: 'List' },
@@ -34,7 +35,7 @@ const SwitchLayout = () => {
         selectedIndex={layouts.findIndex(layout => layout.name === preferredLayout.name)}
         onSelect={setPreferredLayout}
         triggerLabel={t(preferredLayout.name)}
-        triggerClassName="flex w-full cursor-pointer items-center justify-between gap-2 rounded px-2 py-1 transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-gray-700"
+        triggerClassName={`${uiButton} w-full`}
         trigger={
           <>
             <span className="flex min-w-0 items-center gap-2">

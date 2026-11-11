@@ -17,6 +17,7 @@ import AdminAccess from './AdminAccess'
 import SwitchLang from './SwitchLang'
 import FeatureBoundary from './FeatureBoundary'
 import useDeviceOS from '../utils/useDeviceOS'
+import { uiButton } from './uiStyles'
 
 const SearchModal = dynamic(() => import('./SearchModal'), { ssr: false })
 
@@ -89,7 +90,7 @@ const Navbar = () => {
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 text-gray-700 sm:gap-2 md:flex-initial">
           <button
-            className="flex min-w-0 flex-1 cursor-pointer items-center justify-between rounded-lg bg-gray-100 px-2.5 py-1.5 transition-colors duration-150 hover:bg-gray-200 md:w-44 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+            className={`${uiButton} min-w-0 flex-1 justify-between bg-gray-100 md:w-44 dark:bg-gray-800 dark:text-white`}
             onClick={openSearchBox}
           >
             <div className="flex items-center gap-2">

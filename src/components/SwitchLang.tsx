@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 
 import { useLocale } from './ClientProviders'
 import { setLocaleCookie } from '../utils/localeCookie'
+import { uiIconButton } from './uiStyles'
 
 const localeText = (locale: string): string => {
   switch (locale) {
@@ -51,7 +52,7 @@ const SwitchLang = () => {
         selectedIndex={locales.indexOf(currentLocale)}
         onSelect={switchLocale}
         triggerLabel={localeText(currentLocale)}
-        triggerClassName="flex cursor-pointer items-center rounded p-2 transition-colors duration-150 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800"
+        triggerClassName={uiIconButton}
         trigger={<Languages className="h-4 w-4" />}
         panelClassName="absolute top-full right-0 z-20 mt-1 w-max min-w-32 overflow-hidden rounded border border-gray-900/10 bg-white py-1 shadow-lg focus:outline-hidden dark:border-gray-500/30 dark:bg-gray-900 dark:text-white"
         itemClassName={locale =>
